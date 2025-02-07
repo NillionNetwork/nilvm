@@ -7,7 +7,7 @@ edition = "2021"
 build-info = { path = "../build-info" }
 
 anyhow = "1.0.86"
-dirs = "5.0.1"
+dirs = "6.0.0"
 rand = "0.8.5"
 instant = "0.1"
 serde_json = "1.0.127"

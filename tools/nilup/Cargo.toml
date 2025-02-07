@@ -10,7 +10,7 @@ color-eyre = "0.6.3"
 toml = "0.8.14"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9.34"
-dirs = "5.0.1"
+dirs = "6.0.0"
 tracing = "0.1.40"
 
 object_store = { version = "0.11.1", features = ["aws"] }
