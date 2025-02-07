@@ -24,7 +24,7 @@ state-machine-derive = { path = "../state-machine-derive" }
 state-machine-macros = { path = "../state-machine-macros" }
 
 ecdsa-keypair = { path = "../ecdsa-keypair" }
-cggmp21 = { version = "0.5.0", features = ["curve-secp256k1", "state-machine"] }
+cggmp21 = { version = "0.6.0", features = ["curve-secp256k1", "state-machine"] }
 gmp-mpfr-sys = { version = "1.6.4", features = ["force-cross"] }
 sha2 = "0.10"
 serde_json = "1"
