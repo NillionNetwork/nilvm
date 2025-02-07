@@ -21,7 +21,7 @@ tracing-fixture = { path = "../fixtures/tracing" }
 test-programs = { path = "../../nada-lang/test-programs" }
 
 [dependencies.generic-ec]
-version = "0.4.2"
+version = "0.4.5"
 features = ["alloc", "curve-secp256k1", "serde"]
 default-features = false
 
