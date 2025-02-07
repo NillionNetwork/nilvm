@@ -14,7 +14,7 @@ prost = "0.13.1"
 sha2 = "0.10.8"
 tokio = { version = "1", features = ["time"] }
 tracing = "0.1.40"
-thiserror = "1"
+thiserror = "2"
 uuid = "1"
 rand = "0.8.5"
 

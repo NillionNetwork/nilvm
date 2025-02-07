@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_repr = "0.1.19"
-thiserror = "1"
+thiserror = "2"
 prost = {version =  "0.13", optional = true }
 nada-type = { path = "../nada-type", features = ["serde"] }
 mir-proto = { path = "../mir-proto", optional = true }

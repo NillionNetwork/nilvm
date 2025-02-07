@@ -9,7 +9,7 @@ indexmap = { version = "2.6.0" }
 serde = { version = "1", features = ["derive"], optional = true }
 strum = "0.26.3"
 strum_macros = "0.26.3"
-thiserror = "1.0.63"
+thiserror = "2.0.3"
 
 types-proc-macros = { path = "../types-proc-macros" }
 

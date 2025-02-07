@@ -376,7 +376,7 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "serde",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "uuid",
 ]
 
@@ -487,7 +487,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_urlencoded",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-util",
  "tower-service",
@@ -577,7 +577,7 @@ dependencies = [
  "rstest",
  "serde-files-utils",
  "test-programs",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "xshell",
 ]
 
@@ -663,7 +663,7 @@ dependencies = [
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "udigest",
 ]
 
@@ -684,7 +684,7 @@ dependencies = [
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "udigest",
 ]
 
@@ -1011,7 +1011,7 @@ dependencies = [
  "subtle-encoding",
  "tendermint",
  "tendermint-rpc",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1466,7 +1466,7 @@ dependencies = [
  "serde",
  "sha2 0.10.8",
  "subtle",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -1560,7 +1560,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "serde",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -1716,7 +1716,7 @@ dependencies = [
  "state-machine",
  "state-machine-derive",
  "test-programs",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "uuid",
 ]
 
@@ -1740,7 +1740,7 @@ dependencies = [
  "rand_core",
  "rug",
  "serde",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2193,7 +2193,7 @@ dependencies = [
  "rand",
  "rstest",
  "sha2 0.10.8",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tonic",
  "tower 0.5.1",
  "user-keypair",
@@ -2437,7 +2437,7 @@ version = "0.1.0"
 dependencies = [
  "regex",
  "serde",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -2915,7 +2915,7 @@ dependencies = [
  "serde_with 3.11.0",
  "substring",
  "test-programs",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -2966,7 +2966,7 @@ dependencies = [
  "rand_core",
  "serde",
  "serde_with 2.3.3",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -3055,7 +3055,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde-files-utils",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tokio",
  "tracing",
  "uuid",
@@ -3122,7 +3122,7 @@ dependencies = [
  "rstest",
  "serde",
  "subtle",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -3149,7 +3149,7 @@ dependencies = [
  "instant",
  "once_cell",
  "prometheus",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tracing",
 ]
 
@@ -3205,7 +3205,7 @@ dependencies = [
  "prost",
  "serde",
  "serde_repr",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -3331,7 +3331,7 @@ dependencies = [
  "nada-value",
  "num-bigint",
  "serde",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -3368,7 +3368,7 @@ dependencies = [
  "serde",
  "strum",
  "strum_macros",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "types-proc-macros",
 ]
 
@@ -3395,7 +3395,7 @@ dependencies = [
  "serde_json",
  "shamir-sharing",
  "strum_macros",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "types-proc-macros",
 ]
 
@@ -3457,7 +3457,7 @@ dependencies = [
  "prost",
  "rand",
  "sha2 0.10.8",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tokio",
  "tracing",
  "uuid",
@@ -3499,7 +3499,7 @@ dependencies = [
  "once_cell",
  "rand",
  "sha2 0.10.8",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tokio",
  "tonic",
  "tracing",
@@ -3646,7 +3646,7 @@ dependencies = [
  "test-programs",
  "test-with",
  "testcontainers",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -3675,7 +3675,7 @@ dependencies = [
  "protobuf-src",
  "sha2 0.10.8",
  "strum",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tonic",
  "tonic-build",
  "tonic-types",
@@ -3937,7 +3937,7 @@ dependencies = [
  "rug",
  "serde",
  "serde_with 3.11.0",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "udigest",
 ]
 
@@ -4096,7 +4096,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879952a81a83930934cbf1786752d6dedc3b1f29e8f8fb2ad1d0a36f377cf442"
 dependencies = [
  "memchr",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "ucd-trie",
 ]
 
@@ -4448,7 +4448,7 @@ dependencies = [
  "rstest",
  "serde",
  "test-programs",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -4476,7 +4476,7 @@ dependencies = [
  "memchr",
  "parking_lot",
  "protobuf",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4574,7 +4574,7 @@ dependencies = [
  "state-machine",
  "state-machine-derive",
  "state-machine-macros",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "uuid",
 ]
 
@@ -4602,7 +4602,7 @@ dependencies = [
  "serde-files-utils",
  "serde_json",
  "serde_stacker",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -4652,7 +4652,7 @@ dependencies = [
  "rustc-hash",
  "rustls 0.23.19",
  "socket2",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "tokio",
  "tracing",
 ]
@@ -4801,7 +4801,7 @@ checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
  "getrandom",
  "libredox",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4985,7 +4985,7 @@ dependencies = [
  "futures-util",
  "phantom-type 0.3.1",
  "round-based-derive",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "tracing",
 ]
 
@@ -5542,7 +5542,7 @@ dependencies = [
  "rand",
  "rstest",
  "rustc-hash",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
@@ -5743,7 +5743,7 @@ dependencies = [
  "sha2 0.10.8",
  "smallvec",
  "sqlformat",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -5828,7 +5828,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "tracing",
  "uuid",
  "whoami",
@@ -5868,7 +5868,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "tracing",
  "uuid",
  "whoami",
@@ -5924,7 +5924,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "serde",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
  "tracing",
 ]
 
@@ -6255,7 +6255,7 @@ dependencies = [
  "tendermint",
  "tendermint-config",
  "tendermint-proto",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "time",
  "tokio",
  "tracing",
@@ -6344,7 +6344,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with 3.11.0",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
  "tokio-tar",
@@ -6354,11 +6354,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.65"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d11abd9594d9b38965ef50805c5e469ca9cc6f197f883f717e0269a3057b3d5"
+checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl 1.0.65",
+ "thiserror-impl 1.0.69",
 ]
 
 [[package]]
@@ -6372,9 +6372,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.65"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae71770322cbd277e69d762a16c444af02aa0575ac0d174f0b9562d3b37f8602"
+checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6789,7 +6789,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3566e8ce28cc0a3fe42519fc80e6b4c943cc4c8cef275620eb8dac2d3d4e06cf"
 dependencies = [
  "crossbeam-channel",
- "thiserror 1.0.65",
+ "thiserror 1.0.69",
  "time",
  "tracing-subscriber",
 ]
@@ -7072,7 +7072,7 @@ dependencies = [
  "k256",
  "rand",
  "sha2 0.10.8",
- "thiserror 1.0.65",
+ "thiserror 2.0.3",
 ]
 
 [[package]]

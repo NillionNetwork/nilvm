@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 hex = "0.4"
 serde = { version = "1", features = ["derive"], optional = true }
-thiserror = "1"
+thiserror = "2"
 uuid = { version = "1.10" }
 
 [features]

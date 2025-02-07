@@ -14,7 +14,7 @@ clap = { version = "4.5", features = ["derive"] }
 env_logger = "0.11"
 log = "0.4.22"
 num-bigint = "0.4.6"
-thiserror = "1"
+thiserror = "2"
 
 basic-types = { path = "../../libs/basic-types" }
 math_lib = { path = "../../libs/math" }

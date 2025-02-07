@@ -14,7 +14,7 @@ num-traits = "0.2.19"
 strum_macros = "0.26.4"
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1.0.127", optional = true }
-thiserror = "1.0.63"
+thiserror = "2.0.3"
 
 basic-types = { path = "../basic-types" }
 ecdsa-keypair = { path = "../ecdsa-keypair", default-features = false }
