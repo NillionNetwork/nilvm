@@ -15,7 +15,7 @@ tracing = "0.1.40"
 
 object_store = { version = "0.11.1", features = ["aws"] }
 tokio = { version = "1", features = ["full"] }
-flate2 = "1.0.33"
+flate2 = "1.0.35"
 tar = "0.4.43"
 
 file-find = { path = "../../libs/file-find" }
