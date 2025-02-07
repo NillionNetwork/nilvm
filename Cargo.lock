@@ -2050,9 +2050,9 @@ dependencies = [
 
 [[package]]
 name = "generic-ec-core"
-version = "0.2.1"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "049128cc67cac6176ada5218e294ce46421470d92a7340c93d5cfd3ecfbc29a4"
+checksum = "dcba5fdf70cc3ce5805c487f8523b4ceeb32e8ec5237c71ffd93c1ca47a97fee"
 dependencies = [
  "generic-array",
  "rand_core",
