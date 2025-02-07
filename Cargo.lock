@@ -659,7 +659,7 @@ dependencies = [
  "paillier-zk",
  "rand_core",
  "rand_hash",
- "round-based",
+ "round-based 0.3.2",
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
@@ -680,7 +680,7 @@ dependencies = [
  "hex",
  "key-share",
  "rand_core",
- "round-based",
+ "round-based 0.3.2",
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
@@ -4565,7 +4565,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rayon",
- "round-based",
+ "round-based 0.4.1",
  "rstest",
  "serde",
  "serde_json",
@@ -4986,6 +4986,18 @@ dependencies = [
  "phantom-type 0.3.1",
  "round-based-derive",
  "thiserror 1.0.65",
+ "tracing",
+]
+
+[[package]]
+name = "round-based"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da76edf50de0a9d6911fc79261bb04cc9f3f3a375e0201799f5edf58499af341"
+dependencies = [
+ "futures-util",
+ "phantom-type 0.3.1",
+ "thiserror 2.0.3",
  "tracing",
 ]
 
