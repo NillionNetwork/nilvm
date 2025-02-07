@@ -93,4 +93,4 @@ protobuf-src = "2.1"
 program-builder = { path = "../nada-lang/program-builder", default-features = false, features = ["compile"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-procfs = "0.16.0"
+procfs = "0.17.0"
