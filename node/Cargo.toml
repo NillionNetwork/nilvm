@@ -84,7 +84,7 @@ generic-ec = "0.4.3"
 rand_chacha = "0.3.1"
 test-programs = { path = "../nada-lang/test-programs" }
 test-with = { version = "0.14", default-features = false }
-serde_json = "1.0.133"
+serde_json = "1.0.138"
 
 [build-dependencies]
 tonic-build = "0.12"

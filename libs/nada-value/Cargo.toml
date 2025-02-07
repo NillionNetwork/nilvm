@@ -13,7 +13,7 @@ num-bigint = "0.4.6"
 num-traits = "0.2.19"
 strum_macros = "0.26.4"
 serde = { version = "1", features = ["derive"], optional = true }
-serde_json = { version = "1.0.127", optional = true }
+serde_json = { version = "1.0.138", optional = true }
 thiserror = "1.0.63"
 
 basic-types = { path = "../basic-types" }
