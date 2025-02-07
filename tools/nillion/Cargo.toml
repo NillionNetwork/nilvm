@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1"
 clap = { version = "4.5", features = ["derive", "env"] }
 config = { version = "0.14", default-features = false, features = ["yaml"] }
-env_logger = "0.11.5"
+env_logger = "0.11.6"
 chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
 futures = "0.3.30"
