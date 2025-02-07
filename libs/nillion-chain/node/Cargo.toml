@@ -18,7 +18,7 @@ tracing-test = "0.2.5"
 
 [build-dependencies]
 tokio = { version = "1", features = ["full"] }
-object_store = { version = "0.11.1", features = ["aws"] }
+object_store = { version = "0.11.2", features = ["aws"] }
 
 [package.metadata.cargo-machete]
 ignored = ["aws_config", "aws_sdk_s3"]
