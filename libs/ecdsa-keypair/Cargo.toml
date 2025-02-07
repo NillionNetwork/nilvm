@@ -5,7 +5,7 @@ edition = "2021"
 description = "Utilities for Threshold ECDSA signing"
 
 [dependencies]
-key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
+key-share = { version = "0.6.0", default-features = false, features = ["spof"] }
 generic-ec = { version = "0.4.2", default-features = false, features = ["alloc", "curve-secp256k1"] }
 serde = { version = "1", features = ["derive"], optional = true }
 thiserror = "1"

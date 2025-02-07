@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 itertools = "0.13"
-key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
+key-share = { version = "0.6.0", default-features = false, features = ["spof"] }
 num-bigint = "0.4"
 rand = "0.8"
 rand_chacha = "0.3.1"
