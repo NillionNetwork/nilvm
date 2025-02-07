@@ -2078,10 +2078,11 @@ dependencies = [
 
 [[package]]
 name = "generic-ec-zkp"
-version = "0.4.2"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec6e906724b1f70cd13e7e2455165300f1ef2fd200e40aa6207a046a36af839d"
+checksum = "bd3945c585fdddba3f86bda4e4cfba22d5e255001b3e145c9db305ad096c6d88"
 dependencies = [
+ "digest 0.10.7",
  "generic-array",
  "generic-ec",
  "rand_core",
