@@ -1,0 +1,83 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "libs/human-size",
+    "libs/math",
+    "libs/cryptography",
+    "libs/serde-files-utils",
+    "libs/shamir-sharing",
+    "libs/encoding",
+    "libs/metrics",
+    "libs/build-info",
+    "libs/clap-utils",
+    "libs/node-config",
+    "libs/state-machine",
+    "libs/state-machine-macros",
+    "libs/state-machine-derive",
+    "libs/protocols",
+    "libs/basic-types",
+    "libs/execution-engine/jit-compiler",
+    "libs/execution-engine/execution-engine-vm",
+    "libs/execution-engine/mpc-vm",
+    "libs/test-logger",
+    "libs/user-keypair",
+    "libs/ecdsa-keypair",
+    "libs/nada-values-args",
+    "libs/client-metrics",
+    "libs/nillion-chain/client",
+    "libs/nillion-chain/node",
+    "libs/nillion-chain/transactions",
+    "nada-lang/compiler-backend",
+    "nada-lang/compiler-backend-tests",
+    "nada-lang/pynadac",
+    "nada-lang/bytecode-evaluator",
+    "nada-lang/nada-type",
+    "nada-lang/program-builder",
+    "nada-lang/test-programs",
+    "nada-lang/tools/compiler",
+    "nada-lang/auto-tests",
+    "nada-lang/types-proc-macros",
+    "nada-lang/operations",
+    "nada-lang/mir-model",
+    "nada-lang/mir-proto",
+    "tools/nada-run",
+    "tools/share-reconstructor",
+    "tools/nillion",
+    "tools/nillion-devnet",
+    "tools/load-tool",
+    "tools/libs/tools-config",
+    "tools/nilup",
+    "tools/nada",
+    "node",
+    "client",
+    "tests/e2e",
+    "tests/functional",
+    "tests/fixtures/client",
+    "tests/fixtures/nodes",
+    "tests/fixtures/tracing",
+    "tests/run_local_network",
+    "nada-lang/program-auditor",
+    "libs/nada-value",
+    "libs/node-api",
+    "libs/grpc-channel",
+    "libs/client-core",
+]
+
+exclude = ["wasm-workspace"]
+
+[profile.release]
+lto = true
+strip = true
+
+[profile.bench]
+debug = true
+strip = false
+
+[profile.dev]
+debug = true
+
+# Note: remove this when `serde_stacker` (current version 0.1.11) is updated with `psm` 0.1.23 or greater.
+# We need to update to latest psm crate, because pynadac is failing to build for macOS with zig (serde_stacker v0.1.11 :: psm 0.1.21): error: symbol .rust_psm_on_stack_end not attached to any (sub)section
+[patch.crates-io]
+psm = { git = "https://github.com/rust-lang/stacker", tag = "psm-0.1.23", package = "psm" }

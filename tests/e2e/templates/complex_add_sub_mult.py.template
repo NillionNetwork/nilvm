@@ -1,0 +1,19 @@
+from nada_dsl import *
+
+
+def nada_main():
+    party1 = Party(name="Dealer")
+    A = {{ type }}(Input(name="A", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+    B = {{ type }}(Input(name="B", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+    C = {{ type }}(Input(name="C", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+    D = {{ type }}(Input(name="D", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+    E = {{ type }}(Input(name="E", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+    F = {{ type }}(Input(name="F", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+    G = {{ type }}(Input(name="G", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+
+    output = (
+            ((A * B) - C - D) * (E * (F + G))
+            + (A * B * (C + D) - E) * F
+            + (A - (B * (C - (D * (E + F)))))
+    )
+    return [Output(output, "output", party1)]

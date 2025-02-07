@@ -1,0 +1,13 @@
+[package]
+name = "cryptography"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+math_lib = { path = "../math" }
+
+[dev-dependencies]
+anyhow = "1"
+
+shamir-sharing = { path = "../shamir-sharing" }

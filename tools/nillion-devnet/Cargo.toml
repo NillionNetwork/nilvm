@@ -1,0 +1,32 @@
+[package]
+name = "nillion-devnet"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+axum = "0.7"
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11.5"
+futures = "0.3"
+hyper = { version = "1.4", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["client-legacy"] }
+log = "0.4"
+rand = { version = "0.8", features = ["small_rng"] }
+fs2 = "0.4.3"
+tempfile = "3.10.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+uuid = { version = "1.10", features = ["v4"] }
+
+basic-types = { path = "../../libs/basic-types" }
+client-metrics = { path = "../../libs/client-metrics" }
+clap-utils = { path = "../../libs/clap-utils" }
+mpc-vm = { path = "../../libs/execution-engine/mpc-vm" }
+math_lib = { path = "../../libs/math" }
+node = { path = "../../node" }
+node-config = { path = "../../libs/node-config" }
+program-auditor = { path = "../../nada-lang/program-auditor" }
+tools-config = { path = "../libs/tools-config" }
+nillion-chain-node = { path = "../../libs/nillion-chain/node" }
+nillion-chain-client = { path = "../../libs/nillion-chain/client" }
+user-keypair = { path = "../../libs/user-keypair" }

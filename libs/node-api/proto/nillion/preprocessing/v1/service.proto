@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package nillion.preprocessing.v1;
+
+import "google/protobuf/empty.proto";
+import "nillion/preprocessing/v1/generate.proto";
+import "nillion/preprocessing/v1/stream.proto";
+import "nillion/preprocessing/v1/cleanup.proto";
+
+// A service to run preprocessing related actions.
+service Preprocessing {
+  // Trigger the generation of preprocessing material.
+  //
+  // Preprocessing material is used to speed up the online phase for certain operations in MPC programs.
+  rpc GeneratePreprocessing(generate.GeneratePreprocessingRequest) returns (stream generate.GeneratePreprocessingResponse);
+
+  // Trigger the generation of auxiliary material.
+  //
+  // The distinction between preprocessing and auxiliary material is preprocessing is consumed when certain
+  // programs are ran while auxiliary material is generated once when the network starts for the first time and
+  // is never consumed unless there's a reason to regenerate it.
+  rpc GenerateAuxiliaryMaterial(generate.GenerateAuxiliaryMaterialRequest) returns (stream generate.GenerateAuxiliaryMaterialResponse);
+
+  // Open a stream to generate a preprocessing element.
+  rpc StreamPreprocessing(stream stream.PreprocessingStreamMessage) returns (google.protobuf.Empty);
+
+  // Open a stream to generate auxiliary material.
+  rpc StreamAuxiliaryMaterial(stream stream.AuxiliaryMaterialStreamMessage) returns (google.protobuf.Empty);
+
+  // Cleanup used preprocessing chunks.
+  rpc CleanupUsedElements(cleanup.CleanupUsedElementsRequest) returns (google.protobuf.Empty);
+}
+

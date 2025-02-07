@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package nillion.values.v1.store;
+
+import "nillion/payments/v1/receipt.proto";
+import "nillion/permissions/v1/permissions.proto";
+import "nillion/values/v1/value.proto";
+
+// A request to store a set of values.
+message StoreValuesRequest {
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `StoreValues` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 1; 
+
+  // The values encoded in bincode format.
+  //
+  // Only one of `bincode_values` and `values` can be set.
+  bytes bincode_values = 2;
+
+  // The permissions to set for these values.
+  //
+  // Permissions are required when storing values and optional when updating them. That is,
+  // if `update_identifier` is set then this attribute is optional.
+  nillion.permissions.v1.permissions.Permissions permissions = 3;
+
+  // The optional values identifier to use when storing these values.
+  //
+  // The given identifier must be a valid values identifier that the invoking user has update permissions
+  // on for this operation to be considered valid.
+  //
+  // Setting this identifier will effectively turn this operation into an update for an existing set of
+  // values. 
+  bytes update_identifier = 4;
+
+  // The values to be stored.
+  //
+  // Only one of `bincode_values` and `values` can be set.
+  repeated value.NamedValue values = 5;
+}
+
+// A response to a request to store values the network.
+message StoreValuesResponse {
+  // The identifier of the store values.
+  bytes values_id = 1;
+}
+

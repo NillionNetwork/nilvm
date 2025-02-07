@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package nillion.auth.v1.token;
+
+import "google/protobuf/timestamp.proto";
+import "nillion/auth/v1/public_key.proto";
+import "nillion/membership/v1/cluster.proto";
+
+// A signed authentication token.
+message SignedToken {
+  // A `Token` serialized into bytes.
+  bytes serialized_token = 1;
+
+  // The public key for the private key this token is signed with.
+  nillion.auth.v1.public_key.PublicKey public_key = 2;
+
+  // The serialized token signature.
+  //
+  // The signature must be generated using the private key corresponding to the `public_key` field
+  // over `sha256(serialized_token)`.
+  bytes signature = 3;
+}
+
+// A token.
+message Token {
+  // A nonce that adds entropy to this token.
+  //
+  // The nonce must be 32 bytes long and will be considered invalid otherwise.
+  bytes nonce = 1;
+
+  // The identifier of the node this token is meant to be used against.
+  //
+  // This needs to match the target node's identity for the token to be considered valid, and is used to prevent
+  // a node from taking the token and impersonating the user.
+  nillion.membership.v1.cluster.NodeId target_identity = 2;
+
+  // The timestamp at which this token expires.
+  google.protobuf.Timestamp expires_at = 3;
+}

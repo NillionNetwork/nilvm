@@ -1,0 +1,38 @@
+[package]
+name = "nada-value"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+enum-as-inner = "0.6.1"
+indexmap = { version = "2.6.0" }
+key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
+generic-ec = { version = "0.4.2", default-features = false, features = ["alloc", "curve-secp256k1"] }
+num-bigint = "0.4.6"
+num-traits = "0.2.19"
+strum_macros = "0.26.4"
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1.0.127", optional = true }
+thiserror = "1.0.63"
+
+basic-types = { path = "../basic-types" }
+ecdsa-keypair = { path = "../ecdsa-keypair", default-features = false }
+math_lib = { path = "../math", default-features = false }
+nada-type = { path = "../../nada-lang/nada-type" }
+shamir-sharing = { path = "../shamir-sharing" }
+types-proc-macros = { path = "../../nada-lang/types-proc-macros" }
+node-api = { path = "../node-api", default-features = false, optional = true }
+
+[dev-dependencies]
+shamir-sharing = { path = "../shamir-sharing", features = ["testing"] }
+rstest = "0.21.0"
+rand_chacha = "0.3.1"
+rand = "0.8"
+
+[features]
+default = []
+secret-arithmetic = []
+secret-serde = ["serde", "key-share/serde", "indexmap/serde", "math_lib/serde", "ecdsa-keypair/serde", "nada-type/serde"]
+protobuf-serde = ["node-api"]
+json = ["serde_json", "secret-serde"]

@@ -1,0 +1,24 @@
+[package]
+name = "node-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { version = "0.4", optional = true }
+hex = { version = "0.4", optional = true }
+thiserror = { version = "1", optional = true }
+tonic = "0.12"
+tonic-types = { version = "0.12", optional = true }
+prost = "0.13"
+prost-types = "0.13"
+strum = { version = "0.26", features = ["derive"] }
+sha2 = { version = "0.10", optional = true }
+uuid = { version = "1.10", optional = true }
+
+[build-dependencies]
+tonic-build = "0.12"
+protobuf-src = "2.1"
+
+[features]
+default = ["rust-types"]
+rust-types = ["thiserror", "chrono", "uuid", "tonic-types", "hex", "sha2"]

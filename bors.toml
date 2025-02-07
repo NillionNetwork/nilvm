@@ -1,0 +1,5 @@
+status = ["CI Status"]
+required_approvals = 2
+delete_merged_branches = true
+update_base_for_deletes = true
+timeout_sec = 21600

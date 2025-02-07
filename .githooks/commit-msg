@@ -1,0 +1,20 @@
+#!/bin/bash
+
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd -P)"
+# Load env vars
+[[ -f "${SCRIPT_PATH}/../.env" ]] && export $(grep -E -v '^#' "${SCRIPT_PATH}/../.env" | xargs)
+
+# Check conventional commits message
+if [[ "$ENFORCE_CONVENTIONAL_COMMITS" == "true" ]]
+then
+  if ! head -n1 "$1" | grep -E '^(\bbuild\b|\bchore\b|\bci\b|\bdocs\b|\bfeat\b|\bfix\b|\bperf\b|\brefactor\b|\brevert\b|\bstyle\b|\btest\b)(\([a-z ]+\))!?: [a-zA-Z -]*$' > /dev/null; then
+      head -n1 $1
+      echo "
+Your commit message doesn't conform to Conventional Commit Rules (https://www.conventionalcommits.org/).
+At a minimum, your commit should start with one of the below keywords:
+
+build: chore: ci: docs: feat: fix: perf: refactor: revert: style: test:
+  "
+      exit 1
+  fi
+fi

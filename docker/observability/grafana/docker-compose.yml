@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  prometheus:
+    container_name: nil-prometheus
+    profiles: ["observability", "promstack"]
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    tty: true
+    user: "$UID:$GID"
+    ports:
+      - 0.0.0.0:9090:9090
+    volumes:
+      - ./observability/grafana/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./observability/grafana/prometheus-data:/prometheus
+    command: "--config.file=/etc/prometheus/prometheus.yml --storage.tsdb.retention.time=1y --web.enable-admin-api"
+    extends:
+      file: common/network.yml
+      service: connected
+
+
+  grafana:
+    container_name: nil-grafana
+    profiles: ["observability", "promstack"]
+    image: grafana/grafana
+    restart: unless-stopped
+    tty: true
+    depends_on:
+      - prometheus
+    ports:
+      - 0.0.0.0:3000:3000
+    user: "$UID:$GID"
+    volumes:
+      - ./observability/grafana/grafana.yml:/etc/grafana/provisioning/datasources/datasource.yml
+      - ./observability/grafana/grafana-data:/var/lib/grafana
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    extends:
+      file: common/network.yml
+      service: connected

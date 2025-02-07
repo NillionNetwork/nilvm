@@ -1,0 +1,536 @@
+name: SDK Build
+on:
+  workflow_call:
+    inputs:
+      runner_label:
+        description: GitHub Self Hosted Runner label
+        required: true
+        type: string
+      bump-type:
+        default: prerelease
+        description: Part of version to bump. Generally, 'none' should not be used unless you have a need to set the release version explicitly.
+        type: string
+      from-release-version:
+        default:
+        description: The release version the bump-type operation will be performed on. This will default to the latest origin tag and is generally only intended to be used interactively when preparing a new release cycle.
+        type: string
+env:
+  # Update this value when you want to start producing release candidates for the next e.g. minor
+  # version. Use the format -rc.0 so that the first/next release candidate is -rc.1.
+  RELEASE_CANDIDATE_BASE_VERSION: v0.9.0-rc.0
+  DEVOPS_JUSTFILE: devops/release-management/justfile
+  DOCKER_SERVER: 592920173613.dkr.ecr.eu-west-1.amazonaws.com
+  SCCACHE_DISABLED: true
+  MOLD_LINKER_VERSION: "2.35.0"
+  CARGO_INCREMENTAL: 0
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  set-release-variables:
+    name: Set Release Variables
+    runs-on: ${{ inputs.runner_label }}
+    # Uses rust-builder-gha because requires `just`.
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    outputs:
+      devops_repo_commit: ${{ steps.set-devops-repo-commit.outputs.devops_repo_commit }}
+      new_release_version: ${{ steps.set-new-release-version.outputs.new_release_version }}
+      new_release_version_without_rc: ${{ steps.set-new-release-version.outputs.new_release_version_without_rc }}
+      nillion_repo_commit: ${{ steps.set-nillion-repo-commit.outputs.nillion_repo_commit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Required for `get-git-tag`.
+          fetch-depth: 0
+
+      - name: Generate GitHub App token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
+          owner: NillionNetwork
+          private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
+          repositories: devops
+
+      - name: Set DevOps Repo Commit
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+        id: set-devops-repo-commit
+        run: |
+          DEVOPS_REPO_COMMIT=$(just devops-get-latest-commit)
+          echo "DEVOPS_REPO_COMMIT: $DEVOPS_REPO_COMMIT" >&2
+          echo "devops_repo_commit=$DEVOPS_REPO_COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Set Nillion Repo Commit
+        id: set-nillion-repo-commit
+        run: |
+          NILLION_REPO_COMMIT=$(just get-commit-sha)
+          echo "NILLION_REPO_COMMIT: $NILLION_REPO_COMMIT" >&2
+          echo "nillion_repo_commit=$NILLION_REPO_COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Set New Release Version
+        id: set-new-release-version
+        env:
+          BUMP_TYPE: ${{ inputs.bump-type || 'prerelease' }}
+          FROM_RELEASE_VERSION: ${{ inputs.from-release-version || '' }}
+        run: |
+          LATEST_MAIN_TAG=$(just -f "$DEVOPS_JUSTFILE" get-git-tag main)
+          echo "LATEST_MAIN_TAG: $LATEST_MAIN_TAG" >&2
+
+          # Used as new release version when from-release-version is empty which is typically the case.
+          NEXT_VERSION=$(just -f "$DEVOPS_JUSTFILE" get-release-next-version \
+            --release-candidate-base-version "$RELEASE_CANDIDATE_BASE_VERSION" \
+            "$BUMP_TYPE" \
+            "$LATEST_MAIN_TAG"
+          )
+          echo "NEXT_VERSION: $NEXT_VERSION" >&2
+
+          NEW_RELEASE_VERSION="${FROM_RELEASE_VERSION:-$NEXT_VERSION}"
+          echo "NEW_RELEASE_VERSION: $NEW_RELEASE_VERSION" >&2
+          echo "new_release_version=$NEW_RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+          NEW_RELEASE_VERSION_WITHOUT_RC=$(just -f "$DEVOPS_JUSTFILE" release-version-without-rc "$NEW_RELEASE_VERSION")
+          echo "NEW_RELEASE_VERSION_WITHOUT_RC: $NEW_RELEASE_VERSION_WITHOUT_RC" >&2
+          echo "new_release_version_without_rc=$NEW_RELEASE_VERSION_WITHOUT_RC" >> "$GITHUB_OUTPUT"
+
+  build-linux-x86_64:
+    name: Build SDK Linux x86_64
+    needs: set-release-variables
+    runs-on: ${{ inputs.runner_label }}
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      NILLION_RELEASE_CANDIDATE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+      NILLION_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version_without_rc }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Install musl toolchain
+        run: |
+          apt update && apt install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+          ./scripts/install/setup-toolchain.sh x86_64-unknown-linux-musl /opt
+
+      - name: bins
+        run: |
+          just release-sdk-bins x86_64-unknown-linux-musl
+          just release-private-tools x86_64-unknown-linux-musl
+
+      - name: Node
+        run: |
+          just docker-build-node x86_64-unknown-linux-musl
+          docker save nillion-node:latest | gzip > target/nillion-release/node-x86_64-unknown-linux-musl.tar.gz
+
+      - name: Upload SDK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-linux-x86_64
+          path: target/nillion-release/binaries/*.gz
+
+      - name: Upload Private Tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-tools-linux-x86_64
+          path: target/nillion-private-release/binaries/*.gz
+
+      - name: Upload Node
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-x86_64
+          path: target/nillion-release/node-x86_64-unknown-linux-musl.tar.gz
+
+  build-linux-aarch64:
+    name: Build SDK Linux aarch64
+    needs: set-release-variables
+    runs-on: ${{ inputs.runner_label }}
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      NILLION_RELEASE_CANDIDATE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+      NILLION_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version_without_rc }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Install aarch64 toolchain
+        run: |
+          apt update && apt install -y gcc-aarch64-linux-gnu musl-tools
+          rustup target add aarch64-unknown-linux-musl
+          ./scripts/install/setup-toolchain.sh aarch64-unknown-linux-musl /opt
+
+      - name: bins
+        run: |
+          just release-sdk-bins aarch64-unknown-linux-musl
+          just release-private-tools aarch64-unknown-linux-musl
+
+      - name: Node
+        run: |
+          just docker-build-node aarch64-unknown-linux-musl
+          docker save nillion-node:latest | gzip > target/nillion-release/node-aarch64-unknown-linux-musl.tar.gz
+
+      - name: Upload SDK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-linux-aarch64
+          path: target/nillion-release/binaries/*.tar.gz
+
+      - name: Upload Private Tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: private-tools-linux-aarch64
+          path: target/nillion-private-release/binaries/*.gz
+
+      - name: Upload Node
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-aarch64
+          path: target/nillion-release/node-aarch64-unknown-linux-musl.tar.gz
+
+  build-macos-x86_64:
+    name: Build SDK macOS x86_64
+    needs: set-release-variables
+    runs-on: macos-13 # higher versions use ARM processors
+    env:
+      NILLION_RELEASE_CANDIDATE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+      NILLION_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version_without_rc }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - uses: rui314/setup-mold@v1
+        with:
+          mold-version: ${MOLD_LINKER_VERSION}
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: cargo-bins/cargo-binstall@main
+      - uses: extractions/setup-just@v2
+      - name: install dependencies
+        run: |
+          rustup toolchain install 1.79
+          cargo +1.79 binstall "apple-codesign@0.27.0" --locked --force
+          ./scripts/install/uv.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - uses: NillionNetwork/secret-file-action@v0.1.0
+        with:
+          secret: ${{ secrets.APPLE_DEV_CERTIFICATE_FILE }}
+          file: "apple-auth/my_developerID_application.p12"
+      - uses: NillionNetwork/secret-file-action@v0.1.0
+        with:
+          secret: ${{ secrets.APPLE_DEV_CERTIFICATE_PASSWORD_FILE }}
+          file: "apple-auth/my_developerID_application.p12.password"
+      - uses: NillionNetwork/secret-file-action@v0.1.0
+        with:
+          secret: ${{ secrets.APPLE_API_KEY_FILE }}
+          file: "apple-auth/apple-api-key.json"
+      - name: bins
+        env:
+          APPLE_DEV_CERTIFICATE_FILE: "apple-auth/my_developerID_application.p12"
+          APPLE_DEV_CERTIFICATE_PASSWORD_FILE: "apple-auth/my_developerID_application.p12.password"
+          APPLE_API_KEY_FILE: "apple-auth/apple-api-key.json"
+        run: just release-sdk-bins x86_64-apple-darwin
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-macos-x86_64
+          path: target/nillion-release/binaries/*.dmg
+
+  build-macos-aarch64:
+    name: Build SDK macOS aarch64
+    needs: set-release-variables
+    runs-on: macos-latest
+    env:
+      NILLION_RELEASE_CANDIDATE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+      NILLION_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version_without_rc }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - uses: rui314/setup-mold@v1
+        with:
+          mold-version: ${MOLD_LINKER_VERSION}
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: cargo-bins/cargo-binstall@main
+      - uses: extractions/setup-just@v2
+      - name: install dependencies
+        run: |
+          rustup toolchain install 1.79
+          cargo +1.79 binstall "apple-codesign@0.27.0" --locked --force
+          ./scripts/install/uv.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - uses: NillionNetwork/secret-file-action@v0.1.0
+        with:
+          secret: ${{ secrets.APPLE_DEV_CERTIFICATE_FILE }}
+          file: "apple-auth/my_developerID_application.p12"
+      - uses: NillionNetwork/secret-file-action@v0.1.0
+        with:
+          secret: ${{ secrets.APPLE_DEV_CERTIFICATE_PASSWORD_FILE }}
+          file: "apple-auth/my_developerID_application.p12.password"
+      - uses: NillionNetwork/secret-file-action@v0.1.0
+        with:
+          secret: ${{ secrets.APPLE_API_KEY_FILE }}
+          file: "apple-auth/apple-api-key.json"
+      - name: bins
+        env:
+          APPLE_DEV_CERTIFICATE_FILE: "apple-auth/my_developerID_application.p12"
+          APPLE_DEV_CERTIFICATE_PASSWORD_FILE: "apple-auth/my_developerID_application.p12.password"
+          APPLE_API_KEY_FILE: "apple-auth/apple-api-key.json"
+        run: just release-sdk-bins aarch64-apple-darwin
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-macos-aarch64
+          path: target/nillion-release/binaries/*.dmg
+
+  nada-test:
+    name: Nada test
+    runs-on: ${{ inputs.runner_label }}
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+      - name: Release Nada Test
+        run: just release-nada-test
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nada-test
+          path: target/nillion-release/nada-test/*
+
+  publish-functional-tests:
+    name: Build and Publish Functional Test
+    runs-on: ${{ inputs.runner_label }}
+    container:
+      image: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+      options: -v /var/run/docker.sock:/var/run/docker.sock
+    env:
+      DOCKER_PUBLISH_AUTO_YES: true
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+    needs: [ set-release-variables ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: "arn:aws:iam::592920173613:role/github-runners-production-github-runner-role"
+          aws-region: "eu-west-1"
+
+      - name: Build Functional Tests
+        run: |
+          export AWS_ACCOUNT_ID=592920173613
+          ./scripts/docker-login.sh
+          just docker-build-functional-tests
+
+      - name: Publish Functional Tests
+        run: |
+          TARGET_IMAGE_TAG="$DOCKER_SERVER/nillion-functional-tests:${NEW_RELEASE_VERSION}-amd64"
+          docker tag nillion-functional-tests:latest "$TARGET_IMAGE_TAG"
+          docker push "$TARGET_IMAGE_TAG"
+
+  build-load-tool:
+    name: Build Load Tool
+    runs-on: ${{ inputs.runner_label }}
+    container:
+      image: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+      options: -v /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Install musl toolchain
+        run: |
+          apt update && apt install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+          ./scripts/install/setup-toolchain.sh x86_64-unknown-linux-musl /opt
+
+      - name: Build Load Tool
+        run: just release-load-tool
+
+  publish-sdk:
+    name: Publish SDK
+    # Uses rust-builder-gha because requires `just`.
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+    if: github.ref == 'refs/heads/staging'
+    needs: [ build-linux-aarch64, build-linux-x86_64, build-macos-x86_64, build-macos-aarch64, nada-test, set-release-variables ]
+    runs-on: ${{ inputs.runner_label }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: "eu-west-1"
+          role-to-assume: "arn:aws:iam::592920173613:role/github-runners-production-github-runner-role"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-linux-x86_64
+          path: target/nillion-release/binaries
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-linux-aarch64
+          path: target/nillion-release/binaries
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: private-tools-linux-x86_64
+          path: target/nillion-private-release/binaries
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: private-tools-linux-aarch64
+          path: target/nillion-private-release/binaries
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-macos-x86_64
+          path: target/nillion-release/binaries
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdk-macos-aarch64
+          path: target/nillion-release/binaries
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: nada-test
+          path: target/nillion-release/nada-test
+
+      - name: Publish SDK
+        run: |
+          just publish-sdk ${NEW_RELEASE_VERSION}
+
+      - name: Publish Private Tools
+        run: |
+          just publish-private-tools ${NEW_RELEASE_VERSION}
+
+  publish-node:
+    name: Publish Node
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    needs: [ build-linux-aarch64, build-linux-x86_64, set-release-variables ]
+    runs-on: ${{ inputs.runner_label }}
+    if: github.ref == 'refs/heads/staging'
+    env:
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: "eu-west-1"
+          role-to-assume: "arn:aws:iam::592920173613:role/github-runners-production-github-runner-role"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: node-x86_64
+          path: target/nillion-release/x86_64
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: node-aarch64
+          path: target/nillion-release/aarch64
+
+      - name: Publish Node
+        run: |
+          DOCKER_SERVER="592920173613.dkr.ecr.eu-west-1.amazonaws.com"
+          aws ecr get-login-password --region eu-west-1 | docker login -u AWS --password-stdin "$DOCKER_SERVER"
+
+          # Load and push amd64 image.
+          docker load -i target/nillion-release/x86_64/node-x86_64-unknown-linux-musl.tar.gz
+          TARGET_IMAGE_TAG="$DOCKER_SERVER/nillion-node:${NEW_RELEASE_VERSION}-amd64"
+          docker tag nillion-node:latest "$TARGET_IMAGE_TAG"
+          docker push "$TARGET_IMAGE_TAG"
+
+          # Load and push arm64 image.
+          docker load -i target/nillion-release/aarch64/node-aarch64-unknown-linux-musl.tar.gz
+          TARGET_IMAGE_TAG="$DOCKER_SERVER/nillion-node:${NEW_RELEASE_VERSION}-arm64"
+          docker tag nillion-node:latest "$TARGET_IMAGE_TAG"
+          docker push "$TARGET_IMAGE_TAG"
+
+  deploy-to-aws:
+    name: Deploy to AWS
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      DEVOPS_REPO_COMMIT: ${{ needs.set-release-variables.outputs.devops_repo_commit }}
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+      RUN_FUNCTIONAL_TESTS: False
+    if: github.ref == 'refs/heads/staging'
+    needs: [ set-release-variables, publish-node, publish-sdk ]
+    runs-on: ${{ inputs.runner_label }}
+    steps:
+      - name: Trigger nillion-network/deploy-master-branch
+        env:
+          JENKINS_PASSWORD: ${{ secrets.JENKINS_NILLION_NETWORK_DEPLOY_PASSWORD }}
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USERNAME: ${{ secrets.JENKINS_NILLION_NETWORK_DEPLOY_USERNAME }}
+        run: |
+          just deploy-nillion-network \
+            "$JENKINS_URL" \
+            "$JENKINS_USERNAME" \
+            "$JENKINS_PASSWORD" \
+            "$DEVOPS_REPO_COMMIT" \
+            "$NEW_RELEASE_VERSION" \
+            "master-branch" \
+            "$RUN_FUNCTIONAL_TESTS"
+
+  finalize-release:
+    name: Finalize Release
+    # Uses rust-builder-gha because requires `just`.
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      DEVOPS_REPO_COMMIT: ${{ needs.set-release-variables.outputs.devops_repo_commit }}
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+      NILLION_REPO_COMMIT: ${{ needs.set-release-variables.outputs.nillion_repo_commit }}
+    if: github.ref == 'refs/heads/staging'
+    needs: [  deploy-to-aws, set-release-variables, publish-functional-tests, build-load-tool ]
+    runs-on: ${{ inputs.runner_label }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Required for `create-tag`.
+          fetch-depth: 0
+
+      - name: Generate GitHub App token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
+          owner: NillionNetwork
+          private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
+          repositories: nillion, devops
+
+      - name: Tag devops Repo
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: just devops-create-tag "$NEW_RELEASE_VERSION" "$DEVOPS_REPO_COMMIT"
+
+      - name: Tag nillion repo
+        run: |
+          just -f "$DEVOPS_JUSTFILE" create-tag \
+            "$NEW_RELEASE_VERSION" \
+            "$NILLION_REPO_COMMIT" \
+            "github-actions@nillion.com" \
+            "github-actions"

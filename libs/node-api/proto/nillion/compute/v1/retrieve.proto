@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package nillion.compute.v1.retrieve;
+
+import "google/protobuf/empty.proto";
+import "nillion/values/v1/value.proto";
+
+// A request to retrieve the results of a computation.
+message RetrieveResultsRequest {
+  // The instance of the computation to retrieve results for.
+  bytes compute_id = 1;
+}
+
+// The response to a request to retrieve the results of a computation.
+message RetrieveResultsResponse {   
+  oneof state {
+    // The node is waiting for the computation to end.
+    //
+    // This message may be sent 0+ times in a row until a `result` is sent.
+    google.protobuf.Empty waiting_computation = 1;
+
+    // The computation finished successfully and yielded these results.
+    ComputationResult success = 2;
+
+    // The error message if any.
+    string error = 3;
+  }
+}
+
+// The result of a computation.
+message ComputationResult {
+  // The computation results, encoded in bincode.
+  bytes bincode_values = 1; 
+ 
+  // The computation results.
+  repeated nillion.values.v1.value.NamedValue values = 2;
+}

@@ -1,0 +1,117 @@
+identity:
+  # public key 02e4a38179adda5d43e6f529c492789f4ec04447f6ea79a6223ae319618e3d9aea
+  private_key:
+    seed: node-1
+    kind: secp256k1
+
+network:
+  preprocessing:
+    compare:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    division_integer_secret:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    modulo:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    public_output_equality:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    equals_integer_secret:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    truncpr:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    trunc:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    random_integer:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+    random_boolean:
+      batch_size: 2
+      generation_threshold: 16
+      target_offset_jump: 32
+  auxiliary_material:
+    cggmp21_aux_info:
+      enabled: true
+
+cluster:
+  members:
+    - grpc_endpoint: https://127.0.0.1:14111
+      public_keys:
+        authentication: 02e4a38179adda5d43e6f529c492789f4ec04447f6ea79a6223ae319618e3d9aea
+        kind: secp256k1
+    - grpc_endpoint: https://127.0.0.1:14112
+      public_keys:
+        authentication: 039d7ce6bcfba415cc9e5bdb27bd29fe05c6908a2ed83638613cd5243daf52ed07
+        kind: secp256k1
+    - grpc_endpoint: https://127.0.0.1:14113
+      public_keys:
+        authentication: 022a6947baf83f4a1b812fb49fa45c4609013a281d746c12e66c403d1d5e61e97e
+        kind: secp256k1
+  leader:
+    public_keys:
+      authentication: 02e4a38179adda5d43e6f529c492789f4ec04447f6ea79a6223ae319618e3d9aea
+      kind: secp256k1
+    grpc_endpoint: https://127.0.0.1:14111
+  prime: Safe256Bits
+  kappa: 0
+  polynomial_degree: 1
+
+tracing:
+  stdout: true
+
+storage:
+  object_storage: in_memory
+  db_url: "sqlite::memory:"
+
+runtime:
+  max_concurrent_actions: 1000
+  grpc:
+    bind_endpoint: 127.0.0.1:14111
+    tls:
+      ca_cert: tests/resources/tls/ca.pem
+      cert: tests/resources/tls/nillion.local.pem
+      key: tests/resources/tls/nillion.local.key
+
+metrics:
+  listen_address: 127.0.0.1:34111
+
+program_auditor:
+  max_memory_size: 50000
+  max_instructions: 50000
+  max_preprocessing:
+    random_integer_elements: 1000
+    random_boolean_elements: 1000
+    runtime_elements:
+      TruncPr: 1000
+      Trunc: 1000
+      Modulo: 1000
+      DivisionIntegerSecret: 1000
+      PublicOutputEquality: 1000
+      Compare: 1000
+      EqualsIntegerSecret: 1000
+
+payments:
+  rpc_endpoint: http://localhost:26648
+  pricing:
+    retrieve_permissions_price: 1
+    pool_status_price: 1
+    overwrite_permissions_price: 1
+    update_permissions_price: 1
+    retrieve_values_price: 1
+    store_program_price: 1
+    store_values_price: 1
+    invoke_compute_price: 1
+

@@ -1,0 +1,12 @@
+tools/nilup/ @NillionNetwork/devops @lumasepa
+
+devops/ @NillionNetwork/devops
+
+tools/nada-run/ @NillionNetwork/lcx
+nada-lang/ @NillionNetwork/lcx
+libs/execution-engine/ @NillionNetwork/lcx
+libs/protocols/ @NillionNetwork/crypto
+
+node/ @NillionNetwork/network
+libs/node-api/ @NillionNetwork/network
+client/ @NillionNetwork/network

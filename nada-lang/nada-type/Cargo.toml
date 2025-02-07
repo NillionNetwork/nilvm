@@ -1,0 +1,24 @@
+[package]
+name = "nada-type"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+enum-as-inner = "0.6.1"
+indexmap = { version = "2.6.0" }
+serde = { version = "1", features = ["derive"], optional = true }
+strum = "0.26.3"
+strum_macros = "0.26.3"
+thiserror = "1.0.63"
+
+types-proc-macros = { path = "../types-proc-macros" }
+
+[dev-dependencies]
+rstest = "0.21.0"
+
+[features]
+default = []
+serde = ["dep:serde", "indexmap/serde"]
+
+[package.metadata.cargo-machete]
+ignored = ["strum"]

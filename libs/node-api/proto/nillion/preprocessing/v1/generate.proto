@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package nillion.preprocessing.v1.generate;
+
+import "nillion/preprocessing/v1/element.proto";
+import "nillion/preprocessing/v1/material.proto";
+
+// A request to generate preprocessing material.
+message GeneratePreprocessingRequest {
+  // An identifier for this generation instance.
+  bytes generation_id = 1;  
+
+  // The batch id that is being generated.
+  //
+  // This is a sequential number per preprocessing element.
+  uint64 batch_id = 2;
+
+  // The number of elements being generated.
+  uint32 batch_size = 3;
+
+  // The preprocessing element being generated.
+  element.PreprocessingElement element = 4;
+}
+
+// A response to a request to generate preprocessing material.
+message GeneratePreprocessingResponse {
+  // The status of the preprocessing protocol.
+  PreprocessingProtocolStatus status = 1;   
+}
+
+// The status of a preprocessing protocol execution.
+enum PreprocessingProtocolStatus {
+  // The protocol is waiting for peer initialization.
+  WAITING_PEERS = 0;
+
+  // The protocol finished successfully.
+  FINISHED_SUCCESS = 1;
+
+  // The protocol finished with an error.
+  FINISHED_FAILURE = 2;
+}
+
+/// A request to generate auxiliary material.
+message GenerateAuxiliaryMaterialRequest {
+  /// An identifier for this generation instance.
+  bytes generation_id = 1;
+
+  // The material we want to generate.
+  material.AuxiliaryMaterial material = 2;
+
+  // The version of the material to generate.
+  uint32 version = 3;
+}
+
+/// A response to a request to generate auxiliary material.
+message GenerateAuxiliaryMaterialResponse {
+  // The status of the generation protocol.
+  PreprocessingProtocolStatus status = 1;
+}

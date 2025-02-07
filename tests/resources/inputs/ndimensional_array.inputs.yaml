@@ -1,0 +1,26 @@
+---
+program_id: ndimensional_array
+store_values:
+  I00:
+    Array:
+      values:
+        - Array:
+            values:
+              - SecretInteger: 1
+              - SecretInteger: 2
+            inner_type: SecretInteger
+        - Array:
+            values:
+              - SecretInteger: 3
+              - SecretInteger: 4
+            inner_type: SecretInteger
+        - Array:
+            values:
+              - SecretInteger: 5
+              - SecretInteger: 6
+            inner_type: SecretInteger
+      inner_type:
+        Array:
+          inner_type: SecretInteger
+          size: 2
+compute_values: { }

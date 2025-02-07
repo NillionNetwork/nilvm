@@ -1,0 +1,11 @@
+from nada_dsl import *
+
+
+def nada_main():
+    party1 = Party(name="Dealer")
+    a = {{ type1 }}(Input(name="A", party=party1){% if type1 == "PublicRational" or type1 == "SecretRational" %}, digits=2 {% endif %})
+    b = {{ type1 }}(Input(name="B", party=party1){% if type1 == "PublicRational" or type1 == "SecretRational" %}, digits=2 {% endif %})
+    c = {{ type2 }}(Input(name="C", party=party1){% if type2 == "PublicRational" or type2 == "SecretRational" %}, digits=2 {% endif %})
+    d = {{ type2 }}(Input(name="D", party=party1){% if type2 == "PublicRational" or type2 == "SecretRational" %}, digits=2 {% endif %})
+    result = (a + b).public_equals(c + d)
+    return [Output(result, "result", party1)]

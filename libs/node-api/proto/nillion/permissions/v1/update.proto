@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package nillion.permissions.v1.update;
+
+import "nillion/auth/v1/user.proto";
+import "nillion/payments/v1/receipt.proto";
+import "nillion/permissions/v1/permissions.proto";
+
+// A request to update the permissions on a set of values to another user.
+//
+// Any `revoke_*` permissions only have an effect if the user id provided already had
+// that permission before. e.g. using `revoke_retrieve` for a user id that doesn't have
+// retrieve permissions has no effect.
+message UpdatePermissionsRequest {
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `UpdatePermissions` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 1;  
+
+  // The retrieve values permissions to be granted/revoked.
+  PermissionCommand retrieve = 2;
+
+  // The update values permissions to be granted/revoked.
+  PermissionCommand update = 3;
+
+  // The delete values permissions to be granted/revoked.
+  PermissionCommand delete = 4;
+
+  // The compute permissions to be granted/revoked.
+  ComputePermissionCommand compute = 5;
+}
+
+// The set of users that are being granted/revoke permissions for an action.
+message PermissionCommand {
+  // The list of users that we're granting permissions to.
+  repeated nillion.auth.v1.user.UserId grant = 1;
+
+  // The list of users that we're revoking permissions from.
+  repeated nillion.auth.v1.user.UserId revoke = 2;
+}
+
+// The set of users that are being granted/revoke permissions for compute actions.
+message ComputePermissionCommand {
+  // The user ids that will be allowed to compute on the stored values.
+  repeated permissions.ComputePermissions grant = 1;
+
+  // The user ids that will be revoked the permission to compute the stored values.
+  repeated permissions.ComputePermissions revoke = 2;
+}

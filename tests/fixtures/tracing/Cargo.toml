@@ -1,0 +1,9 @@
+[package]
+name = "tracing-fixture"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rstest = "0.21"
+
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package node.compute.v1.result;
+
+import "nillion/auth/v1/user.proto";
+import "nillion/values/v1/value.proto";
+
+// The result of a computation.
+message ComputeResult {   
+  oneof result {
+    // The computation finished successfully.
+    SuccessfulComputeResult success  = 1;
+
+    // The error message if any.
+    string error = 2;
+  }
+}
+
+// A successful compute result.
+message SuccessfulComputeResult {
+    // The computation finished successfully and yielded these results.
+    repeated UserOutputs outputs = 1;
+}
+
+// The outputs that belong to a particular user.
+message UserOutputs {
+  // The user this output belongs to.
+  nillion.auth.v1.user.UserId user = 1; 
+
+  // The values.
+  repeated nillion.values.v1.value.NamedValue values = 3;
+} 
+

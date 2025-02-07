@@ -1,0 +1,14 @@
+---
+program_id: multi_output
+store_values:
+  I03:
+    SecretUnsignedInteger: 2877
+  I04:
+    SecretUnsignedInteger: 2564
+compute_values:
+  I00:
+    SecretUnsignedInteger: 17517
+  I02:
+    SecretUnsignedInteger: 15981
+  I01:
+    SecretUnsignedInteger: 5226

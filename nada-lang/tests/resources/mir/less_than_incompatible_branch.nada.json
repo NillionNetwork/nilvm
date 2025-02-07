@@ -1,0 +1,134 @@
+{
+  "functions": [],
+  "parties": [
+    {
+      "name": "Party1",
+      "source_ref_index": 0
+    },
+    {
+      "name": "Party2",
+      "source_ref_index": 0
+    }
+  ],
+  "inputs": [
+    {
+      "type": "SecretInteger",
+      "party": "Party1",
+      "name": "A",
+      "doc": "",
+      "source_ref_index": 0
+    },
+    {
+      "type": "SecretInteger",
+      "party": "Party1",
+      "name": "C",
+      "doc": "",
+      "source_ref_index": 0
+    },
+    {
+      "type": "SecretInteger",
+      "party": "Party2",
+      "name": "B",
+      "doc": "",
+      "source_ref_index": 0
+    },
+    {
+      "type": "SecretInteger",
+      "party": "Party2",
+      "name": "D",
+      "doc": "",
+      "source_ref_index": 0
+    }
+  ],
+  "literals": [],
+  "operations": {
+    "0": {
+      "LessThan": {
+        "id": 0,
+        "left": 1,
+        "right": 2,
+        "type": "SecretBoolean",
+        "source_ref_index": 0
+      }
+    },
+    "1": {
+      "LessThan": {
+        "id": 1,
+        "left": 3,
+        "right": 4,
+        "type": "SecretBoolean",
+        "source_ref_index": 0
+      }
+    },
+    "2": {
+      "Multiplication": {
+        "id": 2,
+        "left": 5,
+        "right": 6,
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    },
+    "3": {
+      "Multiplication": {
+        "id": 3,
+        "left": 7,
+        "right": 5,
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    },
+    "4": {
+      "InputReference": {
+        "id": 4,
+        "refers_to": "C",
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    },
+    "5": {
+      "InputReference": {
+        "id": 5,
+        "refers_to": "B",
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    },
+    "6": {
+      "InputReference": {
+        "id": 6,
+        "refers_to": "D",
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    },
+    "7": {
+      "InputReference": {
+        "id": 7,
+        "refers_to": "A",
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    }
+  },
+  "outputs": [
+    {
+      "name": "my_output",
+      "operation_id": 0,
+      "party": "Party1",
+      "type": "SecretBoolean",
+      "source_ref_index": 0
+    }
+  ],
+  "source_files": {
+    "less_than_incompatible_branch.py": "from nada_dsl import *\nfrom nada_dsl.future import *\n\n\ndef nada_main():\n    party1 = Party(name=\"Party1\")\n    party2 = Party(name=\"Party2\")\n    A = SecretInteger(Input(name=\"A\", party=party1))\n    B = SecretInteger(Input(name=\"B\", party=party2))\n    C = SecretInteger(Input(name=\"C\", party=party1))\n    D = SecretInteger(Input(name=\"D\", party=party2))\n\n    result = A * B < C < B * D\n\n    return [Output(result, \"my_output\", party1)]\n"
+  },
+  "source_refs": [
+    {
+      "file": "file.py",
+      "lineno": 9,
+      "offset": 207,
+      "length": 31
+    }
+  ]
+}

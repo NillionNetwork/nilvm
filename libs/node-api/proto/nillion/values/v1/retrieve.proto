@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package nillion.values.v1.retrieve;
+
+import "nillion/payments/v1/receipt.proto";
+import "nillion/values/v1/value.proto";
+
+// A request to retrieve a set of stored values.
+message RetrieveValuesRequest {
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `RetrieveValues` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 1; 
+}
+
+// A response to a request to retrieve values stored in the network.
+message RetrieveValuesResponse {
+  // The values encoded in bincode format.
+  bytes bincode_values = 1;
+
+  // The values.
+  repeated value.NamedValue values = 2;
+}

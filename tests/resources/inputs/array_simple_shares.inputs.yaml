@@ -1,0 +1,18 @@
+---
+program_id: array_simple_shares
+store_values:
+  I00:
+    Array:
+      values:
+        - SecretInteger: 1
+        - SecretInteger: 2
+        - SecretInteger: 3
+        - SecretInteger: 4
+        - SecretInteger: 5
+        - SecretInteger: 6
+        - SecretInteger: 7
+        - SecretInteger: 8
+        - SecretInteger: 9
+        - SecretInteger: 10
+      inner_type: SecretInteger
+compute_values: { }

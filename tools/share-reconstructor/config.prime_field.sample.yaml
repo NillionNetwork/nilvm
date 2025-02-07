@@ -1,0 +1,14 @@
+prime: 65123
+shares:
+  type: PrimeField
+  shares:
+    - party_id: 5fd2af4e-1596-46a0-8f91-da263695db24
+      element: 43
+    - party_id: 67d4bb37-6152-4090-bce9-97253a70a085
+      element: 44
+    - party_id: a23eaf78-1264-4708-a6dd-dfee60cf7041
+      element: 45
+    - party_id: a5eaf557-2062-4e28-ad3c-6f9514c93d2f
+      element: 46
+    - party_id: b8c752f6-64e9-4810-a698-8492ee1a7cef
+      element: 47

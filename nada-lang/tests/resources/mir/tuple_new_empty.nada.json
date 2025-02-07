@@ -1,0 +1,66 @@
+{
+    "functions": [],
+    "parties": [
+        {
+            "name": "Party1",
+            "source_ref_index": 0
+        }
+    ],
+    "inputs": [
+        {
+            "type": "SecretInteger",
+            "party": "Party1",
+            "name": "I00",
+            "doc": "",
+            "source_ref_index": 0
+        },
+        {
+            "type": "SecretInteger",
+            "party": "Party1",
+            "name": "I01",
+            "doc": "",
+            "source_ref_index": 0
+        }
+    ],
+    "literals": [],
+    "operations": {
+        "0": {
+            "New": {
+                "id": 0,
+                "type": {
+                    "Tuple": {
+                        "left_type": "SecretInteger",
+                        "right_type": "SecretInteger"
+                    }
+                },
+                "elements": [],
+                "source_ref_index": 0
+            }
+        }
+    },
+    "outputs": [
+        {
+            "name": "my_output",
+            "operation_id": 0,
+            "party": "Party1",
+            "type": {
+                "Tuple": {
+                    "left_type": "SecretInteger",
+                    "right_type": "SecretInteger"
+                }
+            },
+            "source_ref_index": 0
+        }
+    ],
+    "source_files": {
+        "tuple_new_empty.py": "from nada_dsl import *\n\n\ndef nada_main():\n    party1 = Party(name=\"Party1\")\n    i00 = SecretInteger(Input(name=\"I00\", party=party1))\n    i01 = SecretInteger(Input(name=\"I01\", party=party1))\n    res = Tuple.new(i00, i01)\n    return [Output(res, \"my_output\", party1)]\n"
+    },
+    "source_refs": [
+        {
+            "file": "file.py",
+            "lineno": 9,
+            "offset": 207,
+            "length": 31
+        }
+    ]
+}

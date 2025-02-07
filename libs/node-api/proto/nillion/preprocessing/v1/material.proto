@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package nillion.preprocessing.v1.material;
+
+// Auxiliary cluster material.
+enum AuxiliaryMaterial {
+  // ECDSA key generation auxiliary info as defined in the CGGMP21 paper.
+  CGGMP21_AUXILIARY_INFO = 0;
+}

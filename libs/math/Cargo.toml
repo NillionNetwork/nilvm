@@ -1,0 +1,45 @@
+[package]
+name = "math_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crypto-bigint = "0.5.5"
+num-bigint = "0.4.6"
+num-traits = "0.2"
+paste = "1.0.15"
+rand = "0.8"
+serde = { version = "1", features = ["derive", "rc"], optional = true }
+subtle = "2.6.1"
+thiserror = "1"
+
+basic-types = { path = "../basic-types" }
+
+[dev-dependencies]
+anyhow = "1"
+rstest = "0.21"
+criterion = "0.5"
+
+[features]
+default = []
+serde = ["dep:serde"]
+big_primes = []
+bench = []
+
+[[bench]]
+name = "lagrange_criterion"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "fft_criterion"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "modular_pow"
+harness = false
+required-features = ["bench"]
+
+[package.metadata.cargo-machete]
+ignored = ["anyhow"]

@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package nillion.membership.v1.cluster;
+
+import "nillion/auth/v1/public_key.proto";
+
+// The definition of a cluster.
+message Cluster {
+  // The members of this cluster.
+  repeated ClusterMember members = 1;
+
+  // The leader of this cluster.
+  ClusterMember leader = 2;
+
+  // The prime number this cluster uses.
+  Prime prime = 3;
+
+  // The polynomial degree used in this cluster.
+  uint32 polynomial_degree = 4;
+
+  // The security parameter kappa used in this cluster.
+  uint32 kappa = 5;
+}
+
+// A cluster member.
+message ClusterMember {
+  // The identity for this member.
+  //
+  // This is a unique identifier derived from the public key.
+  NodeId identity = 1;
+
+  // The public key for this member.
+  //
+  // **This field is deprecated**. `public_keys.authentication` should be used instead.
+  nillion.auth.v1.public_key.PublicKey public_key = 2;
+
+  // The gRPC endpoint this member can be reached at.
+  string grpc_endpoint = 3;
+
+  // The public keys for a cluster member.
+  PublicKeys public_keys = 4;
+}
+
+// The public keys for a cluster member.
+message PublicKeys {
+  // The authentication public key for this member.
+  nillion.auth.v1.public_key.PublicKey authentication = 1;
+}
+
+// A prime number.
+enum Prime {
+  // A safe 64 bit prime number.
+  //
+  // This is prime number 18446744072637906947.
+  SAFE_64_BITS = 0;
+
+  // A safe 128 bit prime number.
+  //
+  // This is prime number 340282366920938463463374607429104828419.
+  SAFE_128_BITS = 1;
+
+  // A safe 256 bit prime number.
+  //
+  // This is prime number 115792089237316195423570985008687907853269984665640564039457584007911397392387.
+  SAFE_256_BITS = 2;
+}
+
+// A node identifier.
+//
+// This is currently used from a client perspective when:
+//
+// * Creating an authentication token.
+// * Creating secret shares.
+message NodeId {
+  // The contents of this node identifier.
+  bytes contents = 1;
+}

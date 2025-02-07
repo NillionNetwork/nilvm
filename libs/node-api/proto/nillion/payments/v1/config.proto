@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package nillion.payments.v1.config;
+
+// A response to a payments configuration request.
+message PaymentsConfigResponse {
+  // The minimum amount of unil that can be added in a `Payments.add_funds` request.
+  uint64 minimum_add_funds_payment = 1;
+}
+

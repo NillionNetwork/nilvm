@@ -1,0 +1,24 @@
+[package]
+name = "nillion-chain-node"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tracing = "0.1.40"
+anyhow = "1"
+toml = "0.8.14"
+
+nillion-chain-client = { path = "../client" }
+
+[dev-dependencies]
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+tempfile = "3.10.1"
+tracing-test = "0.2.5"
+
+[build-dependencies]
+tokio = { version = "1", features = ["full"] }
+object_store = { version = "0.11.1", features = ["aws"] }
+
+[package.metadata.cargo-machete]
+ignored = ["aws_config", "aws_sdk_s3"]

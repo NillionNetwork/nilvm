@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package nillion.compute.v1.stream;
+
+// A message for a compute stream.
+message ComputeStreamMessage {
+  // An identifier for the computation instance.
+  //
+  // Only the first ever message on the stream requires having this attribute set. Any subsequent message will
+  // have this field ignored.
+  bytes compute_id = 1; 
+
+  // The VM message in bincode format.
+  bytes bincode_message = 2;
+}

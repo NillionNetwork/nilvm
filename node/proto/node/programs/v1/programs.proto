@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package node.programs.v1.programs;
+
+// A program stored in the network.
+message Program {
+  // The program MIR model in protocol buffers.
+  bytes proto_mir = 1;
+}
+

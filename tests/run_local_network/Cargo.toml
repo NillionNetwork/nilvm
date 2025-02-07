@@ -1,0 +1,10 @@
+[package]
+name = "run_local_network"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+nodes-fixtures = { path = "../fixtures/nodes" }
+tracing-fixture = { path = "../fixtures/tracing" }
+

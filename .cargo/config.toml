@@ -1,0 +1,2 @@
+[build]
+rustc-wrapper = "scripts/sccachew.sh"

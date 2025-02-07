@@ -1,0 +1,208 @@
+name: Promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      from-release-version:
+        default:
+        description: The release version the bump-type operation will be performed on. This will default to the latest origin tag and is generally only intended to be used interactively when preparing a new release cycle.
+        type: string
+      nillion-network-environment:
+        default:
+        description: nillion-network environment to deploy promote release to
+        options:
+          - ''
+          - master-branch
+          - qa2
+        type: choice
+
+env:
+  DEVOPS_JUSTFILE: devops/release-management/justfile
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  start-runner:
+    name: Start self-hosted EC2 runner
+    outputs:
+      ec2-instances-ids: ${{ steps.start-ec2-runner.outputs.ec2-instances-ids }}
+      label: ${{ steps.start-ec2-runner.outputs.label }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.GH_AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.GH_AWS_SECRET_KEY }}
+          aws-region: "eu-west-1"
+      - name: Start EC2 runner
+        id: start-ec2-runner
+        uses: NillionNetwork/ec2-github-runner@v2.2
+        with:
+          ec2-image-id: ami-0bdf53f97253647e5
+          ec2-instance-type: c6in.8xlarge
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          iam-role-name: github-runners-production-github-runner-ec2
+          key-name: production-github-runner-key
+          mode: start
+          number-of-machines: 1
+          runners-per-machine: 2
+          security-group-id: sg-03ee5c56e1f467aa0
+          subnet-id: subnet-0ec4c353621eabae2
+          aws-resource-tags: >
+            [
+              {"Key": "Deployment", "Value": "github-runners"},
+              {"Key": "Environment", "Value": "production"},
+              {"Key": "GitHubRepository", "Value": "${{ github.repository }}"},
+              {"Key": "KeyName", "Value": "github-runners-key"},
+              {"Key": "Name", "Value": "github-runner-${{ github.run_id }}-${{ github.run_number }}"},
+              {"Key": "Type", "Value": "GithubRunner"},
+              {"Key": "User", "Value": "ec2-user"}
+            ]
+
+  set-release-variables:
+    name: Set Release Variables
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    needs: [ start-runner ]
+    outputs:
+      from_release_version: ${{ steps.set-new-release-version.outputs.from_release_version }}
+      new_release_version: ${{ steps.set-new-release-version.outputs.new_release_version }}
+    runs-on: ${{ needs.start-runner.outputs.label }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Required for `get-git-tag`.
+          fetch-depth: 0
+
+      - name: Set New Release Version
+        id: set-new-release-version
+        env:
+          FROM_RELEASE_VERSION: ${{ inputs.from-release-version || '' }}
+        run: |
+          [[ -n "$FROM_RELEASE_VERSION" ]] || FROM_RELEASE_VERSION=$(just -f "$DEVOPS_JUSTFILE" get-git-tag main)
+          echo "FROM_RELEASE_VERSION: $FROM_RELEASE_VERSION" >&2
+          echo "from_release_version=$FROM_RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+          NEW_RELEASE_VERSION=$(just -f "$DEVOPS_JUSTFILE" get-release-next-version "promote" "$FROM_RELEASE_VERSION")
+          echo "NEW_RELEASE_VERSION: $NEW_RELEASE_VERSION" >&2
+          echo "new_release_version=$NEW_RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+  promote:
+    name: Promote
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      FROM_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.from_release_version }}
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+    needs: [ start-runner, set-release-variables ]
+    runs-on: ${{ needs.start-runner.outputs.label }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-region: "eu-west-1"
+          role-to-assume: "arn:aws:iam::592920173613:role/github-runners-production-github-runner-role"
+
+      - name: Generate GitHub App token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
+          owner: NillionNetwork
+          private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
+          repositories: nillion
+
+      - name: Promote Release
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: just -f "$DEVOPS_JUSTFILE" promote-release "$FROM_RELEASE_VERSION" "$NEW_RELEASE_VERSION"
+
+  deploy-to-aws:
+    name: Deploy to AWS
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      FROM_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.from_release_version }}
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+    if: inputs.nillion-network-environment != ''
+    needs: [ start-runner, set-release-variables, promote ]
+    runs-on: ${{ needs.start-runner.outputs.label }}
+    steps:
+      - name: Trigger nillion-network Deploy
+        env:
+          JENKINS_PASSWORD: ${{ secrets.JENKINS_NILLION_NETWORK_DEPLOY_PASSWORD }}
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USERNAME: ${{ secrets.JENKINS_NILLION_NETWORK_DEPLOY_USERNAME }}
+          NILLION_NETWORK_ENVIRONMENT: ${{ inputs.nillion-network-environment }}
+        run: |
+          just deploy-nillion-network \
+            "$JENKINS_URL" \
+            "$JENKINS_USERNAME" \
+            "$JENKINS_PASSWORD" \
+            "$FROM_RELEASE_VERSION" \
+            "$NEW_RELEASE_VERSION" \
+            "$NILLION_NETWORK_ENVIRONMENT"
+
+  finalize-release:
+    name: Finalize Release
+    container: public.ecr.aws/x8g8t2h7/rust-builder-gha:0.9.7
+    env:
+      FROM_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.from_release_version }}
+      NEW_RELEASE_VERSION: ${{ needs.set-release-variables.outputs.new_release_version }}
+    needs: [ start-runner, set-release-variables ]
+    runs-on: ${{ needs.start-runner.outputs.label }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate GitHub App token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
+          owner: NillionNetwork
+          private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
+          repositories: nillion, devops
+
+      - name: Retag devops Repo
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: just -f "$DEVOPS_JUSTFILE" devops-retag "$NEW_RELEASE_VERSION" "$FROM_RELEASE_VERSION"
+
+      - name: Tag nillion repo
+        run: |
+          just -f "$DEVOPS_JUSTFILE" create-tag \
+            "$NEW_RELEASE_VERSION" \
+            "$FROM_RELEASE_VERSION" \
+            "github-actions@nillion.com" \
+            "github-actions"
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: just -f "$DEVOPS_JUSTFILE" create-github-release "$NEW_RELEASE_VERSION" "$NEW_RELEASE_VERSION"
+
+  stop-runner:
+    name: Stop self-hosted EC2 runner
+    if: ${{ always() }}
+    needs: [ start-runner, finalize-release ]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.GH_AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.GH_AWS_SECRET_KEY }}
+          aws-region: "eu-west-1"
+
+      - name: Stop EC2 runner
+        uses: NillionNetwork/ec2-github-runner@v2.2
+        with:
+          ec2-instances-ids: ${{ needs.start-runner.outputs.ec2-instances-ids }}
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          label: ${{ needs.start-runner.outputs.label }}
+          mode: stop

@@ -1,0 +1,50 @@
+name: GitHub Release
+
+on:
+  push:
+    branches:
+      - 'main'
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DEVOPS_JUSTFILE: devops/release-management/justfile
+
+jobs:
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Required for `get-git-tag`.
+          fetch-depth: 0
+
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
+          owner: NillionNetwork
+          private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
+          repositories: nillion
+
+      - name: Install just
+        run: |
+          sudo apt update
+          sudo apt install just
+
+      - name: Install uv
+        run: ./scripts/install/uv.sh
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          LATEST_MAIN_TAG=$(just -f "$DEVOPS_JUSTFILE" get-git-tag main)
+          echo "LATEST_MAIN_TAG: $LATEST_MAIN_TAG" >&2
+
+          just -f "$DEVOPS_JUSTFILE" create-github-release "$LATEST_MAIN_TAG" "$LATEST_MAIN_TAG"

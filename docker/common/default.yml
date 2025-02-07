@@ -1,0 +1,55 @@
+services:
+  node:
+    image: nillion-node
+    profiles: ["node"]
+    restart: always
+    volumes:
+      - ../../tests/resources/network:/network
+    networks:
+      - nillion
+
+  ports-1:
+    extends:
+      file: "${FIXTURE_NAME:-default}.yml"
+      service: node
+    ports:
+      - "0.0.0.0:14111:14111"
+      - "0.0.0.0:14211:14211"
+      - "0.0.0.0:24111:24111"
+      - "0.0.0.0:34111:34111"
+  ports-2:
+    extends:
+      file: "${FIXTURE_NAME:-default}.yml"
+      service: node
+    ports:
+      - "0.0.0.0:14112:14112"
+      - "0.0.0.0:14212:14212"
+      - "0.0.0.0:24112:24112"
+      - "0.0.0.0:34112:34112"
+  ports-3:
+    extends:
+      file: "${FIXTURE_NAME:-default}.yml"
+      service: node
+    ports:
+      - "0.0.0.0:14113:14113"
+      - "0.0.0.0:14213:14213"
+      - "0.0.0.0:24113:24113"
+      - "0.0.0.0:34113:34113"
+  ports-4:
+    extends:
+      file: "${FIXTURE_NAME:-default}.yml"
+      service: node
+    ports:
+      - "0.0.0.0:14114:14114"
+      - "0.0.0.0:14214:14214"
+      - "0.0.0.0:24114:24114"
+      - "0.0.0.0:34114:34114"
+  ports-5:
+    extends:
+      file: "${FIXTURE_NAME:-default}.yml"
+      service: node
+    ports:
+      - "0.0.0.0:14115:14115"
+      - "0.0.0.0:14215:14215"
+      - "0.0.0.0:24115:24115"
+      - "0.0.0.0:34115:34115"

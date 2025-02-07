@@ -1,0 +1,128 @@
+{
+  "functions": [
+    {
+      "id": 4338486720,
+      "args": [
+        {
+          "name": "a",
+          "type": "SecretInteger",
+          "source_ref_index": 0
+        }
+      ],
+      "function": "inc",
+      "return_operation_id": 4,
+      "operations": {
+        "2": {
+          "NadaFunctionArgRef": {
+            "id": 2,
+            "function_id": 4338486720,
+            "refers_to": "a",
+            "type": "SecretInteger",
+            "source_ref_index": 0
+          }
+        },
+        "3": {
+          "InputReference": {
+            "id": 3,
+            "refers_to": "my_int",
+            "type": "SecretInteger",
+            "source_ref_index": 0
+          }
+        },
+        "4": {
+          "Addition": {
+            "id": 4,
+            "left": 2,
+            "right": 3,
+            "type": "SecretInteger",
+            "source_ref_index": 0
+          }
+        }
+      },
+      "return_type": "SecretInteger",
+      "source_ref_index": 0
+    }
+  ],
+  "parties": [
+    {
+      "name": "Party1",
+      "source_ref_index": 0
+    }
+  ],
+  "inputs": [
+    {
+      "type": {
+        "Array": {
+          "inner_type": "SecretInteger",
+          "size": 10
+        }
+      },
+      "party": "Party1",
+      "name": "my_array_1",
+      "doc": "",
+      "source_ref_index": 0
+    },
+    {
+      "type": "SecretInteger",
+      "party": "Party1",
+      "name": "my_int",
+      "doc": "",
+      "source_ref_index": 0
+    }
+  ],
+  "literals": [],
+  "operations": {
+    "0": {
+      "Map": {
+        "id": 0,
+        "fn": 4338486720,
+        "inner": 1,
+        "type": {
+          "Array": {
+            "inner_type": "SecretBoolean",
+            "size": 10
+          }
+        },
+        "source_ref_index": 0
+      }
+    },
+    "1": {
+      "InputReference": {
+        "id": 1,
+        "refers_to": "my_array_1",
+        "type": {
+          "Array": {
+            "inner_type": "SecretInteger",
+            "size": 10
+          }
+        },
+        "source_ref_index": 0
+      }
+    }
+  },
+  "outputs": [
+    {
+      "name": "out",
+      "operation_id": 0,
+      "party": "Party1",
+      "type": {
+        "Array": {
+          "inner_type": "SecretBoolean",
+          "size": 10
+        }
+      },
+      "source_ref_index": 0
+    }
+  ],
+  "source_files": {
+    "map_incompatible_function.py": "from nada_dsl import *\n\n\ndef nada_main():\n    party1 = Party(name=\"Party1\")\n    my_array_1 = Array(SecretInteger(Input(name=\"my_array_1\", party=party1)), size=10)\n    my_int = SecretInteger(Input(name=\"my_int\", party=party1))\n\n    @nada_fn\n    def inc(a: SecretInteger) -> SecretInteger:\n        return a + my_int\n\n    new_array = my_array_1.map(inc)\n\n    out = Output(new_array, \"out\", party1)\n\n    return [out]\n"
+  },
+  "source_refs": [
+    {
+      "file": "file.py",
+      "lineno": 9,
+      "offset": 207,
+      "length": 31
+    }
+  ]
+}

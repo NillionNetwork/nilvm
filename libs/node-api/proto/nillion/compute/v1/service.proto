@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package nillion.compute.v1;
+
+import "google/protobuf/empty.proto";
+import "nillion/compute/v1/invoke.proto";
+import "nillion/compute/v1/stream.proto";
+import "nillion/compute/v1/retrieve.proto";
+
+// A service to perform compute operations.
+service Compute {
+  // Invoke a computation.
+  rpc InvokeCompute(invoke.InvokeComputeRequest) returns (invoke.InvokeComputeResponse);
+
+  // Start a stream of message for a specific instance of a computation.
+  //
+  // This is meant to be used internally by nodes in the network.
+  rpc StreamCompute(stream stream.ComputeStreamMessage) returns (google.protobuf.Empty);
+
+  // Retrieve the result of a computation.
+  //
+  // The user invoking this operation must have been defined as an output party in the program
+  // the execution was tied to.
+  //
+  // This call will wait for the program execution to end if it hasn't done so already. Clients must
+  // wait until either a result or failure message is sent, ignoring any `Waiting` messages sent until
+  // that happens.
+  rpc RetrieveResults(retrieve.RetrieveResultsRequest) returns (stream retrieve.RetrieveResultsResponse);
+}
+

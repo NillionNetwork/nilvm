@@ -1,0 +1,55 @@
+# The operation to perform.
+operation:
+  # A compute operation.
+  type: Compute
+
+  # The path to the compiled program.
+  #
+  # A relative path will be considered to be relative to this spec file's path.
+  program_path: ../../target/debug/build/test-programs/default/simple.nada.bin
+
+  # The mode to use
+  #
+  # Valid modes are:
+  # * StoreHalf: Stores half of the secrets as store values and the rest as compute.
+  # * StoreAll: Stores all secrets as store values and simply invokes the program.
+  # * StoreNone: Sends all secrets as compute secrets and stores none of them ahead of time.
+  mode: StoreHalf
+
+# This defines the strategy this test uses when incrementing workers.
+#
+# In this example we use the automatic mode. This mode starts at a certain number of workers and progressively adds more
+# based on the percentage of the current workers, e.g. 20% more than the current number.
+mode:
+  type: Steady
+  workers: 1
+
+# The policy to use when starting the testing process.
+#
+# Valid values are:
+# - StartImmediately: start as soon as we can.
+# - WaitForPreprocessing: wait until preprocessing pools are full before starting.
+# start_policy: WaitForPreprocessing
+start_policy: StartImmediately
+
+# The policy used when a flow encounters an error.
+#
+# Valid values are:
+# - AlwaysStop: stop the test regardless of the error type.
+# - StopOnPreprocessingExhausted (default): stop when the network runs out of preprocessing elements.
+# - Ignore: ignore the error and continue.
+error_policy: StopOnPreprocessingExhausted
+
+# The maximum average flow duration. If flows are taking over 1 second to run, the test will be stopped.
+#
+# This is optional and defaults to 5 seconds if not set.
+max_flow_duration: 1s
+
+# The maximum test duration.
+max_test_duration: 60s
+
+# The maximum error rate. If the error rate goes over this number, the load test will stop.
+max_error_rate: 0.1
+
+# The required starting balance for every nilchain client, in unils.
+required_starting_balance: 1000000

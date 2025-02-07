@@ -1,0 +1,22 @@
+[package]
+name = "e2e"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+rstest = "0.21"
+tempfile = "3.10"
+tera = "1.20"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+xshell = "0.2"
+
+# Nillion dependencies
+client-fixture = { path = "../fixtures/client" }
+nillion-client = { path = "../../client" }
+nodes-fixtures = { path = "../fixtures/nodes" }
+mpc-vm = { path = "../../libs/execution-engine/mpc-vm" }
+mir-model = { path = "../../nada-lang/mir-model" }
+serde-files-utils = { path = "../../libs/serde-files-utils", features = ["text"] }
+pynadac = { path = "../../nada-lang/pynadac" }
+tracing-fixture = { path = "../fixtures/tracing" }

@@ -1,0 +1,96 @@
+[package]
+name = "node"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+axum = "0.7"
+bincode = "1.3"
+clap = { version = "4.5", features = ["derive", "env"] }
+config = { version = "^0.14", default-features = false, features = ["yaml"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "signal"] }
+tokio-stream = "0.1"
+tokio-util = "0.7"
+governor = "0.6"
+http = "1.1"
+hex = "0.4"
+itertools = "0.13.0"
+tonic-middleware = "0.2"
+thiserror = "1"
+uuid = "1.10"
+prost = "0.13"
+prost-types = "0.13"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+sqlx = { version = "0.8.2", features = [
+    "sqlite",
+    "runtime-tokio",
+    "chrono",
+    "uuid",
+] }
+hostname = "0.4.0"
+once_cell = "1.20.1"
+strum = "0.26"
+hyper-rustls = { version = "0.24.2", features = ["rustls-native-certs", "http2"] }
+paste = "1.0"
+semver = "1.0"
+sha2 = "0.10"
+object_store = { version = "0.11.1", features = ["gcp", "aws", "azure", "http"] }
+bytes = "1.8.0"
+tonic = { version = "0.12", features = ["server", "channel", "prost", "tls"] }
+tonic-web = "0.12.3"
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6.2", features = ["cors"] }
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = { version = "0.2" }
+
+basic-types = { path = "../libs/basic-types" }
+build-info = { path = "../libs/build-info" }
+clap-utils = { path = "../libs/clap-utils" }
+encoding = { path = "../libs/encoding" }
+mpc-vm = { path = "../libs/execution-engine/mpc-vm", features = ["vm", "serde"] }
+math_lib = { path = "../libs/math" }
+metrics = { path = "../libs/metrics", features = ["prometheus-backend"] }
+nada-compiler-backend = { path = "../nada-lang/compiler-backend" }
+nillion-chain-client = { path = "../libs/nillion-chain/client" }
+node-api = { path = "../libs/node-api", features = ["rust-types"] }
+node-config = { path = "../libs/node-config" }
+program-auditor = { path = "../nada-lang/program-auditor" }
+shamir-sharing = { path = "../libs/shamir-sharing" }
+state-machine = { path = "../libs/state-machine" }
+protocols = { path = "../libs/protocols" }
+user-keypair = { path = "../libs/user-keypair" }
+nada-value = { path = "../libs/nada-value", features = ["protobuf-serde"] }
+grpc-channel = { path = "../libs/grpc-channel" }
+program-builder = { path = "../nada-lang/program-builder", default-features = false }
+log = "0.4.22"
+
+[dev-dependencies]
+mockall = "0.13"
+rstest = "0.21"
+tracing-test = "0.2.5"
+ctor = "0.2.8"
+env_logger = "0.11.5"
+testcontainers = { version = "0.23" }
+protocols = { path = "../libs/protocols" }
+generic-ec = "0.4.3"
+rand_chacha = "0.3.1"
+test-programs = { path = "../nada-lang/test-programs" }
+test-with = { version = "0.14", default-features = false }
+serde_json = "1.0.133"
+
+[build-dependencies]
+tonic-build = "0.12"
+protobuf-src = "2.1"
+
+program-builder = { path = "../nada-lang/program-builder", default-features = false, features = ["compile"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+procfs = "0.16.0"

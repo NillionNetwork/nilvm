@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package nillion.programs.v1.store;
+
+import "nillion/payments/v1/receipt.proto";
+
+// A request to store a program in the network.
+message StoreProgramRequest {
+  // The contents of the program.
+  bytes program = 1; 
+
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `StoreProgram` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 2; 
+}
+
+// A response to a request to store a program in the network.
+message StoreProgramResponse {
+  // The program identifier.
+  string program_id = 1; 
+}

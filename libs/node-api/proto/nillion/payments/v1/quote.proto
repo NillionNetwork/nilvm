@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package nillion.payments.v1.quote;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "nillion/preprocessing/v1/element.proto";
+import "nillion/preprocessing/v1/material.proto";
+
+// A price quote request.
+message PriceQuoteRequest {
+  oneof operation {
+    // A pool status operation.
+    google.protobuf.Empty pool_status = 1;
+
+    // A store program operation.
+    StoreProgram store_program = 2;
+
+    // A retrieve values operation.
+    RetrieveValues retrieve_values = 3;
+
+    // A retrieve permissions operation.
+    RetrievePermissions retrieve_permissions = 4;
+
+    // A store values operation.
+    StoreValues store_values = 5;
+
+    // A invoke compute operation.
+    InvokeCompute invoke_compute = 6;
+
+    // An overwrite permissions operation.
+    OverwritePermissions overwrite_permissions = 7;
+
+    // An update permissions operation.
+    UpdatePermissions update_permissions = 8;
+  }
+}
+
+// A quote signed by the node that generated it.
+message SignedQuote {
+  // The serialized `PriceQuote`.
+  bytes quote = 1;
+
+  // The signature for this quote.
+  bytes signature = 2;
+}
+
+// A price quote.
+message PriceQuote {
+  // A nonce that uniquely identifies this quote.
+  bytes nonce = 1;
+
+  // The fees for this quote.
+  QuoteFees fees = 2;
+
+  // The request that this quote is for.
+  PriceQuoteRequest request = 3;
+
+  // The point in time at which this quote is no longer valid.
+  google.protobuf.Timestamp expires_at = 4;
+
+  // The preprocessing requirements for this operation.
+  repeated PreprocessingRequirement preprocessing_requirements = 5;
+
+  // The auxiliary material requirements for this operation.
+  repeated AuxiliaryMaterialRequirement auxiliary_material_requirements = 6;
+}
+
+// The fees associated with a quote.
+// 
+// All fees are in "unil" units.
+message QuoteFees {
+  reserved 2 to 6;
+  // The total fee for this quote.
+  uint64 total = 1;
+}
+
+// A store program operation.
+message StoreProgram {
+  // The program's metadata.
+  ProgramMetadata metadata = 1;
+
+  // A sha256 hash of the compiled program.
+  bytes contents_sha256 = 2;
+
+  // The program's name.
+  string name = 3;
+}
+
+// The metadata about a program being stored.
+message ProgramMetadata {
+  // The size of the program in bytes.
+  uint64 program_size = 1;
+
+  // The amount of memory needed by the program.
+  uint64 memory_size = 2;
+
+  // The total number of instructions in the program.
+  uint64 instruction_count = 3;
+
+  // The number of instructions per type.
+  map<string, uint64> instructions = 4;
+
+  // The preprocessing requirements.
+  repeated PreprocessingRequirement preprocessing_requirements = 5;
+
+  // The auxiliary material requirements.
+  repeated AuxiliaryMaterialRequirement auxiliary_material_requirements = 6;
+}
+
+// The number of preprocessing elements required for a program.
+message PreprocessingRequirement {
+  // The preprocessing element.
+  nillion.preprocessing.v1.element.PreprocessingElement element = 1;
+
+  // The total number of elements of this type needed.
+  uint64 count = 2;
+}
+
+// The auxiliary material required for a program.
+message AuxiliaryMaterialRequirement {
+  // The preprocessing element.
+  nillion.preprocessing.v1.material.AuxiliaryMaterial material = 1;
+
+  // The version needed.
+  //
+  // This field is used internally and should be ignored by the client.
+  uint32 version = 2;
+}
+
+// A retrieve values operation.
+message RetrieveValues {
+  // The identifier to be retrieved.
+  bytes values_id = 1;
+}
+
+// A retrieve permissions operation.
+message RetrievePermissions {
+  // The identifier of the values entity to be retrieved.
+  bytes values_id = 1;
+}
+
+// An overwrite permissions operation.
+message OverwritePermissions {
+  // The identifier of the values entity whose permissions are to be overwritten.
+  bytes values_id = 1;
+}
+
+// An update permissions operation.
+message UpdatePermissions {
+  // The identifier of the values entity whose permissions are to be updated.
+  bytes values_id = 1;
+}
+
+// A store values operation.
+message StoreValues {
+  reserved 1;
+
+  // The number of secret shared secrets being stored.
+  //
+  // This is the number of secrets in secret shared form being stored, not the total number of shares. e.g.
+  // for a 5 node network a single secret shared secret requires value `1` here rather than `5`.
+  uint64 secret_shared_count = 2;
+
+  // The number of public values being stored.
+  uint64 public_values_count = 3;
+
+  // The number of days to persist these secrets for.
+  optional uint32 ttl_days = 4;
+
+  // The size of the payload to be stored.
+  uint64 payload_size = 5;
+
+  // The size of the payload to be stored.
+  uint64 ecdsa_private_key_shares_count = 6;
+
+  // The size of the payload to be stored.
+  uint64 ecdsa_signature_shares_count = 7;
+}
+
+// An invoke compute operation.
+message InvokeCompute {
+  // The program to be invoked.
+  string program_id = 1;
+
+  // The size of the compute time values being sent as part of this operation.
+  uint64 values_payload_size = 2;
+}

@@ -1,0 +1,41 @@
+[package]
+name = "load-tool"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+chrono = "0.4"
+csv = "1"
+env_logger = "0.11.5"
+futures = "0.3"
+humantime-serde = "1.1"
+rand = "0.8"
+hex = { version = "0.4", features = ["serde"] }
+log = "0.4.22"
+serde = "1"
+thiserror = "1"
+tracing = { version = "0.1", features = ["log"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+uuid = { version = "1.10", features = ["serde"] }
+
+nillion-client = { path = "../../client" }
+nada-value = { path = "../../libs/nada-value" }
+human-size = { path = "../../libs/human-size" }
+serde-files-utils = { path = "../../libs/serde-files-utils", default-features = false, features = [
+    "binary",
+    "yaml",
+    "json",
+] }
+nada-compiler-backend = { path = "../../nada-lang/compiler-backend" }
+mpc-vm = { path = "../../libs/execution-engine/mpc-vm" }
+nillion-chain-client = { path = "../../libs/nillion-chain/client" }
+math_lib = { path = "../../libs/math" }
+nada-values-args = { path = "../../libs/nada-values-args" }
+
+[dev-dependencies]
+rstest = "0.21"
+
+[package.metadata.cargo-machete]
+ignored = ["humantime_serde"]

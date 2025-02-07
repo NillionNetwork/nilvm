@@ -1,0 +1,10 @@
+from nada_dsl import *
+
+
+def nada_main():
+    party1 = Party(name="Dealer")
+    a = {{ type }}(Input(name="A", party=party1))
+
+    result = a << UnsignedInteger(2)
+
+    return [Output(result, "result", party1)]

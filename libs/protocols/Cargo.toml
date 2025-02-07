@@ -1,0 +1,63 @@
+[package]
+name = "protocols"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+itertools = "0.13"
+key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
+num-bigint = "0.4"
+rand = "0.8"
+rand_chacha = "0.3.1"
+rayon = { version = "1.10", optional = true }
+round-based = "0.3"
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+uuid = { version = "1.10", features = ["v4"], optional = true }
+
+basic-types = { path = "../basic-types", features = ["serde"] }
+math_lib = { path = "../math", features = ["serde"] }
+shamir-sharing = { path = "../shamir-sharing" }
+state-machine = { path = "../state-machine" }
+state-machine-derive = { path = "../state-machine-derive" }
+state-machine-macros = { path = "../state-machine-macros" }
+
+ecdsa-keypair = { path = "../ecdsa-keypair" }
+cggmp21 = { version = "0.5.0", features = ["curve-secp256k1", "state-machine"] }
+gmp-mpfr-sys = { version = "1.6.4", features = ["force-cross"] }
+sha2 = "0.10"
+serde_json = "1"
+once_cell = "1.20.1"
+
+[dev-dependencies]
+criterion = "0.5.1"
+num-bigint = "0.4.6"
+rayon = "1.10"
+rstest = "0.21"
+uuid = { version = "1.10", features = ["v4"] }
+
+[features]
+bench = ["validation"]
+validation = ["dep:rayon", "dep:uuid"]
+testing = []
+
+[[bench]]
+name = "division-secret-divisor"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "less-than"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "modulo-public-divisor"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "random-bitwise"
+harness = false
+required-features = ["bench"]

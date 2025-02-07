@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 10s
+scrape_configs:
+  - job_name: 'nillion-nodes'
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+        - node-1:34111
+        - node-2:34111
+        - node-3:34111
+        - node-4:34111
+        - node-5:34111

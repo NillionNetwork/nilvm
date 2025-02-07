@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package nillion.compute.v1.invoke;
+
+import "nillion/payments/v1/receipt.proto";
+import "nillion/auth/v1/user.proto";
+import "nillion/values/v1/value.proto";
+
+// A request to invoke a computation.
+message InvokeComputeRequest {
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `InvokeCompute` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 1;  
+
+  // The value ids for previously stored values being used as parameters to this compute operation.
+  repeated bytes value_ids = 2;
+
+  // The values being used as compute-time parameters, encoded in bincode format.
+  //
+  // Only one of `bincode_values` and `values` can be set.
+  bytes bincode_values = 3;
+
+  // The bindings that define which input party in the program is which user in the network.
+  repeated InputPartyBinding input_bindings = 4;
+
+  // The bindings that define which output party in the program is which users in the network.
+  repeated OutputPartyBinding output_bindings = 5;
+
+  // The values being used as compute-time parameters
+  //
+  // Only one of `bincode_values` and `values` can be set.
+  repeated nillion.values.v1.value.NamedValue values = 6;
+}
+
+// A response to a request to invoke a computation.
+message InvokeComputeResponse {
+  // An identifier for the execution of the computation.
+  bytes compute_id = 1;
+}
+
+// The bindings for input parties in a program.
+message InputPartyBinding {
+  // The name of the party as defined in the program.
+  string party_name = 1;
+
+  // The user identity this party is being bound to.
+  nillion.auth.v1.user.UserId user = 2;
+}
+
+// The bindings for output parties in a program.
+message OutputPartyBinding {
+  // The name of the party as defined in the program.
+  string party_name = 1;
+
+  // The user identities this party is being bound to.
+  repeated nillion.auth.v1.user.UserId users = 2;
+}

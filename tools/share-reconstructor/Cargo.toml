@@ -1,0 +1,16 @@
+[package]
+name = "share-reconstructor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+config = { version = "^0.14", default-features = false, features = ["yaml"] }
+num-bigint = "0.4.6"
+serde = { version = "^1.0", features = ["derive"] }
+clap = "4.5"
+serde_with = "^3.8"
+uuid = { version = "1.10", features = ["serde"] }
+
+math_lib = { path = "../../libs/math" }
+shamir-sharing = { path = "../../libs/shamir-sharing" }

@@ -1,0 +1,17 @@
+.githooks
+.github
+.run
+docker
+!docker/gmp-mpfr-sys.tar.gz
+reports
+tests/load/reports/outputs
+tests/load/reports/scripts/load-test-venv
+**/target
+!/target/debug/docker/functional-tests
+**/logs
+.gitignore
+tests/resources/bandwidth/inputs
+tests/resources/bandwidth/reports
+tests/bandwidth/reports/outputs
+tests/bandwidth/reports/scripts/bandwidth-test-venv
+README.md

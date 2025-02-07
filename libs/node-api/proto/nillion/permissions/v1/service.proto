@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package nillion.permissions.v1;
+
+import "google/protobuf/empty.proto";
+import "nillion/permissions/v1/permissions.proto";
+import "nillion/permissions/v1/retrieve.proto";
+import "nillion/permissions/v1/overwrite.proto";
+import "nillion/permissions/v1/update.proto";
+
+// A service to interact with permissions.
+service Permissions {
+  // Retrieve the permissions for a set of values.
+  rpc RetrievePermissions(retrieve.RetrievePermissionsRequest) returns (permissions.Permissions);
+
+  // Overwrite the permissions for a set of values.
+  rpc OverwritePermissions(overwrite.OverwritePermissionsRequest) returns (google.protobuf.Empty);
+
+  // Update the permissions for a set of values.
+  //
+  // This alters the current permissions for a set of values by applying all of the
+  // `allow` and `deny` permissions given on top of the set of permissions they have
+  // at the time when the request is invoked.
+  rpc UpdatePermissions(update.UpdatePermissionsRequest) returns (google.protobuf.Empty);
+}

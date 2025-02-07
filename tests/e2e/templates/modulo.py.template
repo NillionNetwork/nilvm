@@ -1,0 +1,9 @@
+from nada_dsl import *
+
+
+def nada_main():
+    party1 = Party(name="Dealer")
+    a = {{ type1 }}(Input(name="A_SMALL", party=party1))
+    c = {{ type2 }}(Input(name="B_SMALL", party=party1))
+    result = a % c
+    return [Output(result, "result", party1)]
