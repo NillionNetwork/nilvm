@@ -12,7 +12,7 @@ tonic = { version = "0.12" }
 thiserror = "1"
 tokio = { version = "1", features = ["time"] }
 tracing = "0.1"
-uuid = "1.10"
+uuid = "1.13"
 
 grpc-channel = { path = "../libs/grpc-channel" }
 nillion-client-core = { path = "../libs/client-core", default-features = false }

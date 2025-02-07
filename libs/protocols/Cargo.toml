@@ -14,7 +14,7 @@ rayon = { version = "1.10", optional = true }
 round-based = "0.3"
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
-uuid = { version = "1.10", features = ["v4"], optional = true }
+uuid = { version = "1.13", features = ["v4"], optional = true }
 
 basic-types = { path = "../basic-types", features = ["serde"] }
 math_lib = { path = "../math", features = ["serde"] }
@@ -35,7 +35,7 @@ criterion = "0.5.1"
 num-bigint = "0.4.6"
 rayon = "1.10"
 rstest = "0.21"
-uuid = { version = "1.10", features = ["v4"] }
+uuid = { version = "1.13", features = ["v4"] }
 
 [features]
 bench = ["validation"]

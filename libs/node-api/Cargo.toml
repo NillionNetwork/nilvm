@@ -13,7 +13,7 @@ prost = "0.13"
 prost-types = "0.13"
 strum = { version = "0.26", features = ["derive"] }
 sha2 = { version = "0.10", optional = true }
-uuid = { version = "1.10", optional = true }
+uuid = { version = "1.13", optional = true }
 
 [build-dependencies]
 tonic-build = "0.12"

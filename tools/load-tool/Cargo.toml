@@ -18,7 +18,7 @@ serde = "1"
 thiserror = "1"
 tracing = { version = "0.1", features = ["log"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
-uuid = { version = "1.10", features = ["serde"] }
+uuid = { version = "1.13", features = ["serde"] }
 
 nillion-client = { path = "../../client" }
 nada-value = { path = "../../libs/nada-value" }

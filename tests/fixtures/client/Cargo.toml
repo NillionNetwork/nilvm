@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1"
 rand = "0.8"
 tracing = "0.1"
-uuid = "1.10"
+uuid = "1.13"
 
 # Nillion dependencies
 nillion-client = { path = "../../../client" }

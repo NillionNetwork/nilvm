@@ -10,7 +10,7 @@ num-bigint = "0.4.6"
 serde = { version = "^1.0", features = ["derive"] }
 clap = "4.5"
 serde_with = "^3.8"
-uuid = { version = "1.10", features = ["serde"] }
+uuid = { version = "1.13", features = ["serde"] }
 
 math_lib = { path = "../../libs/math" }
 shamir-sharing = { path = "../../libs/shamir-sharing" }
