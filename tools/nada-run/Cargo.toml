@@ -24,7 +24,7 @@ assert_cmd = "2"
 predicates = "3"
 nada-values-args = { path = "../../libs/nada-values-args" }
 test-programs = { path = "../../nada-lang/test-programs/" }
-tempfile = "3.14"
+tempfile = "3.16"
 
 [features]
 default = []

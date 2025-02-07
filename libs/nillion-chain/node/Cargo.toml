@@ -13,7 +13,7 @@ nillion-chain-client = { path = "../client" }
 [dev-dependencies]
 clap = { version = "4.5", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
-tempfile = "3.10.1"
+tempfile = "3.16.0"
 tracing-test = "0.2.5"
 
 [build-dependencies]
