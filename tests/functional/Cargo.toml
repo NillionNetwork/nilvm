@@ -9,7 +9,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tokio-stream = "0.1"
 tracing = "0.1"
 uuid = "1.10"
-rand = "0.8"
+rand = "0.9"
 
 client-fixture = { path = "../fixtures/client" }
 nillion-chain-client = { path = "../../libs/nillion-chain/client" }

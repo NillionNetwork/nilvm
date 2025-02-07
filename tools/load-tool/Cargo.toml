@@ -11,7 +11,7 @@ csv = "1"
 env_logger = "0.11.5"
 futures = "0.3"
 humantime-serde = "1.1"
-rand = "0.8"
+rand = "0.9"
 hex = { version = "0.4", features = ["serde"] }
 log = "0.4.22"
 serde = "1"

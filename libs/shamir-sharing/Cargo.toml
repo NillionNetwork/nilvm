@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 bimap = "0.6.3"
-rand = "0.8"
+rand = "0.9"
 thiserror = "1"
 rustc-hash = "2.1"
 

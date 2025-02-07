@@ -18,7 +18,7 @@ math_lib = { path = "../../math", optional = true }
 nada-value = { path = "../../../libs/nada-value" }
 nada-compiler-backend = { path = "../../../nada-lang/compiler-backend" }
 protocols = { path = "../../protocols", optional = true }
-rand = { version = "0.8", optional = true }
+rand = { version = "0.9", optional = true }
 shamir-sharing = { path = "../../shamir-sharing", optional = true }
 state-machine = { path = "../../state-machine", optional = true }
 ecdsa-keypair = { path = "../../ecdsa-keypair" }
