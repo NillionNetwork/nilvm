@@ -9,7 +9,7 @@ itertools = "0.13"
 key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
 num-bigint = "0.4"
 rand = "0.8"
-rand_chacha = "0.3.1"
+rand_chacha = "0.9.0"
 rayon = { version = "1.10", optional = true }
 round-based = "0.3"
 serde = { version = "1", features = ["derive"] }
