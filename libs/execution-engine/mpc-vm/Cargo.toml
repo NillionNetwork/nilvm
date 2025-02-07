@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1"
 generic-ec = { version = "0.4.2", default-features = false, features = ["alloc", "curve-secp256k1"] }
 serde = { version = "1", features = ["derive"], optional = true }
-serde_with = { version = "3.8", optional = true }
+serde_with = { version = "3.12", optional = true }
 serde_repr = { version = "0.1", optional = true }
 strum = { version = "0.26", features = ["derive"] }
 

@@ -9,7 +9,7 @@ enum_dispatch = { git = "https://github.com/NillionNetwork/enum-dispatch.git", r
 indexmap = "2.6.0"
 itertools = "0.13.0"
 serde = { version = "1", features = ["derive"], optional = true }
-serde_with = { version = "3.8", optional = true }
+serde_with = { version = "3.12", optional = true }
 serde_repr = { version = "0.1", optional = true }
 substring = "1.4"
 thiserror = "1"

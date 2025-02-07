@@ -8,7 +8,7 @@ config = { version = "0.14", default-features = false, features = ["yaml"] }
 serde = "1.0"
 humantime-serde = "1.1"
 hex = { version = "0.4", features = ["serde"] }
-serde_with = { version = "3.9", features = ["base64"] }
+serde_with = { version = "3.12", features = ["base64"] }
 
 basic-types = { path = "../basic-types" }
 program-auditor = { path = "../../nada-lang/program-auditor", features = ["serde"] }
