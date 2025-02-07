@@ -10,7 +10,7 @@ bytes = "1.7"
 futures = "0.3"
 cosmrs = { version = "0.19", features = ["rpc"] }
 hex = "0.4.3"
-prost = "0.13.1"
+prost = "0.13.4"
 sha2 = "0.10.8"
 tokio = { version = "1", features = ["time"] }
 tracing = "0.1.40"
