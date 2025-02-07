@@ -34,7 +34,7 @@ once_cell = "1.20.1"
 criterion = "0.5.1"
 num-bigint = "0.4.6"
 rayon = "1.10"
-rstest = "0.21"
+rstest = "0.24"
 uuid = { version = "1.10", features = ["v4"] }
 
 [features]

@@ -17,7 +17,7 @@ basic-types = { path = "../basic-types" }
 
 [dev-dependencies]
 anyhow = "1"
-rstest = "0.21"
+rstest = "0.24"
 criterion = "0.5"
 
 [features]

@@ -74,7 +74,7 @@ log = "0.4.22"
 
 [dev-dependencies]
 mockall = "0.13"
-rstest = "0.21"
+rstest = "0.24"
 tracing-test = "0.2.5"
 ctor = "0.2.8"
 env_logger = "0.11.5"

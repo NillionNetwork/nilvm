@@ -26,7 +26,7 @@ node-api = { path = "../node-api", default-features = false, optional = true }
 
 [dev-dependencies]
 shamir-sharing = { path = "../shamir-sharing", features = ["testing"] }
-rstest = "0.21.0"
+rstest = "0.24.0"
 rand_chacha = "0.3.1"
 rand = "0.8"
 

@@ -22,7 +22,7 @@ testing = []
 [dev-dependencies]
 criterion = "0.5"
 iai = "0.1"
-rstest = "0.21"
+rstest = "0.24"
 
 [[bench]]
 name = "criterion"

@@ -34,7 +34,7 @@ encoding = { path = "../../encoding" }
 ecdsa-keypair = { path = "../../ecdsa-keypair" }
 
 [dev-dependencies]
-rstest = "0.21"
+rstest = "0.24"
 
 test-programs = { path = "../../../nada-lang/test-programs" }
 

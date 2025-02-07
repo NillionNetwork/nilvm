@@ -27,7 +27,7 @@ ecdsa-keypair = { path = "../../ecdsa-keypair" }
 itertools = "0.13"
 execution-engine-vm = { path = "../execution-engine-vm", features = ["simulator"] }
 once_cell = "1.20.2"
-rstest = "0.21.0"
+rstest = "0.24.0"
 serde = { version = "1", features = ["derive"] }
 test-programs = { path = "../../../nada-lang/test-programs" }
 mpc-vm = { path = ".", features = ["simulator"] }
