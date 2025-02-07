@@ -4607,9 +4607,9 @@ dependencies = [
 
 [[package]]
 name = "quanta"
-version = "0.12.3"
+version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e5167a477619228a0b284fac2674e3c388cba90631d7b7de620e6f1fcd08da5"
+checksum = "3bd1fe6824cea6538803de3ff1bc0cf3949024db3d43c9643024bfb33a807c0e"
 dependencies = [
  "crossbeam-utils",
  "libc",
