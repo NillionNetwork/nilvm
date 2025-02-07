@@ -2063,9 +2063,9 @@ dependencies = [
 
 [[package]]
 name = "generic-ec-curves"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e663405a17b229dede990904edcfd2056cf6641f1240869a1f44fa13bd4ee4d"
+checksum = "13b9342a074a45ff3ec1ffe919b41f8ed7b84a29b2b2f1dd8d8dbdfc4c1055c6"
 dependencies = [
  "elliptic-curve",
  "generic-ec-core",
