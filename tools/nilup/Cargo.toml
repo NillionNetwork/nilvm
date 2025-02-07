@@ -7,7 +7,7 @@ edition = "2021"
 clap = { version = "4.5.13", features = ["derive"] }
 eyre = "0.6.12"
 color-eyre = "0.6.3"
-toml = "0.8.14"
+toml = "0.8.20"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9.34"
 dirs = "5.0.1"

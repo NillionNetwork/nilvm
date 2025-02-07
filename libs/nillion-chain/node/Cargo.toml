@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 tracing = "0.1.40"
 anyhow = "1"
-toml = "0.8.14"
+toml = "0.8.20"
 
 nillion-chain-client = { path = "../client" }
 
