@@ -1711,7 +1711,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
- "serde_yaml 0.9.34+deprecated",
+ "serde_yaml",
  "shamir-sharing",
  "state-machine",
  "state-machine-derive",
@@ -3410,7 +3410,7 @@ dependencies = [
  "nada-value",
  "rstest",
  "serde",
- "serde_yaml 0.8.26",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -3434,7 +3434,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with 3.11.0",
- "serde_yaml 0.9.34+deprecated",
+ "serde_yaml",
  "tempfile",
  "tokio",
  "tools-config",
@@ -3572,7 +3572,7 @@ dependencies = [
  "regex",
  "reqwest 0.12.9",
  "serde",
- "serde_yaml 0.9.34+deprecated",
+ "serde_yaml",
  "tar",
  "tokio",
  "toml",
@@ -3716,7 +3716,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde-files-utils",
- "serde_yaml 0.9.34+deprecated",
+ "serde_yaml",
  "tempfile",
  "tokio",
  "tracing",
@@ -5325,7 +5325,7 @@ dependencies = [
  "bincode",
  "serde",
  "serde_json",
- "serde_yaml 0.8.26",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -5468,18 +5468,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.90",
-]
-
-[[package]]
-name = "serde_yaml"
-version = "0.8.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "578a7433b776b56a35785ed5ce9a7e777ac0598aac5a6dd1b4b18a307c7fc71b"
-dependencies = [
- "indexmap 1.9.3",
- "ryu",
- "serde",
- "yaml-rust",
 ]
 
 [[package]]
@@ -6689,7 +6677,7 @@ dependencies = [
  "hex",
  "nillion-client",
  "serde",
- "serde_yaml 0.9.34+deprecated",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -7604,15 +7592,6 @@ name = "xshell-macros"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d422e8e38ec76e2f06ee439ccc765e9c6a9638b9e7c9f2e8255e4d41e8bd852"
-
-[[package]]
-name = "yaml-rust"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
-dependencies = [
- "linked-hash-map",
-]
 
 [[package]]
 name = "yaml-rust2"
