@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 enum-as-inner = "0.6.1"
-indexmap = { version = "2.6.0" }
+indexmap = { version = "2.7.1" }
 serde = { version = "1", features = ["derive"], optional = true }
 strum = "0.26.3"
 strum_macros = "0.26.3"
