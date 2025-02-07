@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1"
 enum_dispatch = { git = "https://github.com/NillionNetwork/enum-dispatch.git", rev = "6e189d928a4592c6cbcd6f57c8f1b54a969aedd8" }
 indexmap = "2.6.0"
-itertools = "0.13.0"
+itertools = "0.14.0"
 serde = { version = "1", features = ["derive"], optional = true }
 serde_with = { version = "3.8", optional = true }
 serde_repr = { version = "0.1", optional = true }

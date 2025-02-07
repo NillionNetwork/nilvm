@@ -243,7 +243,7 @@ dependencies = [
  "csv",
  "env_logger",
  "evalexpr",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "junit-report",
  "log",
  "math_lib",
@@ -2892,6 +2892,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2905,7 +2914,7 @@ dependencies = [
  "basic-types",
  "enum_dispatch",
  "indexmap 2.6.0",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "mir-model",
  "nada-compiler-backend",
  "nada-type",
@@ -3254,7 +3263,7 @@ dependencies = [
  "ecdsa-keypair",
  "execution-engine-vm",
  "generic-ec",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "jit-compiler",
  "math_lib",
  "mpc-vm",
@@ -3611,7 +3620,7 @@ dependencies = [
  "hostname",
  "http 1.1.0",
  "hyper-rustls 0.24.2",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "log",
  "math_lib",
  "metrics",
@@ -3898,7 +3907,7 @@ dependencies = [
  "anyhow",
  "clap",
  "heck 0.5.0",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "linked-hash-map",
  "nada-value",
  "strum",
@@ -4497,7 +4506,7 @@ checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
  "heck 0.5.0",
- "itertools 0.13.0",
+ "itertools 0.10.5",
  "log",
  "multimap",
  "once_cell",
@@ -4517,7 +4526,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9552f850d5f0964a4e4d0bf306459ac29323ddfbae05e35a7c0d35cb0803cc5"
 dependencies = [
  "anyhow",
- "itertools 0.13.0",
+ "itertools 0.10.5",
  "proc-macro2",
  "quote",
  "syn 2.0.90",
@@ -4557,7 +4566,7 @@ dependencies = [
  "criterion",
  "ecdsa-keypair",
  "gmp-mpfr-sys",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "key-share",
  "math_lib",
  "num-bigint",

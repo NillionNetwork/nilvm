@@ -12,7 +12,7 @@ nada-value = { path = "../../libs/nada-value" }
 anyhow = "1.0.86"
 linked-hash-map = "0.5.6"
 heck = "0.5"
-itertools = "0.13.0"
+itertools = "0.14.0"
 strum = "0.26"
 strum_macros = "0.26"
 clap = { version = "4.5", features = ["derive"] }
