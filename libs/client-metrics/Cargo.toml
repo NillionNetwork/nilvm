@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 build-info = { path = "../build-info" }
 
-anyhow = "1.0.86"
+anyhow = "1.0.95"
 dirs = "5.0.1"
 rand = "0.8.5"
 instant = "0.1"

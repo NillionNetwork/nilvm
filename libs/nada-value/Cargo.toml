@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.86"
+anyhow = "1.0.95"
 enum-as-inner = "0.6.1"
 indexmap = { version = "2.6.0" }
 key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
