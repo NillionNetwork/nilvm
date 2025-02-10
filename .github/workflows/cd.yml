@@ -1,0 +1,45 @@
+name: New Continuous Deployment
+
+on:
+  push:
+
+env:
+  PROJECT_NAME: "nilvm-network"
+  PROJECT_GIT_REF: "refs/heads/feat/nillion-network-ecs-cluster"
+  PROJECT_ECR_REGISTRY: "592920173613.dkr.ecr.eu-west-1.amazonaws.com"
+  PROJECT_ECR_REPOSITORY: "nillion-node"
+  PROJECT_IMAGE_TAG_VERSION: "v0.9.0-rc.59-amd64"
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read  # Required for checkout
+
+jobs:
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate deployment.yaml
+        uses: NillionNetwork/devops/actions/terraform/frameworks/ecs_service@master
+
+      - name: Deploy ECS service
+        uses: NillionNetwork/devops/actions/terraform/frameworks@feat/ecs-service-files-mount
+        # NOTE: Optional
+        # Set the magic variables to the derived image tag & repo.
+        # Make sure to read the ecs_service 'Magic Variables' docs to
+        # understand how to use these in your 'deployment.yaml'
+        env:
+          TF_VAR_deployment_image_tag: ${{ env.PROJECT_IMAGE_TAG_VERSION }}
+          TF_VAR_deployment_image_repo: ${{ env.PROJECT_ECR_REGISTRY }}/${{ env.PROJECT_ECR_REPOSITORY }}
+        with:
+          framework: ecs_service
+          devops_version: 'feat/ecs-service-files-mount'
+          deploy_env: sandbox
+          deploy_roles: |
+            { "sandbox": "arn:aws:iam::767397865113:role/${{ env.PROJECT_NAME }}-github" }
+          gha_app_id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
+          gha_app_private_key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
+          tf_secrets_master_password: ${{ secrets.SECRETS_MASTER_PASSWORD }}
+          tg_command: ${{ github.ref == env.PROJECT_GIT_REF && 'apply -auto-approve' || 'plan' }}
