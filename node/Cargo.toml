@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 async-trait = "0.1"
-axum = "0.7"
+axum = "0.8"
 bincode = "1.3"
 clap = { version = "4.5", features = ["derive", "env"] }
 config = { version = "^0.14", default-features = false, features = ["yaml"] }
