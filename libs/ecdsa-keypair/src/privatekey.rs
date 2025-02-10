@@ -43,6 +43,12 @@ impl EcdsaPrivateKeyShare {
     }
 }
 
+impl From<CoreKeyShare<Secp256k1>> for EcdsaPrivateKeyShare {
+    fn from(key_share: CoreKeyShare<Secp256k1>) -> Self {
+        Self(key_share)
+    }
+}
+
 #[cfg(feature = "serde")]
 mod details {
     use super::EcdsaPrivateKeyShare;

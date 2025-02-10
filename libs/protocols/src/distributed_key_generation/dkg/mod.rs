@@ -5,10 +5,12 @@ pub mod state;
 
 pub use state::*;
 
+pub use cggmp21::generic_ec::Curve;
+
 #[cfg(test)]
 mod test;
 
 use state_machine::StateMachine;
 
-/// The Ecdsa DKG state machine.
-pub type EcdsaKeyGenStateMachine = StateMachine<EcdsaKeyGenState>;
+/// The DKG state machine.
+pub type KeyGenStateMachine<C> = StateMachine<KeyGenState<C>>;

@@ -142,6 +142,7 @@ impl<T: BinarySerde> FilesystemBlobRepository<T> {
             }
         })?;
         file.write_all(&data).await?;
+        file.flush().await?;
         Ok(())
     }
 }

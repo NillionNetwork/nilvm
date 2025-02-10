@@ -11,7 +11,7 @@ pub(crate) mod auxiliary_material_scheduler;
 pub(crate) mod builder;
 pub(crate) mod cleanup;
 pub(crate) mod compute;
-pub(crate) mod ecdsa_distributed_key_generation;
+pub(crate) mod distributed_key_generation;
 pub(crate) mod preprocessing;
 pub(crate) mod preprocessing_scheduler;
 pub(crate) mod sm;

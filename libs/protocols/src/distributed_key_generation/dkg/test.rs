@@ -1,8 +1,8 @@
 #![allow(clippy::arithmetic_side_effects, clippy::panic, clippy::indexing_slicing)]
 
-use super::output::EcdsaKeyGenOutput;
+use super::{output::KeyGenOutput, Secp256k1Protocol};
 use crate::{
-    distributed_key_generation::dkg::EcdsaKeyGenState,
+    distributed_key_generation::dkg::KeyGenState,
     simulator::symmetric::{InitializedProtocol, Protocol, SymmetricProtocolSimulator},
 };
 use anyhow::{Error, Result};
@@ -23,7 +23,7 @@ impl EcdsaKeyGenProtocol {
 }
 
 impl Protocol for EcdsaKeyGenProtocol {
-    type State = EcdsaKeyGenState;
+    type State = KeyGenState<Secp256k1Protocol>;
     type PrepareOutput = EcdsKeyGenConfig;
 
     fn prepare(&self, parties: &[PartyId]) -> Result<Self::PrepareOutput, Error> {
@@ -35,7 +35,7 @@ impl Protocol for EcdsaKeyGenProtocol {
         party_id: PartyId,
         config: &Self::PrepareOutput,
     ) -> Result<InitializedProtocol<Self::State>, anyhow::Error> {
-        let (state, messages) = EcdsaKeyGenState::new(config.eid.clone(), config.parties.clone(), party_id)?;
+        let (state, messages) = KeyGenState::new(config.eid.clone(), config.parties.clone(), party_id)?;
 
         Ok(InitializedProtocol::new(state, messages))
     }
@@ -94,10 +94,10 @@ fn end_to_end() {
     let mut private_key_shares = Vec::new();
     for output in outputs {
         match output.output {
-            EcdsaKeyGenOutput::Success { element: key_share } => {
+            KeyGenOutput::Success { element: key_share } => {
                 private_key_shares.push(key_share);
             }
-            EcdsaKeyGenOutput::Abort { reason } => {
+            KeyGenOutput::Abort { reason } => {
                 panic!("Aborted with reason: {:?}", reason);
             }
         }

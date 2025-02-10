@@ -14,7 +14,7 @@ use crate::{
     stateful::{
         builder::{BuildExecutionVmError, ExecutionVm, PrimeBuilder},
         compute::{ExecutionVmIo, StateMetadata},
-        ecdsa_distributed_key_generation::{create_user_outputs, EcdsaDistributedKeyGenerationIo},
+        distributed_key_generation::{create_user_outputs, EcdsaDistributedKeyGenerationIo},
         sm::{
             InitMessage, StandardStateMachine, StateMachine, StateMachineArgs, StateMachineHandle, StateMachineRunner,
         },
@@ -56,11 +56,10 @@ use node_api::{
     values::rust::NamedValue,
     ConvertProto, TryIntoRust,
 };
-use protocols::distributed_key_generation::dkg::{
-    output::EcdsaKeyGenOutput, EcdsaKeyGenState, EcdsaKeyGenStateMessage,
-};
+use protocols::distributed_key_generation::dkg::{EcdsaKeyGenOutput, EcdsaKeyGenState, EcdsaKeyGenStateMessage};
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
+    marker::PhantomData,
     sync::Arc,
     time::Duration,
 };
@@ -86,7 +85,7 @@ const STATE_MACHINE_NAME: &str = "COMPUTE";
 type RetrieveResultsStream = ReceiverStream<tonic::Result<proto::retrieve::RetrieveResultsResponse>>;
 
 pub(crate) type ComputeHandles = Arc<Mutex<HashMap<Uuid, StateMachineHandle<ExecutionVmIo>>>>;
-pub(crate) type DkgComputeHandles = Arc<Mutex<HashMap<Uuid, StateMachineHandle<EcdsaDistributedKeyGenerationIo>>>>;
+pub(crate) type EcdsaDkgComputeHandles = Arc<Mutex<HashMap<Uuid, StateMachineHandle<EcdsaDistributedKeyGenerationIo>>>>;
 pub(crate) struct ComputeApiServices {
     pub(crate) receipts: Arc<dyn ReceiptsService>,
     pub(crate) programs: Arc<dyn ProgramService>,
@@ -100,7 +99,7 @@ pub(crate) struct ComputeApi {
     channels: Arc<dyn ClusterChannels>,
     prime_builder: Arc<dyn PrimeBuilder>,
     compute_handles: ComputeHandles,
-    dkg_compute_handles: DkgComputeHandles,
+    ecdsa_dkg_compute_handles: EcdsaDkgComputeHandles,
     services: ComputeApiServices,
     modulo: EncodedModulo,
 }
@@ -111,7 +110,7 @@ impl ComputeApi {
         channels: Arc<dyn ClusterChannels>,
         prime_builder: Arc<dyn PrimeBuilder>,
         compute_handles: ComputeHandles,
-        dkg_compute_handles: DkgComputeHandles,
+        ecdsa_dkg_compute_handles: EcdsaDkgComputeHandles,
         services: ComputeApiServices,
         prime: Prime,
     ) -> Self {
@@ -120,7 +119,7 @@ impl ComputeApi {
             Prime::Safe128Bits => EncodedModulo::U128SafePrime,
             Prime::Safe256Bits => EncodedModulo::U256SafePrime,
         };
-        Self { our_party_id, channels, prime_builder, compute_handles, dkg_compute_handles, services, modulo }
+        Self { our_party_id, channels, prime_builder, compute_handles, ecdsa_dkg_compute_handles, services, modulo }
     }
 
     fn transform_stream<T>(peer: UserId, mut stream: Streaming<proto::stream::ComputeStreamMessage>) -> Receiver<T>
@@ -295,11 +294,12 @@ impl ComputeApi {
         }
     }
 
-    fn dkg_compute_args(&self, compute_id: Uuid) -> StateMachineArgs<EcdsaDistributedKeyGenerationIo> {
+    fn ecdsa_dkg_compute_args(&self, compute_id: Uuid) -> StateMachineArgs<EcdsaDistributedKeyGenerationIo> {
         let io = EcdsaDistributedKeyGenerationIo {
             compute_id,
             results_service: self.services.results.clone(),
             user_values_service: self.services.user_values.clone(),
+            _unused: PhantomData,
         };
         StateMachineArgs {
             id: compute_id,
@@ -308,7 +308,7 @@ impl ComputeApi {
             timeout: COMPUTE_REQUEST_TIMEOUT,
             name: "ECDSA_DKG",
             io,
-            handles: self.dkg_compute_handles.clone(),
+            handles: self.ecdsa_dkg_compute_handles.clone(),
             // We don't want to cancel active compute operations
             cancel_token: Default::default(),
         }
@@ -359,7 +359,7 @@ impl ComputeApi {
         Ok(())
     }
 
-    async fn handle_dkg_compute(
+    async fn handle_ecdsa_dkg_compute(
         &self,
         identifier: Vec<u8>,
         output_bindings: Vec<OutputPartyBinding>,
@@ -382,12 +382,12 @@ impl ComputeApi {
         self.services.results.register_execution(compute_id).await;
 
         // Insert state machine handle
-        let mut handles = self.dkg_compute_handles.lock().await;
+        let mut handles = self.ecdsa_dkg_compute_handles.lock().await;
         handles
             .entry(compute_id)
             .or_insert_with(|| {
                 info!("Initializing DKG compute id {compute_id}");
-                let args = self.dkg_compute_args(compute_id);
+                let args = self.ecdsa_dkg_compute_args(compute_id);
                 StateMachineRunner::start(args)
             })
             .send(InitMessage::InitStateMachine { state_machine: vm, metadata: StateMetadata { user_outputs } })
@@ -495,7 +495,7 @@ impl proto::compute_server::Compute for ComputeApi {
 
         // Check for special DKG program
         if quote.program_id == TECDSA_DKG_PROGRAM_ID {
-            return self.handle_dkg_compute(identifier, output_bindings.clone()).await;
+            return self.handle_ecdsa_dkg_compute(identifier, output_bindings.clone()).await;
         }
         // Handle general compute case
         self.handle_general_compute(
@@ -537,12 +537,12 @@ impl proto::compute_server::Compute for ComputeApi {
                 let stream = Self::transform_stream::<EcdsaKeyGenStateMessage>(user_id, stream);
                 // Insert an entry for this compute if it's not present. We could receive this call before
                 // the client gets to talk to us so this can happen under normal circumstances.
-                let mut handles = self.dkg_compute_handles.lock().await;
+                let mut handles = self.ecdsa_dkg_compute_handles.lock().await;
                 handles
                     .entry(compute_id)
                     .or_insert_with(|| {
                         info!("Initializing compute id {compute_id}");
-                        let args = self.dkg_compute_args(compute_id);
+                        let args = self.ecdsa_dkg_compute_args(compute_id);
                         StateMachineRunner::start(args)
                     })
                     .send(InitMessage::InitParty { user_id, stream })
