@@ -9,7 +9,7 @@ axum = "0.7"
 clap = { version = "4.5", features = ["derive"] }
 env_logger = "0.11.5"
 futures = "0.3"
-hyper = { version = "1.4", features = ["client", "http1"] }
+hyper = { version = "1.6", features = ["client", "http1"] }
 hyper-util = { version = "0.1", features = ["client-legacy"] }
 log = "0.4"
 rand = { version = "0.8", features = ["small_rng"] }
