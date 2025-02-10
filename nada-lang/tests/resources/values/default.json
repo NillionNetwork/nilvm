@@ -1,0 +1,234 @@
+{
+  "secret_int0": {
+    "SecretInteger": "0"
+  },
+  "secret_int1": {
+    "SecretInteger": "1"
+  },
+  "secret_int100000": {
+    "SecretInteger": "100000"
+  },
+  "public_int0": {
+    "Integer": "0"
+  },
+  "my_int": {
+    "SecretInteger": "1"
+  },
+  "my_int4": {
+    "SecretInteger": "102"
+  },
+  "my_int1": {
+    "SecretInteger": "32"
+  },
+  "my_int2": {
+    "SecretInteger": "81"
+  },
+  "my_int3": {
+    "SecretInteger": "5"
+  },
+  "my_int5": {
+    "SecretInteger": "1557"
+  },
+  "my_neg_int1": {
+    "SecretInteger": "-253"
+  },
+  "my_uint1": {
+    "SecretUnsignedInteger": "32"
+  },
+  "my_uint2": {
+    "SecretUnsignedInteger": "81"
+  },
+  "my_uint_secret": {
+    "SecretUnsignedInteger": "1"
+  },
+  "my_uint1_secret": {
+    "SecretUnsignedInteger": "32"
+  },
+  "my_uint2_secret": {
+    "SecretUnsignedInteger": "81"
+  },
+  "I": {
+    "SecretInteger": "97"
+  },
+  "H": {
+    "SecretInteger": "10"
+  },
+  "G": {
+    "SecretInteger": "5"
+  },
+  "F": {
+    "SecretInteger": "110"
+  },
+  "B": {
+    "SecretInteger": "55"
+  },
+  "E": {
+    "SecretInteger": "64"
+  },
+  "C": {
+    "SecretInteger": "7"
+  },
+  "D": {
+    "SecretInteger": "34"
+  },
+  "A": {
+    "SecretInteger": "79"
+  },
+  "B_neg": {
+    "SecretInteger": "-55"
+  },
+  "E_neg": {
+    "SecretInteger": "-64"
+  },
+  "C_neg": {
+    "SecretInteger": "-7"
+  },
+  "D_neg": {
+    "SecretInteger": "-34"
+  },
+  "A_neg": {
+    "SecretInteger": "-79"
+  },
+  "secret_true": {
+    "SecretBoolean": true
+  },
+  "secret_false": {
+    "SecretBoolean": false
+  },
+  "my_empty_array": {
+    "Array": {
+      "inner_type": "SecretInteger",
+      "values": []
+    }
+  },
+  "my_array_1": {
+    "Array": {
+      "inner_type": "SecretInteger",
+      "values": [
+        {
+          "SecretInteger": "1"
+        },
+        {
+          "SecretInteger": "2"
+        },
+        {
+          "SecretInteger": "3"
+        }
+      ]
+    }
+  },
+  "my_array_2": {
+    "Array": {
+      "inner_type": "SecretInteger",
+      "values": [
+        {
+          "SecretInteger": "2"
+        },
+        {
+          "SecretInteger": "3"
+        },
+        {
+          "SecretInteger": "4"
+        }
+      ]
+    }
+  },
+  "my_integer_array": {
+    "Array": {
+      "inner_type": "SecretInteger",
+      "values": [
+        {
+          "SecretInteger": "10"
+        },
+        {
+          "SecretInteger": "-100"
+        },
+        {
+          "SecretInteger": "21"
+        },
+        {
+          "SecretInteger": "-121"
+        },
+        {
+          "SecretInteger": "84"
+        }
+      ]
+    }
+  },
+  "my_uint1_public": {
+    "UnsignedInteger": "32"
+  },
+  "my_uint2_public": {
+    "UnsignedInteger": "81"
+  },
+  "my_uint3_public": {
+    "UnsignedInteger": "2"
+  },
+  "public_my_int4": {
+    "Integer": "102"
+  },
+  "public_my_int1": {
+    "Integer": "32"
+  },
+  "public_my_int2": {
+    "Integer": "81"
+  },
+  "public_my_int3": {
+    "Integer": "5"
+  },
+  "public_I": {
+    "Integer": "97"
+  },
+  "public_H": {
+    "Integer": "10"
+  },
+  "public_G": {
+    "Integer": "5"
+  },
+  "public_F": {
+    "Integer": "110"
+  },
+  "public_B": {
+    "Integer": "55"
+  },
+  "public_E": {
+    "Integer": "64"
+  },
+  "public_C": {
+    "Integer": "7"
+  },
+  "public_D": {
+    "Integer": "34"
+  },
+  "public_A": {
+    "Integer": "79"
+  },
+  "public_true": {
+    "SecretBoolean": true
+  },
+  "public_false": {
+    "SecretBoolean": false
+  },
+  "public_my_empty_array": {
+    "Array": {
+      "inner_type": "Integer",
+      "values": []
+    }
+  },
+  "public_my_integer_array": {
+    "Array": {
+      "inner_type": "Integer",
+      "values": [
+        {
+          "Integer": "10"
+        },
+        {
+          "Integer": "-100"
+        },
+        {
+          "Integer": "21"
+        }
+      ]
+    }
+  }
+}

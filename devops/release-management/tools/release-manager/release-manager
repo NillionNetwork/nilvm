@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+# pylint: disable=import-error, invalid-name
+
+"""
+Welcome to release-manager the ultimate Release Management tool.
+"""
+
+import sys
+
+from release_manager import commands
+from release_manager.args import setup_arg_parser
+from release_manager.errors import CommandError
+from release_manager.gh_release_creator import create_github_release
+
+def main():
+    """
+    Main driver.
+    """
+    # Instantiate injected dependencies.
+    arg_parser, _ = setup_arg_parser()
+
+    args = arg_parser.parse_args()
+
+    # If not registered, use non-object-oriented way of running commands.
+    try:
+        if args.command == "create-github-release":
+            create_github_release(
+                args.tag_name,
+                args.release_name,
+            )
+        elif args.command == "delete-release":
+            commands.delete_release(args.release_version, args.force)
+        elif args.command == "get-release-next-version":
+            commands.get_release_next_version(
+                args.bump_type,
+                args.latest_version,
+                args.release_candidate_base_version,
+            )
+        elif args.command == "get-releases":
+            commands.get_releases()
+        elif args.command == "promote-release":
+            commands.promote_release(args.from_version, args.to_version)
+    except CommandError as ex:
+        print(f"An error occurred running command '{args.command}': {ex}.")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

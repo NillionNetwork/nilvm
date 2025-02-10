@@ -1,0 +1,82 @@
+version: '3.3'
+
+services:
+  node-1:
+    container_name: node-1
+    environment:
+      CONFIG_PATH: "/network/${FIXTURE_NAME:-default}/1.network.yaml"
+    extends:
+      file: "common/${FIXTURE_NAME:-default}.yml"
+      service: ports-1
+
+  node-2:
+    container_name: node-2
+    environment:
+      CONFIG_PATH: "/network/${FIXTURE_NAME:-default}/2.network.yaml"
+    extends:
+      file: "common/${FIXTURE_NAME:-default}.yml"
+      service: ports-2
+
+  node-3:
+    container_name: node-3
+    environment:
+      CONFIG_PATH: "/network/${FIXTURE_NAME:-default}/3.network.yaml"
+    extends:
+      file: "common/${FIXTURE_NAME:-default}.yml"
+      service: ports-3
+
+  node-4:
+    container_name: node-4
+    environment:
+      CONFIG_PATH: "/network/${FIXTURE_NAME:-default}/4.network.yaml"
+    extends:
+      file: "common/${FIXTURE_NAME:-default}.yml"
+      service: ports-4
+
+  node-5:
+    container_name: node-5
+    environment:
+      CONFIG_PATH: "/network/${FIXTURE_NAME:-default}/5.network.yaml"
+    extends:
+      file: "common/${FIXTURE_NAME:-default}.yml"
+      service: ports-5
+
+  functional-test:
+    image: nillion-functional-tests
+    profiles: ["functional-test"]
+    container_name: functional-test
+    ports:
+      - "14099-14101"
+      - "24099-24101"
+      - "14300-14399"
+    depends_on:
+      - node-1
+      - node-2
+      - node-3
+      - node-4
+      - node-5
+    environment:
+      REMOTE_NODES: "/nillion/tests/resources/config/docker-compose.config.yaml"
+      RUST_LOG: "functional_test=debug,functional=debug"
+    volumes:
+      - ../tests/resources/functional_test_reports:/reports
+      - ../tests/resources/bootnodes/docker-compose-browser.bootnodes.yaml:/nillion/tests/resources/bootnodes/docker-compose-browser.bootnodes.yaml
+    extends:
+      file: common/network.yml
+      service: connected
+
+  report-generator:
+    image: nillion-report-generator
+    profiles: ["report-generator"]
+    container_name: report-generator
+    restart: always
+    volumes:
+      - ./volumes/csv:/generator/csv
+      - ./volumes/outputs:/generator/outputs
+    extends:
+      file: common/network.yml
+      service: connected
+
+networks:
+  nillion:
+    driver: bridge

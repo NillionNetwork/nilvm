@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package nillion.payments.v1;
+
+import "google/protobuf/empty.proto";
+import "nillion/payments/v1/balance.proto";
+import "nillion/payments/v1/config.proto";
+import "nillion/payments/v1/quote.proto";
+import "nillion/payments/v1/receipt.proto";
+
+// Payments API.
+service Payments {
+  // Generate a price quote for an operation.
+  rpc PriceQuote(quote.PriceQuoteRequest) returns (quote.SignedQuote);
+
+  // Get a payment receipt for a paid operation.
+  rpc PaymentReceipt(receipt.PaymentReceiptRequest) returns (receipt.SignedReceipt);
+
+  // Get the payments configuration for this network.
+  rpc PaymentsConfig(google.protobuf.Empty) returns (config.PaymentsConfigResponse);
+
+  // Get the user account's balance.
+  rpc AccountBalance(google.protobuf.Empty) returns (balance.AccountBalanceResponse);
+
+  // Add funds to a user account's balance.
+  rpc AddFunds(balance.AddFundsRequest) returns (google.protobuf.Empty);
+}
+
+

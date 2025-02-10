@@ -1,0 +1,25 @@
+set dotenv-load
+
+build-programs sdk_path:
+    @./scripts/build_programs.sh "{{sdk_path}}"
+
+check-env-file:
+    @./scripts/check_env_file.sh
+
+download-load-tool download_path release_version:
+    @./scripts/download_load_tool.sh "{{download_path}}" "{{release_version}}"
+
+generate-report report_json:
+    @./scripts/generate_report.sh "{{report_json}}"
+
+grafana-snapshot start_time end_time env_name:
+    @./scripts/grafana_snapshot.sh "{{start_time}}" "{{end_time}}" "{{env_name}}"
+
+render-spec spec_path max_flow_duration="" max_test_duration="" operation_input_size="" workers="" required_starting_balance="":
+    @./scripts/render_spec.sh "{{spec_path}}" "{{max_flow_duration}}" "{{max_test_duration}}" "{{operation_input_size}}" "{{workers}}" "{{required_starting_balance}}"
+
+run-load-tool download_path env_name report_path spec_path verbose="false":
+    @./scripts/run_load_tool.sh "{{download_path}}" "{{env_name}}" "{{report_path}}" "{{spec_path}}" "{{verbose}}"
+
+test-program sdk_path test_path program_id:
+    @./scripts/test_program.sh "{{sdk_path}}" "{{test_path}}" "{{program_id}}"

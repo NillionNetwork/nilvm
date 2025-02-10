@@ -1,0 +1,14 @@
+nodes:
+  - party_id: 12D3KooWCAGu6gqDrkDWWcFnjsT9Y8rUzUH8buWjdFcU3TfWRmuN
+    address: "node-1:14111"
+  - party_id: 12D3KooWMYauaGF4oZx1LSL9ntwKRfNpkTjwLmXjj6aqWbYYqBYh
+    address: "node-2:14112"
+  - party_id: 12D3KooWHftjD54PGEQc9ZgDZtxhN9Xk9TCCyC1arVsyYz9A7Wg8
+    address: "node-3:14113"
+  - party_id: 12D3KooWNy8HfhBH83mdzcAhz3Ffw8oejh8GetpTvzCuuen9r9qQ
+    address: "node-4:14114"
+  - party_id: 12D3KooWHbQHEcfMxrVm7aJbyrnUDd86NuRRL9eNmsBTQtMj4dbY
+    address: "node-5:14115"
+
+bootnodes:
+  - /dns/node-1/tcp/14111/p2p/12D3KooWCAGu6gqDrkDWWcFnjsT9Y8rUzUH8buWjdFcU3TfWRmuN

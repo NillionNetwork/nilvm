@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package nillion.meta.v1;
+
+message MsgPayFor {
+    bytes resource = 1;
+    string from_address = 2;
+    repeated Amount amount = 3;
+}
+
+message Amount {
+    string denom = 1;
+    string amount = 2;
+}

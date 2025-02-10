@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package nillion.preprocessing.v1.element;
+
+// A preprocessing element.
+enum PreprocessingElement {
+  reserved 1, 6;
+  RANDOM_BOOLEAN = 0;
+  COMPARE = 2;
+  DIVISION_SECRET_DIVISOR = 3;
+  EQUALITY_SECRET_OUTPUT = 4;
+  EQUALITY_PUBLIC_OUTPUT = 5;
+  MODULO = 7;
+  TRUNC = 8;
+  TRUNC_PR = 9;
+  RANDOM_INTEGER = 10;
+}

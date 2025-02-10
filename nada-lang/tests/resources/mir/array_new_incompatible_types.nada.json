@@ -1,0 +1,85 @@
+{
+    "functions": [],
+    "parties": [
+        {
+            "name": "Party1",
+            "source_ref_index": 0
+        }
+    ],
+    "inputs": [
+        {
+            "type": "SecretInteger",
+            "party": "Party1",
+            "name": "I00",
+            "doc": "",
+            "source_ref_index": 0
+        },
+        {
+            "type": "Integer",
+            "party": "Party1",
+            "name": "I01",
+            "doc": "",
+            "source_ref_index": 0
+        }
+    ],
+    "literals": [],
+    "operations": {
+        "0": {
+            "New": {
+                "id": 0,
+                "type": {
+                    "Array": {
+                        "inner_type": "SecretInteger",
+                        "size": 2
+                    }
+                },
+                "elements": [
+                    1,
+                    2
+                ],
+                "source_ref_index": 0
+            }
+        },
+        "1": {
+            "InputReference": {
+                "id": 1,
+                "refers_to": "I00",
+                "type": "SecretInteger",
+                "source_ref_index": 0
+            }
+        },
+        "2": {
+            "InputReference": {
+                "id": 2,
+                "refers_to": "I01",
+                "type": "Integer",
+                "source_ref_index": 0
+            }
+        }
+    },
+    "outputs": [
+        {
+            "name": "my_output",
+            "operation_id": 0,
+            "party": "Party1",
+            "type": {
+                "Array": {
+                    "inner_type": "SecretInteger",
+                    "size": 2
+                }
+            },
+            "source_ref_index": 0
+        }
+    ],
+    "source_files": {
+        "array_new_incompatible_types.py": "from nada_dsl import *\n\n\ndef nada_main():\n    party1 = Party(name=\"Party1\")\n    i00 = SecretInteger(Input(name=\"I00\", party=party1))\n    i01 = SecretInteger(Input(name=\"I01\", party=party1))\n    res = Array.new(i00, i01)\n    return [Output(res, \"my_output\", party1)]\n"
+    },
+    "source_refs": [
+        {
+            "file": "file.py",
+            "lineno": 9,
+            "offset": 207,
+            "length": 31
+        }
+    ]
+}

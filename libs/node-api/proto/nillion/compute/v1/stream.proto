@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package nillion.compute.v1.stream;
+
+// A message for a compute stream.
+message ComputeStreamMessage {
+  // An identifier for the computation instance.
+  //
+  // Only the first ever message on the stream requires having this attribute set. Any subsequent message will
+  // have this field ignored.
+  bytes compute_id = 1; 
+
+  // The VM message in bincode format.
+  bytes bincode_message = 2;
+
+  // The type of compute.
+  ComputeType compute_type = 3;
+}
+
+// The type of compute performed. We currently support two types:
+// - GENERAL: A general compute that computes some Nada program.
+// - ECDSA_DKG: A specific compute operation for ECDSA distributed key generation.
+enum ComputeType {
+  // A general compute.
+  GENERAL = 0;
+  // An ECDSA distributed key generation protocol.
+  ECDSA_DKG = 1;
+}

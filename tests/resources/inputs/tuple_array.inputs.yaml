@@ -1,0 +1,14 @@
+program_id: tuple_array
+compute_values:
+  I00:
+    SecretUnsignedInteger: 17517
+  A00:
+    Array:
+      values:
+        - SecretInteger: 1
+        - SecretInteger: 2
+        - SecretInteger: 3
+        - SecretInteger: 4
+        - SecretInteger: 5
+      inner_type: SecretInteger
+store_values: { }

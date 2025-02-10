@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package nillion.leader_queries.v1;
+
+import "nillion/leader_queries/v1/pool_status.proto";
+
+// A service that allows performing queries against the leader of the cluster.
+service LeaderQueries {
+  // Get the status of the preprocessing pool.
+  rpc PoolStatus(pool_status.PoolStatusRequest) returns (pool_status.PoolStatusResponse);
+}
+
+

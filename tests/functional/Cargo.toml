@@ -1,0 +1,35 @@
+[package]
+name = "functional"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rstest = "0.21"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tokio-stream = "0.1"
+tracing = "0.1"
+uuid = "1.10"
+rand = "0.8"
+
+client-fixture = { path = "../fixtures/client" }
+nillion-chain-client = { path = "../../libs/nillion-chain/client" }
+nillion-client = { path = "../../client" }
+node-api = { path = "../../libs/node-api", features = ["rust-types"] }
+ecdsa-keypair = { path = "../../libs/ecdsa-keypair" }
+nodes-fixtures = { path = "../fixtures/nodes" }
+tracing-fixture = { path = "../fixtures/tracing" }
+test-programs = { path = "../../nada-lang/test-programs" }
+
+[dependencies.generic-ec]
+version = "0.4.2"
+features = ["alloc", "curve-secp256k1", "serde"]
+default-features = false
+
+[dev-dependencies]
+rand_chacha = "0.3.1"
+cggmp21 = { version = "0.5.0", features = ["curve-secp256k1"] }
+sha2 = "0.10.8"
+k256 = { version = "0.13", features = ["ecdsa"] }
+
+[features]
+default = []

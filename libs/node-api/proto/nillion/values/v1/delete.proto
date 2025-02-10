@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package nillion.values.v1.delete;
+
+// A request to delete a previously stored set of values.
+message DeleteValuesRequest {
+  // The identifier of the values entity to be deleted.
+  bytes values_id = 1;
+}

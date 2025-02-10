@@ -1,0 +1,34 @@
+[package]
+name = "jit-compiler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+enum_dispatch = "0.3"
+indexmap = "2.6.0"
+itertools = "0.13.0"
+serde = { version = "1", features = ["derive"], optional = true }
+serde_with = { version = "3.8", optional = true }
+serde_repr = { version = "0.1", optional = true }
+substring = "1.4"
+thiserror = "1"
+
+basic-types = { path = "../../basic-types" }
+mir-model = { path = "../../../nada-lang/mir-model" }
+nada-compiler-backend = { path = "../../../nada-lang/compiler-backend" }
+nada-type = { path = "../../../nada-lang/nada-type" }
+
+[dev-dependencies]
+rstest = "0.21.0"
+test-programs = { path = "../../../nada-lang/test-programs" }
+
+[features]
+default = []
+text_repr = []
+builder = ["mir-model/builder"]
+serde = ["serde_with", "serde_repr", "nada-compiler-backend/serde", "dep:serde"]
+
+[package.metadata.cargo-machete]
+default = []
+ignored = ["serde_with", "serde_repr"]

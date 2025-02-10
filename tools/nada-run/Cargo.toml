@@ -1,0 +1,34 @@
+[package]
+name = "nada-run"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+clap-utils = { path = "../../libs/clap-utils" }
+env_logger = "0.11"
+mpc-vm = { path = "../../libs/execution-engine/mpc-vm", features = ["simulator", "serde"] }
+log = "0.4"
+metrics = { path = "../../libs/metrics", features = ["prometheus-backend"] }
+math_lib = { path = "../../libs/math" }
+nada-compiler-backend = { path = "../../nada-lang/compiler-backend" }
+serde-files-utils = { path = "../../libs/serde-files-utils", default-features = false, features = ["binary"] }
+shamir-sharing = { path = "../../libs/shamir-sharing" }
+nada-value = { path = "../../libs/nada-value", features = ["secret-serde", "secret-arithmetic"] }
+nada-values-args = { path = "../../libs/nada-values-args" }
+client-metrics = { path = "../../libs/client-metrics" }
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+nada-values-args = { path = "../../libs/nada-values-args" }
+test-programs = { path = "../../nada-lang/test-programs/" }
+tempfile = "3.14"
+
+[features]
+default = []
+
+[[bench]]
+name = "flamegraph"
+harness = false

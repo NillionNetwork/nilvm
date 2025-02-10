@@ -1,0 +1,22 @@
+[package]
+name = "pynadac"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+clap = { version = "4.5", features = ["derive"] }
+colored = "2.1.0"
+serde_json = { version = "1.0", features = ["unbounded_depth"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+
+build-info = { path = "../../libs/build-info" }
+clap-utils = { path = "../../libs/clap-utils" }
+client-metrics = { path = "../../libs/client-metrics" }
+nada-compiler-backend = { path = "../compiler-backend" }
+serde-files-utils = { path = "../../libs/serde-files-utils", default-features = false, features = [
+    "json",
+    "binary",
+] }

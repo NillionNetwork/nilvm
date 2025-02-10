@@ -1,0 +1,20 @@
+[package]
+name = "nada-compiler-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+ariadne = "0.5.0"
+num-bigint = { version = "0.4.6" }
+serde = { version = "1", features = ["derive"], optional = true }
+thiserror = "1"
+duplicate = "1.0"
+
+basic-types = { path = "../../libs/basic-types" }
+mir-model = { path = "../mir-model" }
+nada-value = { path = "../../libs/nada-value" }
+
+[features]
+default = []
+serde = ["dep:serde", "num-bigint/serde", "nada-value/secret-serde"]

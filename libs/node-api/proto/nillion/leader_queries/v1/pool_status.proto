@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package nillion.leader_queries.v1.pool_status;
+
+import "nillion/preprocessing/v1/element.proto";
+import "nillion/payments/v1/receipt.proto";
+
+// A request to get the preprocessing pool status.
+message PoolStatusRequest {
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `PoolStatus` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 1;
+}
+
+// A response for the request to get the status of the preprocessing pool.
+message PoolStatusResponse {
+  // The offset ranges for each preprocessing element.
+  repeated PreprocessingOffsets offsets = 1;
+
+  // Whether preprocessing is active (at least one element type is being generated).
+  bool preprocessing_active = 2;
+
+  // Whether auxiliary material has been generated.
+  bool auxiliary_material_available = 3;
+}
+
+// The offsets for a preprocessing element.
+//
+// This is closed-open set, e.g. [start, end)
+message PreprocessingOffsets {
+  // The preprocessing element.
+  nillion.preprocessing.v1.element.PreprocessingElement element = 1;
+
+  // The first offset in the range.
+  uint64 start = 2;
+
+  // The one-past-the-end offset in this range.
+  uint64 end = 3;
+}

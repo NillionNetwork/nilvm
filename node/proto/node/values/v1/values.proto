@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package node.values.v1.values;
+
+import "nillion/permissions/v1/permissions.proto";
+import "nillion/values/v1/value.proto";
+import "nillion/membership/v1/cluster.proto";
+import "google/protobuf/timestamp.proto";
+
+// The values stored by a user.
+message UserValues {
+  // The values permissions.
+  nillion.permissions.v1.permissions.Permissions permissions = 2; 
+
+  // The timestamp at which these values expire.
+  google.protobuf.Timestamp expires_at = 3;
+
+  // The values.
+  repeated nillion.values.v1.value.NamedValue values = 4;
+
+  // The primer number used to secret share these values.
+  nillion.membership.v1.cluster.Prime prime = 5;
+}

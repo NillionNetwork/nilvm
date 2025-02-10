@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package nillion.auth.v1.user;
+
+// A user identifier.
+message UserId {
+  // The contents of the user identifier.
+  bytes contents = 1;
+}

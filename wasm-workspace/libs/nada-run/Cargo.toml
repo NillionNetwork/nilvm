@@ -1,0 +1,30 @@
+[package]
+name = "nada-run"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+console_error_panic_hook = "0.1.7"
+getrandom = { version = "0.2", features = ["js"] }
+log = "0.4"
+num-bigint = "0.4.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0", features = ["unbounded_depth"] }
+serde_stacker = "0.1.11"
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["console"] }
+
+bytecode-evaluator = { path = "../../../nada-lang/bytecode-evaluator" }
+jit-compiler = { path = "../../../libs/execution-engine/jit-compiler" }
+math_lib = { path = "../../../libs/math" }
+nada-compiler-backend = { path = "../../../nada-lang/compiler-backend" }
+shamir-sharing = { path = "../../../libs/shamir-sharing" }
+nada-value = { path = "../../../libs/nada-value", features = ["secret-serde", "secret-arithmetic"] }
+
+[dev-dependencies]
+wasm-bindgen-test = { version = "0.3.32" }
+
+[lib]
+crate-type = ["cdylib", "rlib"]

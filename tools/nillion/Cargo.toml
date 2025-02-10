@@ -1,0 +1,34 @@
+[package]
+name = "nillion"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive", "env"] }
+config = { version = "0.14", default-features = false, features = ["yaml"] }
+env_logger = "0.11.5"
+chrono = { version = "0.4", features = ["serde"] }
+hex = { version = "0.4", features = ["serde"] }
+futures = "0.3.30"
+log = "0.4"
+serde = "1.0.214"
+serde_yaml = "0.9"
+serde_json = "1.0.132"
+serde_with = "3.11.0"
+erased-serde = "0.4.5"
+tokio = "1"
+tracing = { version = "0.1", features = ["log"] }
+uuid = { version = "1", features = ["serde"] }
+
+clap-utils = { path = "../../libs/clap-utils", features = [
+    "shell-completions",
+] }
+user-keypair = { path = "../../libs/user-keypair" }
+nillion-client = { path = "../../client" }
+tools-config = { path = "../libs/tools-config", features = ["client"] }
+nada-values-args = { path = "../../libs/nada-values-args" }
+nada-value = { path = "../../libs/nada-value", features = ["secret-serde"] }
+
+[dev-dependencies]
+tempfile = "3.10.1"

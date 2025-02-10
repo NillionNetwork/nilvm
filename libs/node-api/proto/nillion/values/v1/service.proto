@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package nillion.values.v1;
+
+import "google/protobuf/empty.proto";
+import "nillion/values/v1/delete.proto";
+import "nillion/values/v1/retrieve.proto";
+import "nillion/values/v1/store.proto";
+
+// A service to interact with values (secrets, public values, etc).
+service Values {
+  // Store values in the network.
+  rpc StoreValues(store.StoreValuesRequest) returns (store.StoreValuesResponse);
+
+  // Retrieve values from the network.
+  rpc RetrieveValues(retrieve.RetrieveValuesRequest) returns (retrieve.RetrieveValuesResponse);
+
+  // Delete values from the network.
+  rpc DeleteValues(delete.DeleteValuesRequest) returns (google.protobuf.Empty);
+}
+

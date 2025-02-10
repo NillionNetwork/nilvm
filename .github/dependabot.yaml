@@ -1,0 +1,66 @@
+version: 2
+
+registries:
+  js-browser:
+    type: npm-registry
+    url: https://bindings-592920173613.d.codeartifact.eu-west-1.amazonaws.com/npm/js-browser/
+    # Use the token as the password, and set the username to `aws`
+    username: aws
+    password: ${{secrets.CODEARTIFACT_AUTH_TOKEN}}
+    replaces-base: true
+
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Dublin"
+    open-pull-requests-limit: 5
+    allow:
+      # Allow both direct and indirect (transient deps defined in Cargo.lock) package updates
+      - dependency-type: "all"
+    commit-message:
+      prefix: "chore(deps): "
+
+  - package-ecosystem: "pip"
+    directory: "/nada-lang"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Dublin"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "all"
+    commit-message:
+      prefix: "chore(deps): "
+
+  - package-ecosystem: "pip"
+    directory: "/nada-lang/nada_dsl"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Dublin"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "all"
+    commit-message:
+      prefix: "chore(deps): "
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Europe/Dublin"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "all"
+    registries:
+      - js-browser
+    commit-message:
+      prefix: "chore(deps): "

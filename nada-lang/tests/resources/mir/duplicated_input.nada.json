@@ -1,0 +1,73 @@
+{
+  "functions": [],
+  "parties": [
+    {
+      "name": "Party1",
+      "source_ref_index": 0
+    }
+  ],
+  "inputs": [
+    {
+      "type": "SecretInteger",
+      "party": "Party1",
+      "name": "my_int1",
+      "doc": "",
+      "source_ref_index": 0
+    },
+    {
+      "type": "SecretInteger",
+      "party": "Party1",
+      "name": "my_int1",
+      "doc": "",
+      "source_ref_index": 0
+    }
+  ],
+  "literals": [],
+  "operations": {
+    "0": {
+      "Addition": {
+        "id": 0,
+        "left": 1,
+        "right": 2,
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    },
+    "1": {
+      "InputReference": {
+        "id": 1,
+        "refers_to": "my_int1",
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    },
+    "2": {
+      "InputReference": {
+        "id": 2,
+        "refers_to": "my_int1",
+        "type": "SecretInteger",
+        "source_ref_index": 0
+      }
+    }
+  },
+  "outputs": [
+    {
+      "name": "my_output",
+      "operation_id": 0,
+      "party": "Party1",
+      "type": "SecretInteger",
+      "source_ref_index": 0
+    }
+  ],
+  "source_files": {
+    "duplicated_input.py": "from nada_dsl import *\n\n\ndef nada_main():\n    party1 = Party(name=\"Party1\")\n    my_int1 = SecretInteger(Input(name=\"my_int1\", party=party1))\n    my_int2 = SecretInteger(Input(name=\"my_int1\", party=party1))\n\n    new_int = my_int1 + my_int1\n\n    return [Output(new_int, \"my_output\", party1)]\n"
+  },
+  "source_refs": [
+    {
+      "file": "file.py",
+      "lineno": 9,
+      "offset": 207,
+      "length": 31
+    }
+  ]
+}

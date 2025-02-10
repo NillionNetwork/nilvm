@@ -1,0 +1,12 @@
+from nada_dsl import *
+
+
+def nada_main():
+    party1 = Party(name="Dealer")
+    a = {{ type1 }}(Input(name="A", party=party1))
+    b = {{ type2 }}(Input(name="C", party=party1))
+
+    cond = a < b
+    result = cond.if_else(a, b)
+
+    return [Output(result, "result", party1)]

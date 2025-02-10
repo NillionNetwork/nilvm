@@ -1,0 +1,39 @@
+[package]
+name = "shamir-sharing"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bimap = "0.6.3"
+rand = "0.8"
+thiserror = "1"
+rustc-hash = "2.1"
+
+math_lib = { path = "../math" }
+basic-types = { path = "../basic-types" }
+
+[features]
+default = []
+bench = []
+testing = []
+
+[dev-dependencies]
+criterion = "0.5"
+iai = "0.1"
+rstest = "0.21"
+
+[[bench]]
+name = "criterion"
+harness = false
+
+[[bench]]
+name = "iai"
+harness = false
+required-features = ["bench"]
+
+[[bench]]
+name = "flamegraph"
+harness = false
+required-features = ["bench"]

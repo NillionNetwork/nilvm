@@ -1,0 +1,28 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mir2bytecode"
+path = "src/mir2bytecode_compiler.rs"
+
+[[bin]]
+name = "mir2protocols"
+path = "src/mir2protocols_compiler.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11"
+log = "0.4"
+serde = "1.0"
+
+mpc-vm = { path = "../../../libs/execution-engine/mpc-vm", features = [
+    "serde",
+] }
+nada-compiler-backend = { path = "../../compiler-backend" }
+serde-files-utils = { path = "../../../libs/serde-files-utils", default-features = false, features = [
+    "json",
+    "binary",
+] }

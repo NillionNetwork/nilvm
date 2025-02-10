@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package nillion.preprocessing.v1.cleanup;
+
+import "nillion/preprocessing/v1/element.proto";
+
+// A request to cleanup used preprocessing elements.
+message CleanupUsedElementsRequest {
+  // The element to be cleanedup.
+  element.PreprocessingElement element = 1;
+
+  // The first chunk to be deleted.
+  uint64 start_chunk = 2;
+  
+  // The one-past-the-end chunk index to be deleted.
+  uint64 end_chunk = 3; 
+}
+

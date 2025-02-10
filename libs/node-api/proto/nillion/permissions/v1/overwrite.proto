@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package nillion.permissions.v1.overwrite;
+
+import "nillion/payments/v1/receipt.proto";
+import "nillion/permissions/v1/permissions.proto";
+
+// A request to overwrite the permissions associated with a set of previously stored values.
+message OverwritePermissionsRequest {
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `UpdatePermissions` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 1;  
+
+  // The permissions to be set.
+  //
+  // The permissions will be overridden with these, so whatever permissions the values being updated
+  // had before will no longer exist.
+  nillion.permissions.v1.permissions.Permissions permissions = 2;
+}

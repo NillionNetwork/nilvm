@@ -1,0 +1,69 @@
+network:
+  # The clusters this node is part of.
+  clusters:
+    - id: e2c959ca-ecb2-45b0-8f2b-d91abbfa3708
+      nodes:
+        - id: b8fda536-486b-49b1-b606-bd4fef190669
+          address: 127.0.0.1:14110
+        - id: 68e0de12-be33-4b42-8f95-cc983ae6d1e0
+          address: 127.0.0.1:14111
+        - id: 81a3b0b9-1fa0-448a-916b-923a6853f691
+          address: 127.0.0.1:14112
+        - id: 7997c52b-6094-4dbf-acce-d9913fe5162f
+          address: 127.0.0.1:14113
+        - id: c102166e-d652-4e63-be85-975bcdd963a1
+          address: 127.0.0.1:14114
+      prime: 65123
+      generator: 6
+      kappa: 0
+      polynomial_degree: 1
+      preprocessing:
+        compare:
+          batch_size: 4
+
+# Configurations for this node's identity.
+identity:
+  node_id: b8fda536-486b-49b1-b606-bd4fef190669
+
+# Configurations for the storage.
+storage:
+  # Configurations for temporary in-memory storage
+  object_storage: in_memory
+
+  # Configurations for S3 object storage
+  object_storage:
+    aws_s3:
+      bucket_name: nillion-network-bucket-1
+
+      # Optional settings for MinIO
+      region: us-east-1
+      endpoint_url: http://localhost:9000
+      allow_http: true
+
+      # To set access credentials for MinIO you will need to set env vars: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+      # or use `aws configure` to set them up.
+
+
+# Configurations for the runtime.
+runtime:
+  listen_address: 0.0.0.0:14110
+  ws_listen_address: 0.0.0.0:14210
+
+# Configurations for metrics.
+metrics:
+  listen_address: 127.0.0.1:16110
+
+  # Include static labels to be used in every exposed metric.
+  static_labels:
+    node_name: node-1
+
+# Optional list of peer ids allowed to connect to/from. An empty list means all
+# nodes disallowed. Not specifying the whitelist property means all nodes
+# allowed.
+# whitelist: []
+
+# Optional WSS configuration, if present specifies the paths of TLS
+# certificates and key file in DER format.
+# wss_config:
+#   certs: [<path_to_tls_certificate_file_in_DER_format>]
+#   key: <path_to_tls_key_file_in_DER_format>

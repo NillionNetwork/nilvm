@@ -1,0 +1,8 @@
+[build]
+target = "wasm32-unknown-unknown"
+
+[target.wasm32-unknown-unknown]
+runner = "../scripts/wasm-test-runner.sh"
+
+[unstable]
+build-std = ["panic_abort", "std"]

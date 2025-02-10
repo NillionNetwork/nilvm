@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package nillion.permissions.v1.permissions;
+
+import "nillion/auth/v1/user.proto";
+
+// The permissions for a set of stored values.
+message Permissions {
+  // The user id for the owner of these values.
+  nillion.auth.v1.user.UserId owner = 1;
+
+  // The list of user ids that are allowed to retrieve the stored values.
+  repeated nillion.auth.v1.user.UserId retrieve = 2;
+
+  // The list of user ids that are allowed to update the stored values.
+  repeated nillion.auth.v1.user.UserId update = 3;
+
+  // The list of user ids that are allowed to delete the stored values.
+  repeated nillion.auth.v1.user.UserId delete = 4;
+
+  // The list of compute permissions.
+  repeated ComputePermissions compute = 5; 
+}
+
+// The permissions to execute a program.
+message ComputePermissions {
+  // The user id we're granting permissions to.
+  nillion.auth.v1.user.UserId user = 1;
+
+  // The program ids this user is allowed to use the stored values in.
+  repeated string program_ids = 2;
+}
+
+

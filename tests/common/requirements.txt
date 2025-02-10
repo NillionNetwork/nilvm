@@ -1,0 +1,4 @@
+jupyter==1.0.0
+papermill==2.4.0
+pandas==1.4.4
+matplotlib==3.5.3

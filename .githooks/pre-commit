@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -e
+
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" && pwd -P)"
+# Load env vars
+[[ -f "${SCRIPT_PATH}/../.env" ]] && export $(grep -E -v '^#' "${SCRIPT_PATH}/../.env" | xargs)
+
+IS_FORCE_CHECK=${1:-false}
+SECONDS=0
+PROJECT_ROOT_DIR=$(pwd)
+
+# Check branch name adhere to conventional commit rules
+if [[ "$ENFORCE_CONVENTIONAL_COMMITS" == "true" ]]
+then
+    just check-branch-conventional-commit
+fi
+
+# Only run checks if .rs or .toml files changed
+git diff --cached --name-only | if grep --quiet ".*\.rs\|\.toml\|\.lock$" || $IS_FORCE_CHECK
+then
+    if [[ "$CARGO_FORMAT_CHECK_ON_PRE_COMMIT" == "true" ]]
+    then
+        time just cargo-format-check-all
+    fi
+    just cargo-format-check-all
+
+    if [[ "$CARGO_CHECK_ON_PRE_COMMIT" == "true" ]]
+    then
+        time just cargo-check-all
+    fi
+    if [[ "$CARGO_CLIPPY_ON_PRE_COMMIT" == "true" ]]
+    then
+        time just cargo-clippy-all
+    fi
+fi
+
+# Only run checks shell files that have changed
+git diff --cached --name-only | if grep -E --quiet ".*\.sh$" || $IS_FORCE_CHECK
+then
+    just bash-scripts-lint
+fi
+

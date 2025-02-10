@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package nillion.auth.v1.public_key;
+
+// A public key.
+//
+// Signatures associated to this public key must be a 64 bytes long sequence which is the result of the
+// concatenation of the `r` and `s` scalars in the signature, each encoded in big endian.
+message PublicKey {
+  // The type of this public key.
+  PublicKeyType key_type = 1;
+
+  // The contents of this key.
+  //
+  // This is dependent on the `key_type` in this key:
+  //
+  // * For ED25519 it should be the curve point in its 32 byte compressed form.
+  // * For SECP256K1 it should be the curve point in its 33 byte compressed form.
+  bytes contents = 2;
+}
+
+// A public key type.
+enum PublicKeyType {
+  // An ED25519 public key.
+  ED25519 = 0;
+
+  // A SECP256K1 public key.
+  SECP256K1 = 1;
+}
+

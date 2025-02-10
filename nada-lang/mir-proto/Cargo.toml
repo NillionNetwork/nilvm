@@ -1,0 +1,12 @@
+[package]
+name = "mir-proto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = "0.13"
+prost-types = "0.13"
+
+[build-dependencies]
+prost-build = "0.13"
+protobuf-src = "2.1"

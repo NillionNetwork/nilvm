@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package nillion.payments.v1.balance;
+
+import "google/protobuf/timestamp.proto";
+import "nillion/auth/v1/user.proto";
+
+// A response to a request to get the user account's balance.
+message AccountBalanceResponse {
+  // The account balance, in unil.
+  uint64 balance = 1;
+
+  // The timestamp at which this balance was last updated.
+  google.protobuf.Timestamp last_updated = 2; 
+
+  // The timestamp at which this balance will expire.
+  google.protobuf.Timestamp expires_at = 3; 
+}
+
+// A request to add funds to a user's account.
+message AddFundsRequest {
+  // The serialized `AddFunds` payload.
+  bytes payload = 1;
+
+  // The nilchain transaction hash that proves this payment was made.
+  string tx_hash = 2;
+}
+
+// The payload sent as part of an add funds request.
+message AddFundsPayload {
+  // The user the funds are being given to.
+  nillion.auth.v1.user.UserId recipient = 1; 
+
+  // A 32 byte nonce that is used to add entropy to the hash of this message and to prevent duplicate spending.
+  bytes nonce = 2;
+}

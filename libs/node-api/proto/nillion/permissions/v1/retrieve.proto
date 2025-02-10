@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package nillion.permissions.v1.retrieve;
+
+import "nillion/payments/v1/receipt.proto";
+
+// A request to retrieve the permissions associated with a set of previously stored values.
+message RetrievePermissionsRequest {
+  // The receipt that proves this operation was paid for.
+  //
+  // The receipt must be for a `RetrievePermissions` operation.
+  nillion.payments.v1.receipt.SignedReceipt signed_receipt = 1;  
+}

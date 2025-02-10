@@ -1,0 +1,267 @@
+pipeline {
+    agent  {
+        docker {
+            alwaysPull true
+            image "592920173613.dkr.ecr.eu-west-1.amazonaws.com/deployer:latest"
+            label "devops"
+            registryCredentialsId "ecr:eu-west-1:aws-jenkins-user-api-keys"
+            registryUrl "https://592920173613.dkr.ecr.eu-west-1.amazonaws.com"
+        }
+    }
+
+    environment {
+        ENV_FILE = "nillion-network-load-tests-env-file"
+        JUSTFILE = "devops/load-tests/justfile"
+        REPORT_HTML = "**/report.html"
+        REPORT_JSON = "./report.json"
+    }
+
+    options {
+        ansiColor("xterm")
+        buildDiscarder(logRotator(numToKeepStr: "30"))
+        disableConcurrentBuilds()
+        timeout(time: 8, unit: "HOURS")
+        timestamps()
+    }
+
+    parameters {
+        choice(
+            name: "NILLION_NETWORK_ENVIRONMENT",
+            description: "Environment to run load tests against",
+            choices: ["perf", "testnet-photon"]
+        )
+
+        string(
+            name: "RELEASE_VERSION",
+            description: "Tag of nillion repo to use to build load tool AND the release version of the testnet the load tests target",
+            defaultValue: params.RELEASE_VERSION
+        )
+
+        string(
+            name: "SPEC_PATH",
+            description: "Path to load test spec relative to load-tests dir",
+            defaultValue: params.SPEC_PATH
+        )
+
+        string(
+            name: "REQUIRED_STARTING_BALANCE",
+            description: "The starting balance to use for each wallet, in unils",
+            defaultValue: params.REQUIRED_STARTING_BALANCE ?: "0"
+        )
+
+        string(
+            name: "MAX_FLOW_DURATION",
+            description: "Maximum flow duration. If flows exceed this time, then tests will be stopped.",
+            defaultValue: params.MAX_FLOW_DURATION
+        )
+
+        string(
+            name: "MAX_TEST_DURATION",
+            description: "Maximum test duration. Once the test has been running for this amount of time, it will stop and save the results.",
+            defaultValue: params.MAX_TEST_DURATION
+        )
+
+        string(
+            name: "OPERATION_INPUT_SIZE",
+            description: "Size of input to test. In the case of store-value, this will be size of the secret.",
+            defaultValue: params.OPERATION_INPUT_SIZE
+        )
+
+        string(
+            name: "WORKERS",
+            description: "Number of concurrent operations by a single user",
+            defaultValue: params.WORKERS
+        )
+
+        string(
+            name: "NUM_ADDITIONS",
+            description: "Number of addition operations to perform. Relevant only when SPEC_PATH is set to compute-variable.yaml.",
+            defaultValue: params.NUM_ADDITIONS ?: "100"
+        )
+
+        string(
+            name: "NUM_COMPARISONS",
+            description: "Number of comparison operations to perform. Relevant only when SPEC_PATH is set to compute-variable.yaml.",
+            defaultValue: params.NUM_COMPARISONS ?: "100"
+        )
+
+        string(
+            name: "NUM_DIVISIONS",
+            description: "Number of division operations to perform. Relevant only when SPEC_PATH is set to compute-variable.yaml.",
+            defaultValue: params.NUM_DIVISIONS ?: "100"
+        )
+
+        string(
+            name: "NUM_PRIVATE_EQUALITIES",
+            description: "Number of private equality operations to perform. Relevant only when SPEC_PATH is set to compute-variable.yaml.",
+            defaultValue: params.NUM_PRIVATE_EQUALITIES ?: "100"
+        )
+
+        string(
+            name: "NUM_PUBLIC_MULTIPLICATIONS",
+            description: "Number of public multiplication operations to perform. Relevant only when SPEC_PATH is set to compute-variable.yaml.",
+            defaultValue: params.NUM_PUBLIC_MULTIPLICATIONS ?: "100"
+        )
+
+        string(
+            name: "NUM_SECRET_MULTIPLICATIONS",
+            description: "Number of secret multiplication operations to perform. Relevant only when SPEC_PATH is set to compute-variable.yaml.",
+            defaultValue: params.NUM_SECRET_MULTIPLICATIONS ?: "100"
+        )
+
+        choice(
+            name: "RUST_LOG",
+            description: "Rust log level to set into environment",
+            choices: ["info", "debug", "warn", "error", "none", "none,load_tool=info,nillion_chain_client=debug,tendermint_rpc=debug"]
+        )
+
+        booleanParam(
+            name: "VERBOSE",
+            description: "Enable --verbose flag on load-tool",
+            defaultValue: false
+        )
+    }
+
+    stages {
+        stage("Check Env File") {
+            steps {
+                withCredentials([
+                    file(credentialsId: env.ENV_FILE, variable: "envFile")
+                ]) {
+                    sh "just --dotenv-filename ${envFile} -f $JUSTFILE check-env-file"
+                }
+            }
+        }
+
+        stage("Download SDK and Load Tool") {
+            steps {
+                script {
+                    downloadPath = sh(script: "mktemp -d", returnStdout: true)
+                    downloadPath = downloadPath.trim() // Remove newline from above stdout
+
+                    withAwsCredentials(credentialsId: "aws-jenkins-user-api-keys") {
+                        sh "just -f devops/justfile download-sdk ${downloadPath} ${params.RELEASE_VERSION}"
+                        sh "just -f $JUSTFILE download-load-tool ${downloadPath} ${params.RELEASE_VERSION}"
+                    }
+                }
+            }
+        }
+
+        stage("Clone devops Repo") {
+            steps {
+                withJenkinsGitHubSSHCredentials {
+                    sh "just -f devops/justfile clone-devops-repo"
+                }
+            }
+        }
+
+        stage("Build Programs") {
+            when {
+                expression {
+                    return params.SPEC_PATH.indexOf("compute") > -1
+                }
+            }
+
+            steps {
+                sh "just -f $JUSTFILE build-programs ${downloadPath}"
+            }
+        }
+
+        stage("Render Spec") {
+            steps {
+                sh """
+                    just -f $JUSTFILE render-spec ${params.SPEC_PATH} \
+                        "${params.MAX_FLOW_DURATION}" \
+                        "${params.MAX_TEST_DURATION}" \
+                        "${params.OPERATION_INPUT_SIZE}" \
+                        "${params.WORKERS}" \
+                        "${params.REQUIRED_STARTING_BALANCE}"
+                """
+            }
+        }
+
+        stage("Run Load Tool") {
+            steps {
+                script {
+                    // Mark start time of load test.
+                    startTime = getTimeInSecs()
+
+                    withCredentials([
+                        file(credentialsId: env.ENV_FILE, variable: "envFile")
+                    ]) {
+                        withSecretsEnv {
+                            sh """
+                                just \
+                                    --dotenv-filename ${envFile} \
+                                    -f $JUSTFILE \
+                                    run-load-tool \
+                                    ${downloadPath} \
+                                    ${params.NILLION_NETWORK_ENVIRONMENT} \
+                                    ${env.REPORT_JSON} \
+                                    ${params.SPEC_PATH}.rendered \
+                                    ${params.VERBOSE}
+                            """
+                        }
+                    }
+
+                    // Mark end time of load test.
+                    endTime = getTimeInSecs()
+                }
+            }
+        }
+
+        stage("Generate Report") {
+            steps {
+                script {
+                    sh "just -f $JUSTFILE generate-report ."
+
+                    archiveArtifacts(
+                        artifacts: env.REPORT_HTML
+                    )
+                }
+            }
+        }
+
+        stage("Grafana Snapshot") {
+            steps {
+                script {
+                    withCredentials([
+                        file(credentialsId: env.ENV_FILE, variable: "envFile")
+                    ]) {
+                        snapshotURL = sh(script: """
+                            just \
+                                --dotenv-filename ${envFile} \
+                                -f $JUSTFILE grafana-snapshot \
+                                ${startTime} \
+                                ${endTime} \
+                                ${params.NILLION_NETWORK_ENVIRONMENT}
+                        """, returnStdout: true)
+                        snapshotURL = snapshotURL.trim()
+
+                        if (snapshotURL.equals("")) {
+                            error("Snapshot URL is empty")
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Set Build Description") {
+            steps {
+                script {
+                    currentBuild.description = """
+                        <p><b>Grafana Snapshot</b>: <a href="${snapshotURL}">nillion-network</a></p>
+                    """
+                }
+            }
+        }
+    }
+}
+
+def getTimeInSecs() {
+   return (int)(System.currentTimeMillis() / 1000)
+}
+
+def downloadPath
+def endTime
+def startTime

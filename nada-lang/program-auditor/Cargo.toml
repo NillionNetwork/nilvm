@@ -1,0 +1,21 @@
+[package]
+name = "program-auditor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"], optional = true }
+thiserror = "1"
+anyhow = "1"
+
+# Nillion dependencies
+nada-compiler-backend = { path = "../compiler-backend", default-features = false }
+mpc-vm = { path = "../../libs/execution-engine/mpc-vm", default-features = false }
+
+[dev-dependencies]
+rstest = "0.21"
+test-programs = { path = "../test-programs" }
+
+[features]
+default = []
+serde = ["dep:serde"]

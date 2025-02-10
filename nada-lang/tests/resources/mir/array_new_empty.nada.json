@@ -1,0 +1,66 @@
+{
+    "functions": [],
+    "parties": [
+        {
+            "name": "Party1",
+            "source_ref_index": 0
+        }
+    ],
+    "inputs": [
+        {
+            "type": "SecretInteger",
+            "party": "Party1",
+            "name": "a",
+            "doc": "",
+            "source_ref_index": 0
+        },
+        {
+            "type": "SecretInteger",
+            "party": "Party1",
+            "name": "b",
+            "doc": "",
+            "source_ref_index": 0
+        }
+    ],
+    "literals": [],
+    "operations": {
+        "0": {
+            "New": {
+                "id": 0,
+                "type": {
+                    "Array": {
+                        "inner_type": "SecretInteger",
+                        "size": 2
+                    }
+                },
+                "elements": [],
+                "source_ref_index": 0
+            }
+        }
+    },
+    "outputs": [
+        {
+            "name": "my_output",
+            "operation_id": 0,
+            "party": "Party1",
+            "type": {
+                "Array": {
+                    "inner_type": "SecretInteger",
+                    "size": 2
+                }
+            },
+            "source_ref_index": 0
+        }
+    ],
+    "source_files": {
+        "array_new_empty.py": "from nada_dsl import *\n\n\ndef nada_main():\n    party1 = Party(name=\"Party1\")\n    a = SecretInteger(Input(name=\"a\", party=party1))\n    b = SecretInteger(Input(name=\"b\", party=party1))\n    my_integer_array = Array.new(a, b)\n    return [Output(my_integer_array, \"my_output\", party1)]\n"
+    },
+    "source_refs": [
+        {
+            "file": "file.py",
+            "lineno": 9,
+            "offset": 207,
+            "length": 31
+        }
+    ]
+}

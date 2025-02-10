@@ -1,0 +1,32 @@
+[package]
+name = "auto-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+clap = { version = "4", features = ["derive"] }
+colored = "2"
+csv = "1.3.0"
+env_logger = "0.11"
+itertools = "0.13.0"
+junit-report = "0.8.3"
+log = "0.4"
+once_cell = "1"
+evalexpr = "11.3"
+rayon = "1.10"
+rand = "0.8"
+
+bytecode-evaluator = { path = "../bytecode-evaluator" }
+mpc-vm = { path = "../../libs/execution-engine/mpc-vm", features = ["simulator", "serde"] }
+math_lib = { path = "../../libs/math" }
+nada-compiler-backend = { path = "../compiler-backend" }
+operations = { path = "../operations" }
+pynadac = { path = "../pynadac" }
+serde-files-utils = { path = "../../libs/serde-files-utils", features = [
+    "text",
+] }
+nada-value = { path = "../../libs/nada-value", features = [
+    "secret-serde",
+    "secret-arithmetic",
+] }

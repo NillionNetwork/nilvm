@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package nillion.payments.v1.receipt;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "nillion/payments/v1/quote.proto";
+import "nillion/preprocessing/v1/element.proto";
+import "nillion/preprocessing/v1/material.proto";
+
+// A request to get a payment receipt for a paid operation.
+message PaymentReceiptRequest {
+  // The quote that the user paid for.
+  quote.SignedQuote signed_quote = 1;
+
+  // The nilchain transaction hash that proves this payment was made.
+  //
+  // Not setting this field indicates the payment should be subtracted from the user's account balance.
+  string tx_hash = 2;
+}
+
+// A signed receipt that indicates the user paid.
+message SignedReceipt {
+  // The serialized `Receipt`.
+  bytes receipt = 1;
+
+  // The signature for this receipt.
+  bytes signature = 2;
+}
+
+// A receipt for an operation that the user paid for.
+message Receipt {
+  // A unique identifier for this operation.
+  //
+  // This allows nodes to independently identify this operation and ensure no receipt is used more than once.
+  bytes identifier = 1;
+
+  // The metadata for this receipt;
+  OperationMetadata metadata = 2;
+
+  // The point in time at which this receipt expires and can no longer be used to invoke the associated
+  // operation in the network.
+  google.protobuf.Timestamp expires_at = 3; 
+}
+
+// The metadata associated with the operation this receipt is for.
+message OperationMetadata {
+  oneof operation {
+    // A preprocessing pool status operation.
+    google.protobuf.Empty pool_status = 1; 
+
+    // A store program operation.
+    quote.StoreProgram store_program = 2;
+
+    // A retrieve values operation.
+    quote.RetrieveValues retrieve_values = 3;
+
+    // A retrieve permissions operation.
+    quote.RetrievePermissions retrieve_permissions = 4;
+
+    // A store values operation.
+    quote.StoreValues store_values = 5;
+
+    // An invoke compute operation.
+    InvokeComputeMetadata invoke_compute = 6;
+
+    // An overwrite permissions operation.
+    quote.OverwritePermissions overwrite_permissions = 7;
+
+    // An update permissions operation.
+    quote.UpdatePermissions update_permissions = 8;
+  }
+}
+
+// The metadata for an invoke compute operation.
+message InvokeComputeMetadata {
+  // The invoke compute quote.
+  quote.InvokeCompute quote = 1;
+
+  // The selected preprocessing offsets for this operation.
+  repeated SelectedPreprocessingOffsets offsets = 2;
+
+  // The auxiliary material needed for this operation.
+  repeated SelectedAuxiliaryMaterial auxiliary_materials = 3;
+}
+
+// The selected offsets for a preprocessing element.
+//
+// This is closed-open set, e.g. [start, end)
+message SelectedPreprocessingOffsets {
+  // The preprocessing element.
+  nillion.preprocessing.v1.element.PreprocessingElement element = 1;
+
+  // The first offset in the range.
+  uint64 start = 2;
+  
+  // The one-past-the-end offset in this range.
+  uint64 end = 3;
+
+  // The size of all batches involved in the selected range.
+  uint64 batch_size = 4;
+}
+
+// The selected auxiliary material.
+message SelectedAuxiliaryMaterial {
+  // The material type.
+  nillion.preprocessing.v1.material.AuxiliaryMaterial material = 1;
+
+  // the material version.
+  uint32 version = 2;
+}
+

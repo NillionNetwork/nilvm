@@ -1,0 +1,19 @@
+[package]
+name = "nillion-client-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
+
+basic-types = { path = "../basic-types" }
+ecdsa-keypair = { path = "../../libs/ecdsa-keypair", default-features = false }
+mpc-vm = { path = "../execution-engine/mpc-vm", default-features = false }
+math_lib = { path = "../math", default-features = false }
+nada-value = { path = "../nada-value", default-features = false }
+program-auditor = { path = "../../nada-lang/program-auditor", default-features = false }
+shamir-sharing = { path = "../shamir-sharing" }
+
+[dev-dependencies]
+rand_chacha = "0.3.1"
+generic-ec = { version = "0.4.2", features = ["alloc", "curve-secp256k1"], default-features = false }

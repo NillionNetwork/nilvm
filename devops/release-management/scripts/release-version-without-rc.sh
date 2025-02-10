@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+RELEASE_VERSION="${1:?RELEASE_VERSION is required}"
+
+RELEASE_VERSION_WITHOUT_RC=${RELEASE_VERSION//-rc.*/}
+
+echo "$RELEASE_VERSION_WITHOUT_RC"

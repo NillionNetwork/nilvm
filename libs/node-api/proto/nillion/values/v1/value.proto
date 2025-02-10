@@ -1,0 +1,207 @@
+syntax = "proto3";
+
+package nillion.values.v1.value;
+
+import "google/protobuf/empty.proto";
+
+// A named value.
+message NamedValue {
+  // The name of this value.
+  string name = 1;
+
+  // The value itself.
+  Value value = 2;
+}
+
+// A value.
+message Value {
+  oneof value {
+    // A public boolean.
+    PublicInteger public_boolean = 1;
+
+    // A public integer.
+    PublicInteger public_integer = 2;
+
+    // A public unsigned integer.
+    PublicInteger public_unsigned_integer = 3;
+
+    // A shamir share of a secret boolean value.
+    ShamirShare shamir_share_boolean = 4;
+
+    // A shamir share of a secret integer value.
+    ShamirShare shamir_share_integer = 5;
+
+    // A shamir share of a secret unsigned integer value.
+    ShamirShare shamir_share_unsigned_integer = 6;
+
+    // An array.
+    Array array = 7;
+
+    // A tuple.
+    Tuple tuple = 8;
+
+    // A secret shared blob.
+    ShamirSharesBlob shamir_shares_blob = 9; 
+
+    // An ECDSA private key share.
+    EcdsaPrivateKeyShare ecdsa_private_key_share = 10;
+
+    // An ECDSA signature share.
+    EcdsaSignatureShare ecdsa_signature_share = 11;
+
+    // The digest of a message.
+    EcdsaMessageDigest ecdsa_message_digest = 12;
+  
+    // An ECDSA public key.
+    EcdsaPublicKey ecdsa_public_key = 13;
+
+    // A store id.
+    StoreId store_id = 14;
+  }  
+}
+
+// A public integer.
+message PublicInteger {
+  // The integer value, encoded in little endian.
+  bytes value = 1;
+}
+
+// A shamir share.
+message ShamirShare {
+  // The value, encoded in little endian.
+  bytes value = 1;
+}
+
+// An array.
+message Array {
+  // The array values.
+  //
+  // All the values must be of the same type.
+  repeated Value values = 1;
+
+  // The type of all elements in this array.
+  ValueType inner_type = 2;
+}
+
+// A tuple.
+message Tuple {
+  // The left value.
+  Value left = 1;
+
+  // The right value.
+  Value right = 2;
+}
+
+// An ECDSA private key share.
+message EcdsaPrivateKeyShare {
+  // Index of local party in key generation protocol.
+  uint32 i = 1;
+
+  // The secret share x.
+  bytes x = 2;
+
+  // Public key corresponding to shared secret key, in compressed form.
+  bytes shared_public_key = 3;
+
+  // Public shares of all signers sharing the key, in compressed form.
+  repeated bytes public_shares = 4;
+}
+
+// An ECDSA signature share.
+message EcdsaSignatureShare {
+  // r component of signature share
+  bytes r = 1; 
+
+  // sigma component of partial signature share.
+  bytes sigma = 2; 
+}
+
+// The digest of a message.
+message EcdsaMessageDigest {
+  // The digest.
+  bytes digest = 1;
+}
+
+// An ECDSA public key.
+message EcdsaPublicKey {
+  // The public key.
+  bytes public_key = 1;
+}
+
+// A store id.
+message StoreId {
+  // The store id.
+  bytes store_id = 1;
+}
+
+// Shamir shares of a blob.
+message ShamirSharesBlob {
+  // The shares.
+  repeated ShamirShare shares = 1; 
+
+  // The original size of the blob before secret sharing.
+  uint64 original_size = 2; 
+}
+
+// A type of a value.
+message ValueType {
+  oneof value_type {
+    // A public integer.
+    google.protobuf.Empty public_integer = 1;  
+
+    // A public unsigned integer.
+    google.protobuf.Empty public_unsigned_integer = 2; 
+
+    // A public boolean.
+    google.protobuf.Empty public_boolean = 3; 
+
+    // A shamir share of an integer.
+    google.protobuf.Empty shamir_share_integer = 4; 
+
+    // A shamir share of an unsigned integer.
+    google.protobuf.Empty shamir_share_unsigned_integer = 5; 
+
+    // A shamir share of a boolean.
+    google.protobuf.Empty shamir_share_boolean = 6; 
+
+    // An array.
+    ArrayType array = 7; 
+
+    // A tuple.
+    TupleType tuple = 8; 
+
+    // An ECDSA private key share.
+    google.protobuf.Empty ecdsa_private_key_share = 9; 
+
+    // An ECDSA message digest.
+    google.protobuf.Empty ecdsa_message_digest = 10; 
+
+    // An ECDSA signature share.
+    google.protobuf.Empty ecdsa_signature_share = 11; 
+
+    // An ECDSA public key.
+    google.protobuf.Empty ecdsa_public_key = 12; 
+
+    // A store id.
+    google.protobuf.Empty store_id = 13; 
+  } 
+}
+
+// An array.
+message ArrayType {
+  // The type of each element in the array.
+  ValueType inner_type = 1;
+
+  // The array size.
+  uint64 size = 2;
+}
+
+// A tuple.
+message TupleType {
+  // The type of the left element in the tuple.
+  ValueType left = 1;
+
+  // The type of the right element in the tuple.
+  ValueType right = 2;
+}
+

@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package nillion.programs.v1;
+
+import "nillion/programs/v1/store.proto";
+
+// A service to manage programs.
+service Programs {
+  // Store a program in the network.
+  rpc StoreProgram(store.StoreProgramRequest) returns (store.StoreProgramResponse);
+}
+

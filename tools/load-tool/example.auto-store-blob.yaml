@@ -1,0 +1,43 @@
+# The operation to perform.
+operation:
+  # A store values operation.
+  type: StoreValues
+
+  # A 64kb blob.
+  inputs:
+    type: Blob
+    size: 64K
+
+# This defines the strategy this test uses when incrementing workers.
+#
+# In this example we use the automatic mode. This mode starts at a certain number of workers and progressively adds more
+# based on the percentage of the current workers, e.g. 20% more than the current number.
+mode:
+  # Automatic mode.
+  type: Automatic
+
+# The policy to use when starting the testing process.
+#
+# Valid values are:
+# - StartImmediately: start as soon as we can.
+# - WaitForPreprocessing: wait until preprocessing pools are full before starting.
+start_policy: WaitForPreprocessing
+
+# The policy used when a flow encounters an error.
+#
+# Valid values are:
+# - AlwaysStop: stop the test regardless of the error type.
+# - StopOnPreprocessingExhausted (default): stop when the network runs out of preprocessing elements.
+# - Ignore: ignore the error and continue.
+error_policy: StopOnPreprocessingExhausted
+
+# The maximum average flow duration. If flows are taking over 1 second to run, the test will be stopped.
+#
+# This is optional and defaults to 5 seconds if not set.
+max_flow_duration: 1s
+
+# The maximum error rate. If the error rate goes over this number, the load test will stop.
+max_error_rate: 0.1
+
+# The required starting balance for every nilchain client, in unils.
+required_starting_balance: 1000000

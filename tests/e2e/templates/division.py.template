@@ -1,0 +1,9 @@
+from nada_dsl import *
+
+
+def nada_main():
+    party1 = Party(name="Dealer")
+    a = {{ type1 }}(Input(name="A_DIV", party=party1){% if type1 == "PublicRational" or type1 == "SecretRational" %}, digits=2 {% endif %})
+    b = {{ type2 }}(Input(name="B_DIV", party=party1){% if type2 == "PublicRational" or type2 == "SecretRational" %}, digits=2 {% endif %})
+    result = a / b
+    return [Output(result, "result", party1)]

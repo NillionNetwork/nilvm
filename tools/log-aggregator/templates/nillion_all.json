@@ -1,0 +1,99 @@
+{
+    "configName": "Nillion All",
+    "fileType": "JSON",
+    "regexPattern": "",
+    "noMatchColumn": 0,
+    "columns": [
+        {
+            "pos": 0,
+            "key": "DateTime",
+            "name": "DateTime",
+            "type": "TIME",
+            "format": "",
+            "width": 207
+        },
+        {
+            "pos": 1,
+            "key": "Level",
+            "name": "Level",
+            "type": "STR",
+            "format": "",
+            "width": 68
+        },
+        {
+            "pos": 3,
+            "key": "Source",
+            "name": "Source",
+            "type": "STR",
+            "format": "",
+            "width": 511
+        },
+        {
+            "pos": 4,
+            "key": "LogMessage",
+            "name": "LogMessage",
+            "type": "STR",
+            "format": "",
+            "width": 1073
+        },
+        {
+            "pos": 2,
+            "key": "Type",
+            "name": "Type",
+            "type": "STR",
+            "format": "",
+            "width": 41
+        },
+        {
+            "pos": 5,
+            "key": "Filename",
+            "name": "Filename",
+            "type": "STR",
+            "format": "",
+            "width": 40
+        }
+    ],
+    "highlighters": [
+        {
+            "textColor": "#77767b",
+            "backColor": "#deddda",
+            "type": "REGEX",
+            "options": "",
+            "pattern": "p2p.transport",
+            "column": 2
+        },
+        {
+            "textColor": "#f66151",
+            "backColor": "#deddda",
+            "type": "SUB_STR",
+            "options": "",
+            "pattern": "preprocessing",
+            "column": 2
+        },
+        {
+            "textColor": "#000000",
+            "backColor": "#8ff0a4",
+            "type": "SUB_STR",
+            "options": "",
+            "pattern": "wasm",
+            "column": 4
+        },
+        {
+            "textColor": "#63452c",
+            "backColor": "#99c1f1",
+            "type": "SUB_STR",
+            "options": "",
+            "pattern": "metric",
+            "column": 4
+        },
+        {
+            "textColor": "#000000",
+            "backColor": "#e01b24",
+            "type": "SUB_STR",
+            "options": "",
+            "pattern": "still waiting more blinding factors",
+            "column": 3
+        }
+    ],
+    "filters": []
+}

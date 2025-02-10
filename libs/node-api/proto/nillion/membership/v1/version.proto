@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package nillion.membership.v1.version;
+
+// The node's version.
+message NodeVersion {
+  // The node's version.
+  SemverVersion version = 1; 
+
+  // The built git commit hash.
+  string git_hash = 2;
+}
+
+// A semver version.
+message SemverVersion {
+  // The major version.
+  uint64 major = 1;
+
+  // The minor version.
+  uint64 minor = 2;
+
+  // The patch version.
+  uint64 patch = 3;
+
+  // The optional pre-release version.
+  string pre_release = 4;
+}
+
+
+

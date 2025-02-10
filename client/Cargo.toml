@@ -1,0 +1,23 @@
+[package]
+name = "nillion-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futures = "0.3"
+once_cell = "1.20"
+rand = "0.8"
+sha2 = "0.10"
+tonic = { version = "0.12" }
+thiserror = "1"
+tokio = { version = "1", features = ["time"] }
+tracing = "0.1"
+uuid = "1.10"
+
+grpc-channel = { path = "../libs/grpc-channel" }
+nillion-client-core = { path = "../libs/client-core", default-features = false }
+nada-value = { path = "../libs/nada-value", default-features = false, features = ["protobuf-serde"] }
+math_lib = { path = "../libs/math" }
+node-api = { path = "../libs/node-api", features = ["rust-types"] }
+user-keypair = { path = "../libs/user-keypair" }
+nillion-chain-client = { path = "../libs/nillion-chain/client" }

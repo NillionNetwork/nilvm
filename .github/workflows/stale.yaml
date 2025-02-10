@@ -1,0 +1,30 @@
+permissions:
+  contents: write # for branch closure
+  issues: write # to add labels
+  pull-requests: write # to add labels
+
+name: 'Close stale issues and PRs'
+on:
+  schedule:
+    - cron: '30 1 * * *'
+
+env:
+  stale_message: >-
+    Marked as stale due to inactivity.
+    This will be closed in 7 days if inactivity continues.
+  close_message: >-
+    Closed due to inactivity.
+
+jobs:
+  stale:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-pr-stale: 14
+          days-before-issue-stale: 14
+          stale-issue-message: "${{ env.stale_message }}"
+          stale-pr-message: "${{ env.stale_message }}"
+          close-issue-message: "${{ env.close_message }}"
+          close-pr-message: "${{ env.close_message }}"
+          delete-branch: true

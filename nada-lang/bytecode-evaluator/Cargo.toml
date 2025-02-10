@@ -1,0 +1,37 @@
+[package]
+name = "bytecode-evaluator"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "bytecode-evaluator"
+path = "src/main.rs"
+required-features = ["tool"]
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11"
+log = "0.4.22"
+num-bigint = "0.4.6"
+thiserror = "1"
+
+basic-types = { path = "../../libs/basic-types" }
+math_lib = { path = "../../libs/math" }
+nada-compiler-backend = { path = "../compiler-backend" }
+jit-compiler = { path = "../../libs/execution-engine/jit-compiler", features = ["text_repr", "serde"] }
+nada-value = { path = "../../libs/nada-value", features = ["secret-serde", "secret-arithmetic"] }
+serde-files-utils = { path = "../../libs/serde-files-utils", default-features = false, optional = true, features = [
+    "json",
+] }
+
+[dev-dependencies]
+xshell = "0.2"
+num-bigint = "0.4.6"
+jit-compiler = { path = "../../libs/execution-engine/jit-compiler", features = ["serde", "text_repr"] }
+rstest = "0.21"
+test-programs = { path = "../test-programs" }
+
+[features]
+default = ["tool", "jit-compiler/text_repr"]
+tool = ["serde-files-utils/json"]

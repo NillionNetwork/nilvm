@@ -1,0 +1,7 @@
+from nada_dsl import *
+
+
+def nada_main():
+    party1 = Party(name="Dealer")
+    a = {{ type }}(Input(name="A", party=party1){% if type == "PublicRational" %}, digits=2 {% endif %})
+    return [Output(a, "A", party1)]
