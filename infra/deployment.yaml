@@ -163,6 +163,7 @@ deployment:
 vars:
   sandbox:
     name_prefix: sandbox
+    secrets_recovery_window_in_days: 0
     zone_name: "sandbox.nilogy.xyz"
     deployment:
       container:
