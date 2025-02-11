@@ -30,7 +30,7 @@ jobs:
           app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
           owner: NillionNetwork
           private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
-          repositories: nillion
+          repositories: nilvm
 
       - name: Install just
         run: |
