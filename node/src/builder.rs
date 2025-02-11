@@ -4,7 +4,7 @@ use crate::{
     channels::{ClusterChannels, DefaultClusterChannels},
     config::ObjectStorageConfig,
     controllers::{
-        compute::{ComputeApi, ComputeApiServices, ComputeHandles, DkgComputeHandles},
+        compute::{ComputeApi, ComputeApiServices, ComputeHandles, EcdsaDkgComputeHandles},
         leader_queries::{LeaderQueriesApi, LeaderQueriesApiServices},
         membership::MembershipApi,
         payments::{PaymentsApi, PaymentsApiServices},
@@ -172,7 +172,7 @@ struct Dependencies {
     sqlite: SqliteDb,
     sqlite_repositories: Vec<MetricsExporterRepository>,
     compute_handles: ComputeHandles,
-    dkg_compute_handles: DkgComputeHandles,
+    dkg_compute_handles: EcdsaDkgComputeHandles,
     channels: Arc<dyn ClusterChannels>,
     cluster: Cluster,
     cancel_token: CancellationToken,

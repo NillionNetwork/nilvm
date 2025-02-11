@@ -4,11 +4,11 @@ use std::fmt::Display;
 
 /// The ECDSA DGK output.
 #[derive(Clone)]
-pub enum EcdsaKeyGenOutput {
+pub enum KeyGenOutput<T> {
     /// The protocol was successful.
     Success {
-        /// The output elements.
-        element: EcdsaPrivateKeyShare,
+        /// The output.
+        element: T,
     },
 
     /// This or a subprotocol aborted by chance.
@@ -18,7 +18,7 @@ pub enum EcdsaKeyGenOutput {
     },
 }
 
-impl Display for EcdsaKeyGenOutput {
+impl<T> Display for KeyGenOutput<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Success { .. } => write!(f, "Success"),
