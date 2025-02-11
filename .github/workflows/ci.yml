@@ -83,7 +83,6 @@ jobs:
       - name: Check Cargo.lock Dirty
         run: |
           just check-cargo-lock-dirty
-          just check-extra-cargo-locks
 
       - name: Setup nada_dsl
         run: just setup-nada_dsl

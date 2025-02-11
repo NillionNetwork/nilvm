@@ -1,6 +1,6 @@
 set dotenv-load := true
 
-CARGO_WORKSPACES := "./ ./wasm-workspace"
+CARGO_WORKSPACES := "./"
 CARGO_TARGET_DIR := env_var_or_default("CARGO_TARGET_DIR", "target")
 SCRIPTS_PATH := env_var_or_default("SCRIPTS_PATH", justfile_directory() + "/scripts")
 UNAME := `uname -a`
@@ -228,7 +228,6 @@ run-nada-auto-tests args="": setup-nada_dsl
 test-all:
     @just test-nada-lang-py
     cargo test
-    @just test-wasm
 
 run-local-network:
     @echo "You should update your script or workflow to use just recipe nillion-devnet instead"
@@ -253,7 +252,7 @@ run-init-qlogexplorer-templates:
     cp -v tools/log-aggregator/templates/*json ~/.var/app/io.github.rafaelfassi.QLogExplorer/config/qlogexplorer/templates/
 
 clean:
-    cargo clean && cd wasm-workspace && cargo clean
+    cargo clean
 
 clean-cargo-target target_dir keep_dir:
     #!/usr/bin/env bash
@@ -273,9 +272,6 @@ clean-cargo-target target_dir keep_dir:
 
 check-cargo-lock-dirty:
     scripts/just/check-cargo-lock-dirty.sh
-
-check-extra-cargo-locks:
-    scripts/just/check-extra-cargo-locks.sh
 
 check-branch-conventional-commit:
     scripts/just/check-branch-conventional-commit.sh
