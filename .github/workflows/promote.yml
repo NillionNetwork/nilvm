@@ -115,7 +115,7 @@ jobs:
           app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
           owner: NillionNetwork
           private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
-          repositories: nillion
+          repositories: nilvm
 
       - name: Promote Release
         env:
@@ -166,7 +166,7 @@ jobs:
           app-id: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_ID }}
           owner: NillionNetwork
           private-key: ${{ secrets.NILLION_GITHUB_ACTIONS_APP_PRIVATE_KEY }}
-          repositories: nillion, devops
+          repositories: nilvm, devops
 
       - name: Retag devops Repo
         env:
