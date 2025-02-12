@@ -36,7 +36,6 @@ nada-lang/nada_dsl/nada_dsl/version.py
 # Cargo.lock files
 Cargo.lock
 !/Cargo.lock
-!wasm-workspace/Cargo.lock
 
 # Docs
 nada-lang/nada_dsl/docs/_build/*
@@ -47,13 +46,6 @@ tmp/
 dist
 node_modules
 package-lock.json
-# generated protobuf types
-wasm-workspace/client/bindings/js-browser/src/proto/nilchain.ts
-wasm-workspace/client/bindings/js-browser/docs
-wasm-workspace/tests/functional/js-client-jasmine/package.json
-wasm-workspace/tests/functional/js-client-jasmine/src/fixture/*.json
-!wasm-workspace/client/bindings/js-browser/.npmignore
-!wasm-workspace/client/bindings/js-browser/package-lock.json
 
 # python
 *.pyc

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-CARGO_WORKSPACES=${1:?"Error: Missing cargo workspaces array (e.g. \"./ ./wasm-workspace\")"}
+CARGO_WORKSPACES=${1:?"Error: Missing cargo workspaces array (e.g. \"./\")"}
 JUST_RECIPE=${2:?"Error: missing just recipe name"}
 OUTPUT_FULL_PATH=${3:-}
 OPTIONS=${4:-}
