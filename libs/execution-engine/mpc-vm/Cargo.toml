@@ -21,7 +21,7 @@ protocols = { path = "../../protocols", optional = true }
 rand = { version = "0.8", optional = true }
 shamir-sharing = { path = "../../shamir-sharing", optional = true }
 state-machine = { path = "../../state-machine", optional = true }
-ecdsa-keypair = { path = "../../ecdsa-keypair" }
+threshold-keypair = { path = "../../threshold-keypair" }
 
 [dev-dependencies]
 itertools = "0.13"

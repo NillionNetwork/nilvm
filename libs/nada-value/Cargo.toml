@@ -17,7 +17,7 @@ serde_json = { version = "1.0.127", optional = true }
 thiserror = "1.0.63"
 
 basic-types = { path = "../basic-types" }
-ecdsa-keypair = { path = "../ecdsa-keypair", default-features = false }
+threshold-keypair = { path = "../threshold-keypair", default-features = false }
 math_lib = { path = "../math", default-features = false }
 nada-type = { path = "../../nada-lang/nada-type" }
 shamir-sharing = { path = "../shamir-sharing" }
@@ -33,6 +33,6 @@ rand = "0.8"
 [features]
 default = []
 secret-arithmetic = []
-secret-serde = ["serde", "key-share/serde", "indexmap/serde", "math_lib/serde", "ecdsa-keypair/serde", "nada-type/serde"]
+secret-serde = ["serde", "key-share/serde", "indexmap/serde", "math_lib/serde", "threshold-keypair/serde", "nada-type/serde"]
 protobuf-serde = ["node-api"]
 json = ["serde_json", "secret-serde"]

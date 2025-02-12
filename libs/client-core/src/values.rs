@@ -131,9 +131,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ecdsa_keypair::privatekey::EcdsaPrivateKey;
     use generic_ec::{curves::Secp256k1, SecretScalar};
     use rand_chacha::rand_core::OsRng;
+    use threshold_keypair::privatekey::ThresholdPrivateKey;
 
     fn make_masker() -> SecretMasker {
         SecretMasker::new_64_bit_safe_prime(
@@ -172,7 +172,7 @@ mod tests {
 
         let mut csprng = OsRng;
         let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-        let ecdsa_sk = EcdsaPrivateKey::from_scalar(sk).unwrap();
+        let ecdsa_sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk).unwrap();
 
         values.insert(values.len().to_string(), NadaValue::<Clear>::new_ecdsa_private_key(ecdsa_sk));
         let masker = make_masker();
@@ -188,7 +188,7 @@ mod tests {
 
         let mut csprng = OsRng;
         let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-        let ecdsa_sk = EcdsaPrivateKey::from_scalar(sk).unwrap();
+        let ecdsa_sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk).unwrap();
 
         values.insert(values.len().to_string(), NadaValue::<Clear>::new_ecdsa_private_key(ecdsa_sk));
         let masker = make_masker();

@@ -12,7 +12,6 @@ use cggmp21::{
     supported_curves::Secp256k1,
     ExecutionId, KeygenError,
 };
-use ecdsa_keypair::privatekey::EcdsaPrivateKeyShare;
 use key_share::{CoreKeyShare, DirtyCoreKeyShare, Valid};
 use rand::RngCore;
 use round_based::{Incoming, MessageDestination, MessageType, Outgoing};
@@ -32,6 +31,7 @@ use std::{
     },
     thread,
 };
+use threshold_keypair::privatekey::ThresholdPrivateKeyShare;
 
 type KeyGenIncomingMessage<C> = Incoming<Msg<C, SecurityLevel128, Sha256>>;
 type KeyGenOutgoingMessage<C> =
@@ -50,7 +50,7 @@ pub type EcdsaKeyGenState = KeyGenState<Secp256k1Protocol>;
 pub type EcdsaKeyGenStateMessage = KeyGenStateMessage<Secp256k1>;
 
 /// The output of an ECDSA keygen state machine.
-pub type EcdsaKeyGenOutput = KeyGenOutput<EcdsaPrivateKeyShare>;
+pub type EcdsaKeyGenOutput = KeyGenOutput<ThresholdPrivateKeyShare<Secp256k1>>;
 
 /// Proxy for the message types in DKG state machine.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -352,7 +352,7 @@ pub struct Secp256k1Protocol;
 
 impl CurveProtocol for Secp256k1Protocol {
     type Curve = Secp256k1;
-    type Output = EcdsaPrivateKeyShare;
+    type Output = ThresholdPrivateKeyShare<Secp256k1>;
 
     fn keygen_builder(
         eid: ExecutionId<'_>,
