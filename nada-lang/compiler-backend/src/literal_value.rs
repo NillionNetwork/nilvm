@@ -1,6 +1,5 @@
 //! Contains a literal
 
-use basic_types::errors::UnimplementedError;
 use nada_value::{NadaType, NadaValue, NeverPrimitiveType, PrimitiveTypes};
 use num_bigint::{BigInt, BigUint};
 use std::str::FromStr;
@@ -60,7 +59,7 @@ impl LiteralValueExt for LiteralValue {
                     .map_err(|_| LiteralValueError::ParsingFailed(value.to_owned(), "boolean".to_owned()))?;
                 Ok(Self::new_boolean(value))
             }
-            _ => Err(UnimplementedError(format!("literal of type {ty:?}")))?,
+            _ => Err(LiteralValueError::Unimplemented(format!("literal of type {ty:?}")))?,
         }
     }
 }
@@ -74,5 +73,5 @@ pub enum LiteralValueError {
 
     /// Not implemented.
     #[error("not implemented: {0}")]
-    Unimplemented(#[from] UnimplementedError),
+    Unimplemented(String),
 }

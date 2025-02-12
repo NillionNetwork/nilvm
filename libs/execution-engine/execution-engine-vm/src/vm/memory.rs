@@ -6,7 +6,6 @@ use anyhow::{anyhow, Error};
 use num_bigint::BigUint;
 use thiserror::Error;
 
-use basic_types::errors::UnimplementedError;
 use jit_compiler::{
     models::{
         memory::{address_count, AddressCountError, AddressType},
@@ -567,7 +566,7 @@ impl<T: SafePrime> RuntimeMemory<T> {
                 let index: usize = address.into();
                 self.literals.get(index).cloned().ok_or(RuntimeMemoryError::OutOfMemory(address))
             }
-            AddressType::Output => Err(UnimplementedError::from("output accessors"))?,
+            AddressType::Output => Err(RuntimeMemoryError::Unimplemented("output accessors".to_string()))?,
         }
     }
 
@@ -581,7 +580,7 @@ impl<T: SafePrime> RuntimeMemory<T> {
                 let index: usize = address.into();
                 Ok(self.literals.get(index).cloned().ok_or(RuntimeMemoryError::OutOfMemory(address))?.to_type())
             }
-            AddressType::Output => Err(UnimplementedError::from("output accessors"))?,
+            AddressType::Output => Err(RuntimeMemoryError::Unimplemented("output accessors".to_string()))?,
         }
     }
 }
@@ -619,7 +618,7 @@ pub enum RuntimeMemoryError {
 
     /// Not implemented.
     #[error("not implemented: {0}")]
-    Unimplemented(#[from] UnimplementedError),
+    Unimplemented(String),
 
     /// Address count error
     #[error("inner address calculation: {0}")]

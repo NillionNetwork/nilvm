@@ -1,7 +1,6 @@
 //! Encoding for modular numbers.
 
 use super::{Modular, ModularNumber, UintType};
-use basic_types::errors::UnimplementedError;
 use num_bigint::{BigInt, BigUint};
 use std::marker::PhantomData;
 
@@ -140,7 +139,7 @@ pub enum DecodeError {
 
     /// Not implemented.
     #[error("not implemented: {0}")]
-    Unimplemented(#[from] UnimplementedError),
+    Unimplemented(String),
 }
 
 /// A codec for modular numbers.

@@ -627,7 +627,6 @@ name = "bytecode-evaluator"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "basic-types",
  "clap",
  "env_logger",
  "jit-compiler",
@@ -3179,7 +3178,6 @@ name = "math_lib"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "basic-types",
  "criterion",
  "crypto-bigint",
  "num-bigint",
@@ -3393,7 +3391,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ariadne",
- "basic-types",
  "duplicate",
  "mir-model",
  "nada-value",
@@ -3473,7 +3470,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
- "basic-types",
  "clap",
  "nada-value",
  "rstest",

@@ -16,7 +16,6 @@ log = "0.4.22"
 num-bigint = "0.4.6"
 thiserror = "1"
 
-basic-types = { path = "../../libs/basic-types" }
 math_lib = { path = "../../libs/math" }
 nada-compiler-backend = { path = "../compiler-backend" }
 jit-compiler = { path = "../../libs/execution-engine/jit-compiler", features = ["text_repr", "serde"] }

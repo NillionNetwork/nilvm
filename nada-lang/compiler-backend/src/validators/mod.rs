@@ -4,7 +4,6 @@
 pub mod report;
 
 use anyhow::{anyhow, Context, Result};
-use basic_types::errors::UnimplementedError;
 use duplicate::duplicate_item;
 use nada_value::{NadaType, NadaTypeMetadata};
 use std::collections::{HashMap, HashSet};
@@ -228,7 +227,7 @@ impl Validatable for New {
             ty if ty.is_primitive() => {
                 context.report_error(self, "malformed new operation: not a compound type", program)?;
             }
-            ty => Err(UnimplementedError::from(format!("compound type ({ty:?}) is not supported")))?,
+            ty => Err(anyhow!("compound type ({ty:?}) is not supported"))?,
         }
 
         Ok(())

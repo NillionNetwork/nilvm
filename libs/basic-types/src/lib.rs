@@ -16,7 +16,6 @@
 )]
 
 pub mod batches;
-pub mod errors;
 pub mod jar;
 pub mod party;
 

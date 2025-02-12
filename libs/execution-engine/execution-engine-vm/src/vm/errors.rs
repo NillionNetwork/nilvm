@@ -2,7 +2,6 @@
 
 use crate::vm::memory::RuntimeMemoryError;
 use anyhow::Error;
-use basic_types::errors::UnimplementedError;
 use jit_compiler::models::memory::AddressCountError;
 use math_lib::modular::Overflow;
 
@@ -19,7 +18,7 @@ pub enum EvaluationError {
 
     /// Not implemented.
     #[error("not implemented: {0}")]
-    Unimplemented(#[from] UnimplementedError),
+    Unimplemented(String),
 
     /// Address count failed
     #[error("address count failed: {0}")]

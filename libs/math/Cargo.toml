@@ -13,8 +13,6 @@ serde = { version = "1", features = ["derive", "rc"], optional = true }
 subtle = "2.6.1"
 thiserror = "1"
 
-basic-types = { path = "../basic-types" }
-
 [dev-dependencies]
 anyhow = "1"
 rstest = "0.21"

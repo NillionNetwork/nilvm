@@ -43,7 +43,6 @@ pub(crate) mod vm {
         vm::{plan::MPCProtocolPreprocessingElements, MPCInstructionRouter, MPCMessages},
     };
     use anyhow::{anyhow, Error};
-    use basic_types::errors::UnimplementedError;
     use execution_engine_vm::vm::{
         instructions::{Instruction, InstructionResult},
         memory::MemoryValue,
@@ -77,7 +76,7 @@ pub(crate) mod vm {
             let exponent_type = exponent.to_type();
             let exponent = exponent.try_into_value()?;
             if exponent < ModularNumber::ZERO {
-                return Err(UnimplementedError::from("power with negative exponent").into());
+                return Err(anyhow!("power with negative exponent"));
             }
 
             let base_type = base.to_type();

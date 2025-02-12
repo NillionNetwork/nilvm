@@ -3,7 +3,6 @@
 use crate::named::Named;
 use anyhow::anyhow;
 use base64::{prelude::BASE64_STANDARD, Engine};
-use basic_types::errors::UnimplementedError;
 use nada_value::{clear::Clear, BigInt, BigUint, NadaType, NadaValue};
 use std::str::FromStr;
 
@@ -79,7 +78,7 @@ impl Parse for NadaType {
             | EcdsaPrivateKey
             | EcdsaPublicKey
             | StoreId
-            | EcdsaSignature => Err(UnimplementedError::from(format!("{} value", value)))?,
+            | EcdsaSignature => Err(anyhow!("{} value", value))?,
         };
         Ok(Named { name: name.to_string(), value })
     }
@@ -98,7 +97,7 @@ fn parse_array(inner_type: &NadaType, value: &str) -> anyhow::Result<NadaValue<C
             SecretInteger => NadaValue::new_secret_integer(value_from_str::<BigInt>(element)?),
             SecretUnsignedInteger => NadaValue::new_secret_unsigned_integer(value_from_str::<BigUint>(element)?),
 
-            _ => Err(UnimplementedError::from(format!("{} secret", element)))?,
+            _ => Err(anyhow!("{} secret", element))?,
         };
         values.push(element_value);
     }

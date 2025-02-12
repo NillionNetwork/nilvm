@@ -4,7 +4,6 @@ use crate::operations::{
     RevealOperation, RightShiftOperation, SubOperation, TernaryOperation, TruncPrOperation, UnaryOperation,
 };
 use anyhow::{anyhow, Error};
-use basic_types::errors::UnimplementedError;
 use jit_compiler::models::{
     bytecode::{
         memory::BytecodeAddress, Addition, Division, EcdsaSign, Equals, Get, IfElse, InnerProduct, Input, LeftShift,
@@ -559,8 +558,8 @@ pub(crate) fn memory_element_from_literal<T: Modular>(
             let value = ModularNumber::try_from(&BigUint::from(*value as u32))?;
             Ok(NadaValue::new_boolean(value))
         }
-        value if !value.to_type().is_public() => Err(UnimplementedError::from("literals cannot be secrets"))?,
-        value => Err(UnimplementedError::from(format!("{} public variables", value.to_type())))?,
+        value if !value.to_type().is_public() => Err(anyhow!("literals cannot be secrets"))?,
+        value => Err(anyhow!("{} public variables", value.to_type()))?,
     }
 }
 
