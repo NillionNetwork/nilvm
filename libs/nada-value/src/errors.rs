@@ -1,6 +1,6 @@
 //! nada-value errors
 use crate::encoders::EncodeVariableError;
-use basic_types::{errors::UnimplementedError, jar::DuplicatePartyShare};
+use basic_types::jar::DuplicatePartyShare;
 use ecdsa_keypair::{privatekey::EcdsaPrivateKeyError, signature::EcdsaSignatureError};
 use math_lib::modular::{DecodeError, Overflow};
 use nada_type::{NadaType, TypeError};
@@ -70,7 +70,7 @@ pub enum EncodingError {
 
     /// Not implemented.
     #[error("not implemented: {0}")]
-    Unimplemented(#[from] UnimplementedError),
+    Unimplemented(String),
 
     /// Not implemented.
     #[error(transparent)]
@@ -118,7 +118,7 @@ pub enum DecodingError {
 
     /// Not implemented.
     #[error("not implemented: {0}")]
-    Unimplemented(#[from] UnimplementedError),
+    Unimplemented(String),
 
     /// Not implemented.
     #[error(transparent)]
@@ -228,8 +228,8 @@ pub enum EncryptedToClearError {
     InvalidType(NadaType),
 
     /// Unimplemented
-    #[error(transparent)]
-    Unimplemented(#[from] UnimplementedError),
+    #[error("{0}")]
+    Unimplemented(String),
 
     /// Wrong blob size
     #[error("wrong blob size")]
