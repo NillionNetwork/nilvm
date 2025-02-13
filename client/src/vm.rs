@@ -301,15 +301,31 @@ impl VmClient {
     pub async fn payments_config(&self) -> Result<PaymentsConfigResponse, InvokeError> {
         Ok(self.payments.payments_config().await?)
     }
+
+    /// Get access to the underlying gRPC clients for a specific cluster node.
+    pub fn node_clients(&self, node: NodeId) -> Option<&GrpcClients> {
+        let party = PartyId::from(Vec::<u8>::from(node));
+        self.clients.get(&party)
+    }
 }
 
+/// gRPC clients for the different services a node provides.
 #[derive(Clone)]
-pub(crate) struct GrpcClients {
-    pub(crate) compute: ComputeClient,
-    pub(crate) membership: MembershipClient,
-    pub(crate) permissions: PermissionsClient,
-    pub(crate) programs: ProgramsClient,
-    pub(crate) values: ValuesClient,
+pub struct GrpcClients {
+    /// A client for the compute service.
+    pub compute: ComputeClient,
+
+    /// A client for the membership service.
+    pub membership: MembershipClient,
+
+    /// A client for the permissions service.
+    pub permissions: PermissionsClient,
+
+    /// A client for the programs service.
+    pub programs: ProgramsClient,
+
+    /// A client for the values service.
+    pub values: ValuesClient,
 }
 
 impl GrpcClients {

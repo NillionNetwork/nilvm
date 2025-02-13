@@ -10,7 +10,7 @@ pub mod proto {
 pub mod rust {
     use std::{fmt, str::FromStr};
 
-    use crate::{membership::rust::NodeId, ConvertProto, ProtoError, TryIntoRust};
+    use crate::{errors::InvalidHexId, membership::rust::NodeId, ConvertProto, ProtoError, TryIntoRust};
     use chrono::{DateTime, Utc};
     use sha2::{Digest, Sha256};
 
@@ -172,25 +172,13 @@ pub mod rust {
     }
 
     impl FromStr for UserId {
-        type Err = InvalidUserId;
+        type Err = InvalidHexId;
 
         fn from_str(id: &str) -> Result<Self, Self::Err> {
-            let id = hex::decode(id).map_err(|_| InvalidUserId::HexEncoding)?;
-            let id = id.try_into().map_err(|_| InvalidUserId::InvalidLength)?;
+            let id = hex::decode(id).map_err(|_| InvalidHexId::HexEncoding)?;
+            let id = id.try_into().map_err(|_| InvalidHexId::InvalidLength)?;
             Ok(Self(id))
         }
-    }
-
-    /// An error parsing a user id.
-    #[derive(Debug, thiserror::Error)]
-    pub enum InvalidUserId {
-        /// The hex encoding was malformed.
-        #[error("invalid hex encoding")]
-        HexEncoding,
-
-        /// The length of the identifier was wrong.
-        #[error("invalid user id length")]
-        InvalidLength,
     }
 
     #[cfg(test)]

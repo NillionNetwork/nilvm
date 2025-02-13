@@ -2,7 +2,7 @@ use anyhow::{anyhow, Error, Result};
 use clap::{error::ErrorKind, Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_utils::shell_completions::ShellCompletionsArgs;
 use nada_values_args::NadaValueArgs;
-use nillion_client::{Clear, NadaValue, UserId, Uuid};
+use nillion_client::{grpc::membership::NodeId, Clear, NadaValue, UserId, Uuid};
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
@@ -522,7 +522,15 @@ pub enum ConfigCommand {
     Payments,
 
     /// Get the cluster configuration
-    Cluster,
+    Cluster(ClusterConfigArgs),
+}
+
+/// Cluster configuration arguments.
+#[derive(Args)]
+pub struct ClusterConfigArgs {
+    /// Make the request for the cluster configuration to this specific node.
+    #[clap(long)]
+    pub node_id: Option<NodeId>,
 }
 
 /// Helper function for CLI to Parse a tuple from a string
