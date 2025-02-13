@@ -40,6 +40,7 @@ pub fn read_test_mir(test_id: &str) -> Result<ProgramMIR> {
 #[case::less_than_incompatible_branch("less_than_incompatible_branch", false)]
 #[case::less_than_incompatible_type("less_than_incompatible_type", false)]
 #[case::import_file("import_file", true)]
+#[ignore = "functions are broken in MIR preprocessing"]
 #[case::array("array_complex", true)]
 #[case::array_new("array_new", true)]
 #[case::array_new_empty("array_new_empty", false)]

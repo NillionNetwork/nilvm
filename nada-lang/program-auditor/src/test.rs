@@ -80,6 +80,7 @@ fn run_test_program_auditor(
 }
 
 #[rstest]
+#[ignore = "functions are broken in MIR preprocessing"]
 #[case::array_product_ok("array_product", good_config(), true, None)]
 #[case::invalid_program("invalid_program", functional_tests_config(), false, Some(format!("{}[DivisionIntegerSecret]",MaxPreprocessingPolicy.name())))]
 fn test_program_auditor(

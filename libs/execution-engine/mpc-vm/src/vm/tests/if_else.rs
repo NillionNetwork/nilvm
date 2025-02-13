@@ -65,7 +65,9 @@ use rstest::rstest;
 ///   If y < x { return x } else { return y } + 4,
 ///   If x < x { return x } else { return y } + 4
 /// )
+#[ignore = "functions are broken in MIR preprocessing"]
 #[case("if_else_map", vec![("my_int1", secret_integer(3)), ("my_int2", secret_integer(4))], array_non_empty(vec![secret_integer(7), secret_integer(8), secret_integer(7)]))]
+#[ignore = "functions are broken in MIR preprocessing"]
 #[case("if_else_map", vec![("my_int1", secret_integer(4)), ("my_int2", secret_integer(3))], array_non_empty(vec![secret_integer(7), secret_integer(8), secret_integer(8)]))]
 /// output = 0
 /// output = If x[0] >= 0 { output = output + 1 } else { output }

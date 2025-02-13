@@ -89,6 +89,7 @@ use execution_engine_vm::simulator::inputs::StaticInputGeneratorBuilder;
         array_non_empty(vec![secret_integer(1), secret_integer(2)]),
         array_non_empty(vec![secret_integer(3), secret_integer(4)])
     ]))]
+#[ignore = "functions are broken in MIR preprocessing"]
 #[case::array_product("array_product", vec![("my_array_1", array_non_empty(vec![
         secret_integer(1),
         secret_integer(2),

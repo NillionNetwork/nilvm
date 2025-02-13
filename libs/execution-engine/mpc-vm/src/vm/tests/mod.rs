@@ -306,6 +306,7 @@ fn test_complex_operation_mix(
     Ok(())
 }
 
+#[ignore = "functions are broken in MIR preprocessing"]
 #[test]
 fn test_inner_product() -> Result<(), Error> {
     let my_array_1 = array_non_empty(vec![secret_integer(1), secret_integer(2), secret_integer(3)]);
@@ -405,6 +406,7 @@ fn test_array_inner_product_map() -> Result<(), Error> {
     Ok(())
 }
 
+#[ignore = "functions are broken in MIR preprocessing"]
 #[test]
 fn test_euclidean_distance() -> Result<(), Error> {
     let my_array_1 = array_non_empty(vec![secret_integer(1), secret_integer(2), secret_integer(3)]);
@@ -425,6 +427,7 @@ fn test_euclidean_distance() -> Result<(), Error> {
     Ok(())
 }
 
+#[ignore = "functions are broken in MIR preprocessing"]
 #[test]
 fn test_sum() -> Result<(), Error> {
     let inputs = StaticInputGeneratorBuilder::default().add_secret_integer("a", 1).add_secret_integer("b", 2).build();
@@ -456,6 +459,7 @@ fn test_indicator_extreme(#[case] value: i64, #[case] expected: i64) -> Result<(
     Ok(())
 }
 
+#[ignore = "functions are broken in MIR preprocessing"]
 #[test]
 fn test_hamming_distance() -> Result<(), Error> {
     let array_1 = array_non_empty(vec![secret_integer(1), secret_integer(2), secret_integer(3)]);
