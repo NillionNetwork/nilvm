@@ -14,7 +14,6 @@ use rstest::rstest;
 #[case("nada_fn_min_unsigned", vec![("my_int1", secret_unsigned_integer(32)), ("my_int2", secret_unsigned_integer(81))], secret_unsigned_integer(32))]
 #[case("nada_fn_min_unsigned", vec![("my_int1", secret_unsigned_integer(81)), ("my_int2", secret_unsigned_integer(32))], secret_unsigned_integer(32))]
 /// Tests function reuse
-#[ignore = "functions are broken in MIR preprocessing"]
 #[case("nada_fn_reuse", vec![("my_int", secret_integer(7))], array_non_empty(vec![
         secret_integer(14),
         secret_integer(14),
