@@ -76,7 +76,7 @@ user-keypair = { path = "../libs/user-keypair" }
 nada-value = { path = "../libs/nada-value", features = ["protobuf-serde"] }
 grpc-channel = { path = "../libs/grpc-channel" }
 program-builder = { path = "../nada-lang/program-builder", default-features = false }
-log = "0.4.22"
+log = "0.4.25"
 
 [dev-dependencies]
 mockall = "0.13"
