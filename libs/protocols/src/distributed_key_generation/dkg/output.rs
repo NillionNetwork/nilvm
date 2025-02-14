@@ -1,6 +1,6 @@
 //! Outputs for the ECDSA DGK protocol.
-pub use ecdsa_keypair::privatekey::EcdsaPrivateKeyShare;
 use std::fmt::Display;
+pub use threshold_keypair::privatekey::ThresholdPrivateKeyShare;
 
 /// The ECDSA DGK output.
 #[derive(Clone)]

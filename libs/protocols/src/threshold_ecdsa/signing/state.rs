@@ -32,7 +32,7 @@ use std::{
     thread,
 };
 
-use ecdsa_keypair::{privatekey::EcdsaPrivateKeyShare, signature::EcdsaSignatureShare};
+use threshold_keypair::{privatekey::ThresholdPrivateKeyShare, signature::EcdsaSignatureShare};
 
 type EcdsaSignIncomingMessage = Incoming<Msg<Secp256k1, Sha256>>;
 type EcdsaSignOutgoingMessage = ProceedResult<Result<Presignature<Secp256k1>, SigningError>, Msg<Secp256k1, Sha256>>;
@@ -189,7 +189,7 @@ impl EcdsaSignState {
         eid: Vec<u8>,
         parties: Vec<PartyId>,
         party: PartyId,
-        incomplete_key_share: EcdsaPrivateKeyShare,
+        incomplete_key_share: ThresholdPrivateKeyShare<Secp256k1>,
         aux_info: EcdsaAuxInfo,
         message_digest: [u8; 32],
     ) -> Result<(Self, Vec<StateMachineMessage<Self>>), EcdsaSignError> {
@@ -239,7 +239,7 @@ impl EcdsaSignState {
         eid: Vec<u8>,
         party_index: u16,
         parties_len: u16,
-        incomplete_key_share: EcdsaPrivateKeyShare,
+        incomplete_key_share: ThresholdPrivateKeyShare<Secp256k1>,
         aux_info: EcdsaAuxInfo,
         sender_to_nillion_sm: Sender<ProceedResultType>,
         receiver_from_nillion_sm: Receiver<Incoming<Msg<Secp256k1, Sha256>>>,

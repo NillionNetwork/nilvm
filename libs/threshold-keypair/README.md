@@ -1,6 +1,6 @@
-# ecdsa-keypair
+# threshold-keypair
 
-Utilities for Threshold ECDSA signing:
+Utilities for Threshold signing:
 - Local keypair generation
 - Serialization/De-serialization
 

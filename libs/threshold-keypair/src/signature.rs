@@ -1,13 +1,26 @@
 //! The ecdsa signature implementation.
 
 use generic_ec::{curves::Secp256k1, NonZero, Scalar};
+use givre::{ciphersuite, signing::aggregate::Signature};
 use rand::rngs::OsRng;
 use std::{
     cmp::PartialEq,
     fmt,
     ops::{Add, Neg, Sub},
 };
+
 use thiserror::Error;
+
+/// A struct representing an EdDSA private key.
+/// The private key is a non-zero scalar defined on the ed25519 elliptic curve.
+/// Note: EddsaSignature is considered a public value, so we do not implement
+/// the corresponding share version, i.e., EddsaSignatureShare.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct EddsaSignature {
+    /// The signature
+    pub signature: Signature<ciphersuite::Ed25519>,
+}
 
 /// A struct representing an ECDSA private key.
 /// The private key is a non-zero scalar defined on the secp256k1 elliptic curve.
@@ -107,14 +120,14 @@ pub enum EcdsaSignatureError {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::{privatekey::EcdsaPrivateKey, publickey::EcdsaPublicKey};
+    use crate::{privatekey::ThresholdPrivateKey, publickey::ThresholdPublicKey};
     use cggmp21::signing::{DataToSign, Signature};
     use generic_ec::{coords::AlwaysHasAffineX, curves::Secp256k1, NonZero, Point, SecretScalar};
     use sha2::Sha256;
 
     fn generate_signature_and_shares_test(
         n: u16,
-    ) -> (DataToSign<Secp256k1>, EcdsaPrivateKey, EcdsaSignature, Vec<EcdsaSignatureShare>) {
+    ) -> (DataToSign<Secp256k1>, ThresholdPrivateKey<Secp256k1>, EcdsaSignature, Vec<EcdsaSignatureShare>) {
         // 1. Message generation
         let message_to_sign = b"Transaction with plenty of bitcoin";
         let message_digest = DataToSign::digest::<Sha256>(message_to_sign);
@@ -136,7 +149,7 @@ pub mod tests {
         let s = (message_digest.to_scalar() + r * sk_val.clone()) * k.invert().unwrap();
         let s = NonZero::from_scalar(s).unwrap();
         let signature = EcdsaSignature { r, s }.normalize_s();
-        let sk: EcdsaPrivateKey = EcdsaPrivateKey::from_scalar(sk_val).unwrap();
+        let sk: ThresholdPrivateKey<Secp256k1> = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk_val).unwrap();
 
         // 4. Generate shares of signature
         let signature_shares = signature.generate_shares(n).unwrap();
@@ -144,7 +157,7 @@ pub mod tests {
         (message_digest, sk, signature, signature_shares)
     }
 
-    fn verify(pk: EcdsaPublicKey, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
+    fn verify(pk: ThresholdPublicKey<Secp256k1>, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
         let EcdsaSignature { r, s } = signature;
         let cggmp_sig = Signature { r, s };
 
@@ -158,7 +171,7 @@ pub mod tests {
         let sig_reconstructed = EcdsaSignatureShare::recover(&sig_shares).unwrap();
         assert_eq!(sig_reconstructed, sig);
 
-        let pk = EcdsaPublicKey::from_private_key(&sk);
+        let pk = ThresholdPublicKey::<Secp256k1>::from_private_key(&sk);
 
         let verifies = verify(pk, sig_reconstructed, &msg_dig);
 

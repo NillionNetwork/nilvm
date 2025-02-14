@@ -7,8 +7,8 @@ use crate::{
 };
 use anyhow::{Error, Result};
 use basic_types::PartyId;
-use ecdsa_keypair::privatekey::EcdsaPrivateKeyShare;
 use rstest::rstest;
+use threshold_keypair::privatekey::ThresholdPrivateKeyShare;
 
 use cggmp21::generic_ec::{curves::Secp256k1, Point};
 
@@ -52,7 +52,7 @@ struct EcdsKeyGenConfig {
 /// - Each share has correct index and matching public info
 /// - Generator * private share equals corresponding public share
 /// - Reconstructed secret key matches the public key
-fn validate_key_shares(private_key_shares: &[EcdsaPrivateKeyShare]) {
+fn validate_key_shares(private_key_shares: &[ThresholdPrivateKeyShare<Secp256k1>]) {
     // Get the first key share to compare against
     let first_share = private_key_shares[0].as_inner();
     // Sort private_key_shares by the i component of the inner share

@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use basic_types::PartyId;
 use chrono::{Duration, Utc};
 use encoding::codec::MessageCodec;
+use generic_ec::curves::Secp256k1;
 use itertools::Itertools;
 use nada_value::{
     encrypted::{Encoded, Encrypted},
@@ -30,7 +31,7 @@ use node_api::{
     permissions::rust::{ComputePermission, Permissions},
 };
 use protocols::distributed_key_generation::dkg::{
-    output::{EcdsaPrivateKeyShare, KeyGenOutput},
+    output::{KeyGenOutput, ThresholdPrivateKeyShare},
     state::{KeyGenRoundStateMessage, KeyGenStateMessage, KeyGenStateMessageType},
     Curve, CurveProtocol, Secp256k1Protocol,
 };
@@ -175,7 +176,7 @@ impl CurveProtocolExt for Secp256k1Protocol {
 
 fn create_private_key_record(
     metadata: &StateMetadata,
-    element: EcdsaPrivateKeyShare,
+    element: ThresholdPrivateKeyShare<Secp256k1>,
 ) -> anyhow::Result<UserValuesRecord> {
     let user_id = metadata
         .user_outputs

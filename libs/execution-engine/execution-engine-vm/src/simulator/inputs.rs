@@ -5,7 +5,6 @@ use std::{cell::RefCell, collections::HashMap, ops::DerefMut};
 use crate::vm::instructions::Instruction;
 use anyhow::{anyhow, Error, Ok};
 use basic_types::PartyId;
-use ecdsa_keypair::privatekey::EcdsaPrivateKey;
 use jit_compiler::Program;
 use math_lib::modular::SafePrime;
 use nada_compiler_backend::program_contract::{Input as ProgramContractInput, ProgramContract};
@@ -17,6 +16,7 @@ use nada_value::{
 use num_bigint::RandBigInt;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use shamir_sharing::secret_sharer::{SafePrimeSecretSharer, ShamirSecretSharer};
+use threshold_keypair::{generic_ec::curves::Secp256k1, privatekey::ThresholdPrivateKey};
 
 /// The inputs for a program.
 #[derive(Default, Debug)]
@@ -240,7 +240,7 @@ impl StaticInputGeneratorBuilder {
     }
 
     /// Adds a new ecdsa digest message.
-    pub fn add_ecdsa_private_key<S>(self, name: S, value: EcdsaPrivateKey) -> Self
+    pub fn add_ecdsa_private_key<S>(self, name: S, value: ThresholdPrivateKey<Secp256k1>) -> Self
     where
         S: Into<String>,
     {

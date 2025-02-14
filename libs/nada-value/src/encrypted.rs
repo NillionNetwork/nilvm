@@ -11,15 +11,15 @@ use std::{
 };
 
 use basic_types::{jar::PartyJar, PartyId};
-use ecdsa_keypair::{
-    privatekey::{EcdsaPrivateKey, EcdsaPrivateKeyShare},
-    publickey::EcdsaPublicKeyArray,
-    signature::EcdsaSignatureShare,
-};
 use math_lib::modular::{EncodedModularNumber, ModularNumber, SafePrime};
 use shamir_sharing::{
     protocol::PolyDegree,
     secret_sharer::{PartyShares, SafePrimeSecretSharer, SecretSharer, SecretSharerProperties, ShamirSecretSharer},
+};
+use threshold_keypair::{
+    privatekey::{ThresholdPrivateKey, ThresholdPrivateKeyShare},
+    publickey::EcdsaPublicKeyArray,
+    signature::EcdsaSignatureShare,
 };
 
 use crate::{
@@ -28,6 +28,7 @@ use crate::{
     errors::{ClearToEncryptedError, DecodingError, EncodingError, EncryptedToClearError},
     NadaValue, NeverPrimitiveType,
 };
+use generic_ec::curves::Secp256k1;
 use nada_type::{NadaType, PrimitiveTypes, TypeError};
 
 /// Share generic over the Prime
@@ -89,7 +90,7 @@ impl PrimitiveTypes for Encrypted<Encoded> {
     // is the same as the non encoded version. These ecdsa shares do not
     // depend on any generic prime.
     // Ecdsa Private Key
-    type EcdsaPrivateKey = EcdsaPrivateKeyShare;
+    type EcdsaPrivateKey = ThresholdPrivateKeyShare<Secp256k1>;
 
     // Ecdsa Signature
     type EcdsaSignature = EcdsaSignatureShare;
@@ -119,7 +120,7 @@ impl<T: SafePrime> PrimitiveTypes for Encrypted<T> {
     // is the same as the non encoded version. These ecdsa shares do not
     // depend on any generic prime.
     // Ecdsa Private Key
-    type EcdsaPrivateKey = EcdsaPrivateKeyShare;
+    type EcdsaPrivateKey = ThresholdPrivateKeyShare<Secp256k1>;
 
     // Ecdsa Signature
     type EcdsaSignature = EcdsaSignatureShare;
@@ -378,8 +379,9 @@ where
             let mut party_jar = PartyJar::new(n_usize);
 
             let party_ids = secret_sharer.parties();
-            let shares: Vec<EcdsaPrivateKeyShare> = value.generate_shares(n_u16)?;
-            let zipped: Vec<(PartyId, EcdsaPrivateKeyShare)> = party_ids.into_iter().zip(shares).collect();
+            let shares: Vec<ThresholdPrivateKeyShare<Secp256k1>> = value.generate_shares(n_u16)?;
+            let zipped: Vec<(PartyId, ThresholdPrivateKeyShare<Secp256k1>)> =
+                party_ids.into_iter().zip(shares).collect();
 
             // Note: Each [`EcdsaPrivateKeyShare`] corresponds to an indexed party that must consistently align
             // across all signature-related protocols (e.g., distributed key generation, auxiliary information generation,
@@ -745,7 +747,7 @@ fn encrypted_values_to_ecdsa_private_key(
         }
     }
 
-    let ecdsa_private_key = EcdsaPrivateKey::recover(ecdsa_private_key_shares)
+    let ecdsa_private_key = ThresholdPrivateKey::<Secp256k1>::recover(ecdsa_private_key_shares)
         .map_err(|_| EncryptedToClearError::SharedSecretRecovery(NadaType::EcdsaPrivateKey.to_string()))?;
     Ok(NadaValue::new_ecdsa_private_key(ecdsa_private_key))
 }
@@ -826,12 +828,14 @@ mod tests {
     };
     use anyhow::Error;
     use basic_types::PartyId;
-    use ecdsa_keypair::{privatekey::EcdsaPrivateKey, publickey::EcdsaPublicKeyArray, signature::EcdsaSignature};
     use generic_ec::{curves::Secp256k1, NonZero, Scalar, SecretScalar};
     use math_lib::modular::{ModularNumber, U64SafePrime};
     use rand_chacha::rand_core::OsRng;
     use rstest::rstest;
     use shamir_sharing::secret_sharer::{test_secret_sharer, ShamirSecretSharer};
+    use threshold_keypair::{
+        privatekey::ThresholdPrivateKey, publickey::EcdsaPublicKeyArray, signature::EcdsaSignature,
+    };
 
     type Prime = U64SafePrime;
 
@@ -906,7 +910,7 @@ mod tests {
 
         // Create ecdsa private key Nada value
         let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-        let ecdsa_sk = EcdsaPrivateKey::from_scalar(sk).unwrap();
+        let ecdsa_sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk).unwrap();
         let ecdsa_sk = NadaValue::new_ecdsa_private_key(ecdsa_sk);
 
         let party_jar = nada_value_clear_to_nada_value_encrypted(&ecdsa_sk, &secret_sharer)?;
@@ -1025,7 +1029,7 @@ mod tests {
 
         // Create ecdsa private key
         let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-        let ecdsa_sk = EcdsaPrivateKey::from_scalar(sk).unwrap();
+        let ecdsa_sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk).unwrap();
         let clear_value_ecdsa_sk = NadaValue::new_ecdsa_private_key(ecdsa_sk);
 
         let secret_sharer = secret_sharer();

@@ -716,17 +716,17 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7371c7cb9c13f63c49d8637cdb47b22819e586ac2780f01151f2b8ea591ec7ce"
 dependencies = [
- "cggmp21-keygen",
+ "cggmp21-keygen 0.4.0",
  "digest 0.10.7",
  "futures",
  "generic-ec",
  "generic-ec-zkp",
  "hex",
- "key-share",
+ "key-share 0.5.2",
  "paillier-zk",
  "rand_core",
  "rand_hash",
- "round-based",
+ "round-based 0.3.2",
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
@@ -745,9 +745,30 @@ dependencies = [
  "generic-ec",
  "generic-ec-zkp",
  "hex",
- "key-share",
+ "key-share 0.5.2",
  "rand_core",
- "round-based",
+ "round-based 0.3.2",
+ "serde",
+ "serde_with 2.3.3",
+ "sha2 0.10.8",
+ "thiserror 1.0.65",
+ "udigest",
+]
+
+[[package]]
+name = "cggmp21-keygen"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaa8c850290c494f951abe0350e56c31e4f5664863490197490ff48cb825447d"
+dependencies = [
+ "digest 0.10.7",
+ "displaydoc",
+ "generic-ec",
+ "generic-ec-zkp",
+ "hex",
+ "key-share 0.6.0",
+ "rand_core",
+ "round-based 0.4.1",
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
@@ -1272,6 +1293,8 @@ dependencies = [
  "curve25519-dalek-derive",
  "digest 0.10.7",
  "fiat-crypto",
+ "group",
+ "rand_core",
  "rustc_version",
  "subtle",
  "zeroize",
@@ -1520,24 +1543,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ecdsa-keypair"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "bson",
- "cggmp21",
- "generic-ec",
- "key-share",
- "rand",
- "rstest",
- "serde",
- "serde_with 3.12.0",
- "sha2 0.10.8",
- "subtle",
- "thiserror 1.0.65",
-]
-
-[[package]]
 name = "ed25519"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1762,7 +1767,6 @@ dependencies = [
  "basic-types",
  "bincode",
  "clap",
- "ecdsa-keypair",
  "encoding",
  "humansize",
  "humantime",
@@ -1786,6 +1790,7 @@ dependencies = [
  "state-machine-derive",
  "test-programs",
  "thiserror 1.0.65",
+ "threshold-keypair",
  "uuid",
 ]
 
@@ -1953,7 +1958,6 @@ version = "0.1.0"
 dependencies = [
  "cggmp21",
  "client-fixture",
- "ecdsa-keypair",
  "generic-ec",
  "k256",
  "nillion-chain-client",
@@ -1965,6 +1969,7 @@ dependencies = [
  "rstest",
  "sha2 0.10.8",
  "test-programs",
+ "threshold-keypair",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -2136,8 +2141,10 @@ version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e663405a17b229dede990904edcfd2056cf6641f1240869a1f44fa13bd4ee4d"
 dependencies = [
+ "curve25519-dalek",
  "elliptic-curve",
  "generic-ec-core",
+ "group",
  "k256",
  "rand_core",
  "sha2 0.10.8",
@@ -2177,6 +2184,24 @@ name = "gimli"
 version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
+
+[[package]]
+name = "givre"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af482004b1f70b5b3b584c3fc3733dd24c71f8c0081a6087f49e09746746788a"
+dependencies = [
+ "cggmp21-keygen 0.5.0",
+ "digest 0.10.7",
+ "generic-ec",
+ "hd-wallet",
+ "k256",
+ "key-share 0.6.0",
+ "rand_core",
+ "serde",
+ "sha2 0.10.8",
+ "static_assertions",
+]
 
 [[package]]
 name = "glob"
@@ -2362,6 +2387,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ba4ff7128dee98c7dc9794b6a411377e1404dba1c97deb8d1a55297bd25d8af"
 dependencies = [
  "hashbrown 0.14.5",
+]
+
+[[package]]
+name = "hd-wallet"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6522551bb35937363845f39a6d4c49e60bdb35a8f7154ebdd078cab50be97992"
+dependencies = [
+ "generic-array",
+ "generic-ec",
+ "hmac",
+ "sha2 0.10.8",
+ "subtle",
 ]
 
 [[package]]
@@ -3042,6 +3080,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "key-share"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ee8e510bb9f738ac400b7dedd98aeb23677c6b48cd3b1b682651ea5091f4282"
+dependencies = [
+ "displaydoc",
+ "generic-ec",
+ "generic-ec-zkp",
+ "hex",
+ "rand_core",
+ "serde",
+ "serde_with 2.3.3",
+ "thiserror 1.0.65",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3317,7 +3371,6 @@ dependencies = [
  "anyhow",
  "basic-types",
  "cggmp21",
- "ecdsa-keypair",
  "execution-engine-vm",
  "generic-ec",
  "itertools 0.13.0",
@@ -3337,6 +3390,7 @@ dependencies = [
  "state-machine",
  "strum",
  "test-programs",
+ "threshold-keypair",
 ]
 
 [[package]]
@@ -3443,11 +3497,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "basic-types",
- "ecdsa-keypair",
  "enum-as-inner",
  "generic-ec",
  "indexmap 2.6.0",
- "key-share",
+ "key-share 0.5.2",
  "math_lib",
  "nada-type",
  "node-api",
@@ -3461,6 +3514,7 @@ dependencies = [
  "shamir-sharing",
  "strum_macros",
  "thiserror 1.0.65",
+ "threshold-keypair",
  "types-proc-macros",
 ]
 
@@ -3575,15 +3629,15 @@ name = "nillion-client-core"
 version = "0.1.0"
 dependencies = [
  "basic-types",
- "ecdsa-keypair",
  "generic-ec",
- "key-share",
+ "key-share 0.5.2",
  "math_lib",
  "mpc-vm",
  "nada-value",
  "program-auditor",
  "rand_chacha",
  "shamir-sharing",
+ "threshold-keypair",
 ]
 
 [[package]]
@@ -3663,7 +3717,6 @@ dependencies = [
  "clap-utils",
  "config",
  "ctor",
- "ecdsa-keypair",
  "encoding",
  "env_logger",
  "execution-engine-vm",
@@ -3713,6 +3766,7 @@ dependencies = [
  "test-with",
  "testcontainers",
  "thiserror 1.0.65",
+ "threshold-keypair",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -4621,17 +4675,16 @@ dependencies = [
  "basic-types",
  "cggmp21",
  "criterion",
- "ecdsa-keypair",
  "gmp-mpfr-sys",
  "itertools 0.13.0",
- "key-share",
+ "key-share 0.5.2",
  "math_lib",
  "num-bigint",
  "once_cell",
  "rand",
  "rand_chacha",
  "rayon",
- "round-based",
+ "round-based 0.3.2",
  "rstest",
  "serde",
  "serde_json",
@@ -4641,6 +4694,7 @@ dependencies = [
  "state-machine-derive",
  "state-machine-macros",
  "thiserror 1.0.65",
+ "threshold-keypair",
  "uuid",
 ]
 
@@ -5102,6 +5156,19 @@ dependencies = [
  "phantom-type 0.3.1",
  "round-based-derive",
  "thiserror 1.0.65",
+ "tracing",
+]
+
+[[package]]
+name = "round-based"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da76edf50de0a9d6911fc79261bb04cc9f3f3a375e0201799f5edf58499af341"
+dependencies = [
+ "futures-util",
+ "phantom-type 0.3.1",
+ "round-based-derive",
+ "thiserror 2.0.3",
  "tracing",
 ]
 
@@ -6069,6 +6136,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "stringprep"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6521,6 +6594,25 @@ checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if",
  "once_cell",
+]
+
+[[package]]
+name = "threshold-keypair"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bson",
+ "cggmp21",
+ "generic-ec",
+ "givre",
+ "key-share 0.5.2",
+ "rand",
+ "rstest",
+ "serde",
+ "serde_with 3.12.0",
+ "sha2 0.10.8",
+ "subtle",
+ "thiserror 1.0.65",
 ]
 
 [[package]]

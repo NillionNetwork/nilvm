@@ -4,11 +4,11 @@ use cggmp21::{
     generic_ec::{curves::Secp256k1, Scalar, SecretScalar},
     signing::{DataToSign, Signature},
 };
-use ecdsa_keypair::{privatekey::EcdsaPrivateKey, publickey::EcdsaPublicKey, signature::EcdsaSignature};
 use execution_engine_vm::simulator::inputs::StaticInputGeneratorBuilder;
 use nada_value::NadaValue;
+use threshold_keypair::{privatekey::ThresholdPrivateKey, publickey::ThresholdPublicKey, signature::EcdsaSignature};
 
-fn verify(pk: EcdsaPublicKey, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
+fn verify(pk: ThresholdPublicKey<Secp256k1>, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
     let EcdsaSignature { r, s } = signature;
     let cggmp_sig = Signature { r, s };
 
@@ -19,7 +19,7 @@ fn verify(pk: EcdsaPublicKey, signature: EcdsaSignature, message: &DataToSign<Se
 // Since this is probabilistic, we're checking if the signature is valid
 #[test]
 fn ecdsa_sign() -> Result<(), Error> {
-    let sk = EcdsaPrivateKey::from_scalar(SecretScalar::random(&mut rand::thread_rng())).unwrap();
+    let sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(SecretScalar::random(&mut rand::thread_rng())).unwrap();
     let digest = [
         76, 111, 114, 101, 109, 32, 105, 112, 115, 117, 109, 32, 100, 111, 108, 111, 114, 32, 115, 105, 116, 32, 97,
         109, 101, 116, 44, 32, 99, 111, 110, 115,
@@ -33,7 +33,7 @@ fn ecdsa_sign() -> Result<(), Error> {
     assert_eq!(outputs.len(), 1);
     let output = outputs.get("my_output").unwrap();
     if let NadaValue::EcdsaSignature(signature) = output {
-        let pk = EcdsaPublicKey::from_private_key(&sk);
+        let pk = ThresholdPublicKey::<Secp256k1>::from_private_key(&sk);
         let digest_data_to_sign = DataToSign::from_scalar(Scalar::from_be_bytes_mod_order(digest));
         let verifies = verify(pk, signature.clone(), &digest_data_to_sign);
         assert!(verifies);
@@ -46,7 +46,7 @@ fn ecdsa_sign() -> Result<(), Error> {
 // Since this is probabilistic, we're checking if the signature is valid
 #[test]
 fn ecdsa_sign_complex() -> Result<(), Error> {
-    let sk = EcdsaPrivateKey::from_scalar(SecretScalar::random(&mut rand::thread_rng())).unwrap();
+    let sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(SecretScalar::random(&mut rand::thread_rng())).unwrap();
     let digest = [
         76, 111, 114, 101, 109, 32, 105, 112, 115, 117, 109, 32, 100, 111, 108, 111, 114, 32, 115, 105, 116, 32, 97,
         109, 101, 116, 44, 32, 99, 111, 110, 115,
@@ -65,7 +65,7 @@ fn ecdsa_sign_complex() -> Result<(), Error> {
     assert_eq!(output_2, &secret_boolean(true));
 
     if let NadaValue::EcdsaSignature(signature) = output_1 {
-        let pk = EcdsaPublicKey::from_private_key(&sk);
+        let pk = ThresholdPublicKey::<Secp256k1>::from_private_key(&sk);
         let digest_data_to_sign = DataToSign::from_scalar(Scalar::from_be_bytes_mod_order(digest));
         let verifies = verify(pk, signature.clone(), &digest_data_to_sign);
         assert!(verifies);

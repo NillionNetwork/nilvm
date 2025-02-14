@@ -1,6 +1,5 @@
 use cggmp21::signing::{DataToSign, Signature};
 use client_fixture::compute::{ClientsMode, ComputeValidator};
-use ecdsa_keypair::{privatekey::EcdsaPrivateKey, publickey::EcdsaPublicKey, signature::EcdsaSignature};
 use generic_ec::{curves::Secp256k1, NonZero, Scalar, SecretScalar};
 use k256::{
     ecdsa::{signature::Verifier, Signature as ecdsaSignature, SigningKey as ecdsaSigningKey},
@@ -33,6 +32,7 @@ use rand_chacha::rand_core::OsRng;
 use rstest::rstest;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use threshold_keypair::{privatekey::ThresholdPrivateKey, publickey::ThresholdPublicKey, signature::EcdsaSignature};
 use tokio::sync::{mpsc::channel, Mutex};
 use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
@@ -136,9 +136,9 @@ async fn update_values(nodes: &Nodes) {
     // Create ecdsa private key Nada value
     let mut csprng = OsRng;
     let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-    let ecdsa_sk = EcdsaPrivateKey::from_scalar(sk).unwrap();
+    let ecdsa_sk = ThresholdPrivateKey::from_scalar(sk).unwrap();
     let sk_update = SecretScalar::<Secp256k1>::random(&mut csprng);
-    let ecdsa_sk_update = EcdsaPrivateKey::from_scalar(sk_update).unwrap();
+    let ecdsa_sk_update = ThresholdPrivateKey::from_scalar(sk_update).unwrap();
 
     let client = nodes.build_client().await;
     let store_identifier = client
@@ -205,7 +205,7 @@ async fn retrieve_values(nodes: &Nodes) {
     // Create ecdsa private key Nada value
     let mut csprng = OsRng;
     let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-    let ecdsa_sk = EcdsaPrivateKey::from_scalar(sk).unwrap();
+    let ecdsa_sk = ThresholdPrivateKey::from_scalar(sk).unwrap();
 
     let expected_values: HashMap<String, NadaValue<Clear>> = [
         ("a".into(), NadaValue::new_secret_integer(42)),
@@ -243,9 +243,9 @@ async fn store_retrieve_update_ecdsa_private_keys_digest_msg_and_signature(nodes
     // Create ecdsa private key
     let mut csprng = OsRng;
     let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-    let ecdsa_sk = EcdsaPrivateKey::from_scalar(sk).unwrap();
+    let ecdsa_sk = ThresholdPrivateKey::from_scalar(sk).unwrap();
     let sk_update = SecretScalar::<Secp256k1>::random(&mut csprng);
-    let ecdsa_sk_update = EcdsaPrivateKey::from_scalar(sk_update).unwrap();
+    let ecdsa_sk_update = ThresholdPrivateKey::from_scalar(sk_update).unwrap();
     // Create ecdsa digest message
     let msg_digest: [u8; 32] =
         [0, 11, 1, 49, 1, 8, 42, 0, 0, 0, 0, 0, 0, 0, 0, 2, 49, 48, 15, 11, 8, 11, 3, 2, 5, 56, 18, 39, 20, 0, 21, 42];
@@ -536,7 +536,7 @@ async fn invoke_compute(nodes: &Nodes, #[case] program_name: &str) {
     ComputeValidator::builder().program_id(program_id).program(program, bytecode).run(nodes).await;
 }
 
-fn verify(pk: EcdsaPublicKey, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
+fn verify(pk: ThresholdPublicKey<Secp256k1>, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
     let EcdsaSignature { r, s } = signature;
     let cggmp_sig = Signature { r, s };
 
@@ -559,8 +559,8 @@ async fn tecdsa_sign(nodes: &Nodes) {
     let sk_bytes: &[u8] = &external_sk.to_bytes();
 
     // cggmp21 library keys
-    let cggmp21_sk = EcdsaPrivateKey::from_bytes(&sk_bytes).expect("ecdsa private from bytes have failed");
-    let cggmp21_pk = EcdsaPublicKey::from_private_key(&cggmp21_sk);
+    let cggmp21_sk = ThresholdPrivateKey::from_be_bytes(&sk_bytes).expect("ecdsa private from bytes have failed");
+    let cggmp21_pk = ThresholdPublicKey::from_private_key(&cggmp21_sk);
 
     let client = nodes.build_client().await;
     let compute_id = client
@@ -696,7 +696,7 @@ async fn dkg_and_retrieve_private_key(nodes: &Nodes) {
 
     // Check public key provided by compute matches public key derived from private key
     let external_sk = k256::SecretKey::from_bytes(
-        private_key.clone().to_bytes().as_slice().try_into().expect("Invalid private key length"),
+        private_key.clone().to_be_bytes().as_slice().try_into().expect("Invalid private key length"),
     )
     .expect("failed to convert private key to external type");
     let external_pk = external_sk.public_key();
@@ -760,7 +760,7 @@ async fn dkg_and_sign(nodes: &Nodes) {
     let external_pk = k256::ecdsa::VerifyingKey::from_sec1_bytes(&public_key).expect("failed to convert public key");
 
     // cggmp21 library keys
-    let cggmp21_pk = EcdsaPublicKey::from_bytes(&public_key).expect("failed to convert public key to cggmp21 type");
+    let cggmp21_pk = ThresholdPublicKey::from_bytes(&public_key).expect("failed to convert public key to cggmp21 type");
 
     let compute_id = client
         .invoke_compute()

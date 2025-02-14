@@ -31,7 +31,7 @@ state-machine = { path = "../../state-machine" }
 state-machine-derive = { path = "../../state-machine-derive" }
 shamir-sharing = { path = "../../shamir-sharing" }
 encoding = { path = "../../encoding" }
-ecdsa-keypair = { path = "../../ecdsa-keypair" }
+threshold-keypair = { path = "../../threshold-keypair" }
 
 [dev-dependencies]
 rstest = "0.21"

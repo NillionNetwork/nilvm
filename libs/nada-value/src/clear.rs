@@ -4,9 +4,10 @@
 //! regardless of whether they are secret or not. They represent the data types used at the client / dealer end.
 
 use crate::{NadaInt, NadaUint, NadaValue, NeverPrimitiveType};
-use ecdsa_keypair::{privatekey::EcdsaPrivateKey, publickey::EcdsaPublicKeyArray, signature::EcdsaSignature};
+use generic_ec::curves::Secp256k1;
 use nada_type::PrimitiveTypes;
 use std::fmt::Display;
+use threshold_keypair::{privatekey::ThresholdPrivateKey, publickey::EcdsaPublicKeyArray, signature::EcdsaSignature};
 
 /// Clear values are the values provided by the user, in clear (plaintext) form,
 /// regardless of whether they are secret or not. They represent the data types used at the client / dealer end.
@@ -36,7 +37,7 @@ impl PrimitiveTypes for Clear {
     type ShamirShareBoolean = NeverPrimitiveType;
 
     // Ecdsa private key
-    type EcdsaPrivateKey = EcdsaPrivateKey;
+    type EcdsaPrivateKey = ThresholdPrivateKey<Secp256k1>;
 
     // Ecdsa signature
     type EcdsaSignature = EcdsaSignature;

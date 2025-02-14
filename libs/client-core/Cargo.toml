@@ -7,7 +7,7 @@ edition = "2021"
 key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
 
 basic-types = { path = "../basic-types" }
-ecdsa-keypair = { path = "../../libs/ecdsa-keypair", default-features = false }
+threshold-keypair = { path = "../../libs/threshold-keypair", default-features = false }
 mpc-vm = { path = "../execution-engine/mpc-vm", default-features = false }
 math_lib = { path = "../math", default-features = false }
 nada-value = { path = "../nada-value", default-features = false }

@@ -4,13 +4,13 @@ use crate::{
     encrypted::{BlobPrimitiveType, Encoded, Encrypted},
     NadaValue,
 };
-use ecdsa_keypair::{privatekey::EcdsaPrivateKeyShare, signature::EcdsaSignatureShare};
 use generic_ec::{curves::Secp256k1, serde::CurveName, NonZero, Point, Scalar, SecretScalar};
 use key_share::{DirtyCoreKeyShare, DirtyKeyInfo, Validate};
 use math_lib::modular::{EncodedModularNumber, EncodedModulo};
 use nada_type::{NadaType, TypeError};
 use node_api::values::proto::value::{self, value::Value, ShamirShare};
 use std::collections::HashMap;
+use threshold_keypair::{privatekey::ThresholdPrivateKeyShare, signature::EcdsaSignatureShare};
 
 /// Encode nada values into protobuf.
 pub fn nada_values_to_protobuf(
@@ -181,7 +181,7 @@ pub(crate) fn nada_value_from_protobuf(
             }
             .validate()
             .map_err(|e| ValueDecodeError::InvalidEcdsaPrivateKey(e.to_string()))?;
-            NadaValue::new_ecdsa_private_key(EcdsaPrivateKeyShare::new(share))
+            NadaValue::new_ecdsa_private_key(ThresholdPrivateKeyShare::<Secp256k1>::new(share))
         }
         Value::EcdsaSignatureShare(share) => NadaValue::new_ecdsa_signature(EcdsaSignatureShare {
             r: Scalar::from_le_bytes(&share.r).map_err(|_| ValueDecodeError::InvalidEcdsaSignatureScalar("r"))?,
@@ -374,10 +374,10 @@ mod tests {
     use super::*;
     use crate::{clear::Clear, encoders::EncodableWithP, encrypted::nada_values_clear_to_nada_values_encrypted};
     use basic_types::PartyId;
-    use ecdsa_keypair::{privatekey::EcdsaPrivateKey, signature::EcdsaSignature};
     use math_lib::modular::U64SafePrime;
     use rand::thread_rng;
     use shamir_sharing::secret_sharer::ShamirSecretSharer;
+    use threshold_keypair::{privatekey::ThresholdPrivateKey, signature::EcdsaSignature};
 
     // This constructs a map that contains all nada values and serializes them.
     fn generate_nada_values() -> HashMap<String, NadaValue<Encrypted<Encoded>>> {
@@ -405,7 +405,10 @@ mod tests {
         values.insert(
             values.len().to_string(),
             NadaValue::new_ecdsa_private_key(
-                EcdsaPrivateKey::from_scalar(SecretScalar::<Secp256k1>::random(&mut rand::thread_rng())).unwrap(),
+                ThresholdPrivateKey::<Secp256k1>::from_scalar(SecretScalar::<Secp256k1>::random(
+                    &mut rand::thread_rng(),
+                ))
+                .unwrap(),
             ),
         );
         values.insert(values.len().to_string(), NadaValue::new_ecdsa_digest_message([42; 32]));

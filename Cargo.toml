@@ -22,7 +22,7 @@ members = [
     "libs/execution-engine/mpc-vm",
     "libs/test-logger",
     "libs/user-keypair",
-    "libs/ecdsa-keypair",
+    "libs/threshold-keypair",
     "libs/nada-values-args",
     "libs/client-metrics",
     "libs/nillion-chain/client",

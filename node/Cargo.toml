@@ -17,6 +17,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "signa
 tokio-stream = "0.1"
 tokio-util = "0.7"
 governor = "0.6"
+generic-ec = { version = "0.4.2", features = ["alloc", "curve-secp256k1"] }
 http = "1.1"
 hex = "0.4"
 itertools = "0.13.0"
@@ -57,7 +58,7 @@ tracing-appender = { version = "0.2" }
 basic-types = { path = "../libs/basic-types" }
 build-info = { path = "../libs/build-info" }
 clap-utils = { path = "../libs/clap-utils" }
-ecdsa-keypair = { path = "../libs/ecdsa-keypair" }
+threshold-keypair = { path = "../libs/threshold-keypair" }
 encoding = { path = "../libs/encoding" }
 execution-engine-vm = { path = "../libs/execution-engine/execution-engine-vm"}
 mpc-vm = { path = "../libs/execution-engine/mpc-vm", features = ["vm", "serde"] }
@@ -85,7 +86,6 @@ ctor = "0.2.8"
 env_logger = "0.11.5"
 testcontainers = { version = "0.23" }
 protocols = { path = "../libs/protocols" }
-generic-ec = "0.4.3"
 rand_chacha = "0.3.1"
 test-programs = { path = "../nada-lang/test-programs" }
 test-with = { version = "0.14", default-features = false }

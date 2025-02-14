@@ -15,7 +15,7 @@ client-fixture = { path = "../fixtures/client" }
 nillion-chain-client = { path = "../../libs/nillion-chain/client" }
 nillion-client = { path = "../../client" }
 node-api = { path = "../../libs/node-api", features = ["rust-types"] }
-ecdsa-keypair = { path = "../../libs/ecdsa-keypair" }
+threshold-keypair = { path = "../../libs/threshold-keypair" }
 nodes-fixtures = { path = "../fixtures/nodes" }
 tracing-fixture = { path = "../fixtures/tracing" }
 test-programs = { path = "../../nada-lang/test-programs" }

@@ -1,13 +1,13 @@
 //! nada-value errors
 use crate::encoders::EncodeVariableError;
 use basic_types::jar::DuplicatePartyShare;
-use ecdsa_keypair::{privatekey::EcdsaPrivateKeyError, signature::EcdsaSignatureError};
 use math_lib::modular::{DecodeError, Overflow};
 use nada_type::{NadaType, TypeError};
 use num_bigint::TryFromBigIntError;
 use shamir_sharing::secret_sharer::GenerateSharesError;
 use std::{num::TryFromIntError, string::FromUtf8Error};
 use thiserror::Error;
+use threshold_keypair::{privatekey::ThresholdPrivateKeyError, signature::EcdsaSignatureError};
 
 /// Errors that occur during the encoding
 #[derive(Error, Debug)]
@@ -42,7 +42,7 @@ pub enum ClearToEncryptedError {
 
     /// Ecdsa shares generation error.
     #[error(transparent)]
-    GenerateEcdsaSharesError(#[from] EcdsaPrivateKeyError),
+    GenerateEcdsaSharesError(#[from] ThresholdPrivateKeyError),
 
     /// Ecdsa shares generation error due to large number of parties.
     #[error("Number of parties requested is too large for u16")]

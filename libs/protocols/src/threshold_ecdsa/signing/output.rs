@@ -1,7 +1,7 @@
 //! Outputs for the ECDSA signing protocol.
 use cggmp21::signing::SigningError;
-use ecdsa_keypair::signature::EcdsaSignatureShare;
 use std::fmt::Display;
+use threshold_keypair::signature::EcdsaSignatureShare;
 
 /// The ECDSA signing output.
 pub enum EcdsaSignatureShareOutput {

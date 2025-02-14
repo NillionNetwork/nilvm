@@ -5,8 +5,8 @@
 #![deny(exported_private_dependencies, missing_docs)]
 
 pub mod values;
-pub use ecdsa_keypair::{generic_ec, privatekey, publickey, signature};
 pub use key_share;
+pub use threshold_keypair::{generic_ec, privatekey, publickey, signature};
 
 /// Programs utilities
 pub mod programs {

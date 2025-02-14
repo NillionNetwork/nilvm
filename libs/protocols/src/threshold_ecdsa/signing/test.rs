@@ -10,27 +10,27 @@ use crate::{
 };
 use anyhow::{anyhow, Error, Result};
 use basic_types::PartyId;
-use ecdsa_keypair::{privatekey::EcdsaPrivateKeyShare, signature::EcdsaSignatureShare};
 use rstest::rstest;
+use threshold_keypair::{privatekey::ThresholdPrivateKeyShare, signature::EcdsaSignatureShare};
 
 use crate::threshold_ecdsa::{auxiliary_information::fake::FakeEcdsaAuxInfo, util::SortedParties};
 use cggmp21::{
     generic_ec::{curves::Secp256k1, SecretScalar},
     signing::{DataToSign, Signature},
 };
-use ecdsa_keypair::{privatekey::EcdsaPrivateKey, publickey::EcdsaPublicKey, signature::EcdsaSignature};
 use rand_chacha::rand_core::OsRng;
 use sha2::Sha256;
 use shamir_sharing::secret_sharer::PartyShares;
+use threshold_keypair::{privatekey::ThresholdPrivateKey, publickey::ThresholdPublicKey, signature::EcdsaSignature};
 
 struct EcdsaSignProtocol {
     eid: Vec<u8>,
-    private_key: EcdsaPrivateKey,
+    private_key: ThresholdPrivateKey<Secp256k1>,
     message_digest: [u8; 32],
 }
 
 impl EcdsaSignProtocol {
-    fn new(eid: Vec<u8>, private_key: EcdsaPrivateKey, message_digest: [u8; 32]) -> Self {
+    fn new(eid: Vec<u8>, private_key: ThresholdPrivateKey<Secp256k1>, message_digest: [u8; 32]) -> Self {
         Self { eid, private_key, message_digest }
     }
 
@@ -71,7 +71,7 @@ impl Protocol for EcdsaSignProtocol {
         let aux_info = self.create_aux_info(&parties).map_err(|e| anyhow!("Aux info creation failed: {e}"))?;
 
         let pk_shares = self.private_key.generate_shares(n).map_err(|e| anyhow!("generation shares failed: {e}"))?;
-        let mut private_key_shares: PartyShares<EcdsaPrivateKeyShare> = PartyShares::default();
+        let mut private_key_shares: PartyShares<ThresholdPrivateKeyShare<Secp256k1>> = PartyShares::default();
         for (party_id, pk_share) in sorted_parties.parties().iter().zip(pk_shares.iter()) {
             private_key_shares.insert(party_id.clone(), pk_share.clone());
         }
@@ -115,12 +115,12 @@ impl Protocol for EcdsaSignProtocol {
 struct EcdsSignConfig {
     eid: Vec<u8>,
     parties: Vec<PartyId>,
-    private_key_shares: PartyShares<EcdsaPrivateKeyShare>,
+    private_key_shares: PartyShares<ThresholdPrivateKeyShare<Secp256k1>>,
     aux_info: PartyShares<EcdsaAuxInfo>,
     message_digest: [u8; 32],
 }
 
-fn verify(pk: EcdsaPublicKey, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
+fn verify(pk: ThresholdPublicKey<Secp256k1>, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
     let EcdsaSignature { r, s } = signature;
     let cggmp_sig = Signature { r, s };
 
@@ -141,7 +141,7 @@ fn end_to_end() {
     // 2. Secret key generation
     let mut csprng = OsRng;
     let sk_val = SecretScalar::<Secp256k1>::random(&mut csprng);
-    let sk: EcdsaPrivateKey = EcdsaPrivateKey::from_scalar(sk_val).unwrap();
+    let sk: ThresholdPrivateKey<Secp256k1> = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk_val).unwrap();
     // 3. eid
     let eid = b"execution id, unique per protocol execution".to_vec();
     // 4. Run protocol
@@ -163,7 +163,7 @@ fn end_to_end() {
     // 6. Reconstruct signature from shares
     let sig_reconstructed = EcdsaSignatureShare::recover(&signature_shares).unwrap();
     // 7. Verifies signature is valid under message_digest and public key
-    let pk = EcdsaPublicKey::from_private_key(&sk);
+    let pk = ThresholdPublicKey::<Secp256k1>::from_private_key(&sk);
     let verifies = verify(pk, sig_reconstructed, &message_digest);
     assert!(verifies)
 }
