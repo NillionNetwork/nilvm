@@ -336,7 +336,7 @@ impl Nodes {
                 keys.push(key);
                 addresses.push(address);
             }
-            self.top_up_balances(addresses, TokenAmount::Nil(5)).await;
+            self.top_up_balances(addresses, TokenAmount::Nil(1)).await;
 
             // Create all the clients in bulk as this performs a lookup on the chain.
             let mut futs = Vec::new();
