@@ -540,6 +540,22 @@ impl Runner {
         Ok(Box::new(Output { identity, network }))
     }
 
+    pub fn show_detailed_context() -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct Output {
+            identity: Box<dyn SerializeAsAny>,
+            network: Box<dyn SerializeAsAny>,
+        }
+
+        let Some(context) = ContextConfig::load() else {
+            return Ok(Box::new(HashMap::<(), ()>::new()));
+        };
+        let ContextConfig { identity, network } = context;
+        let identity = Self::show_identity(ShowIdentityArgs { name: identity })?;
+        let network = Self::show_network(ShowNetworkArgs { name: network })?;
+        Ok(Box::new(Output { identity, network }))
+    }
+
     pub fn open_in_editor(path: &Path) -> Result<()> {
         // Use the editor specified in VISUAL, otherwise EDITOR, otherwise default to vim.
         let editor = env::var("VISUAL").or_else(|_| env::var("EDITOR")).unwrap_or_else(|_| "vim".into());
