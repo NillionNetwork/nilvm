@@ -195,7 +195,7 @@ impl VmClientBuilder {
         F: Future<Output = tonic::Result<O>>,
     {
         let mut retrier = Retrier::default();
-        retrier.add_request(PartyId::from(vec![]), client, ());
+        retrier.add_request("<leader>", client, ());
         retrier.invoke_single(|c, _| callback(c)).await
     }
 

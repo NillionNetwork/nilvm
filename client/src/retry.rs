@@ -3,7 +3,7 @@
 use futures::{future, FutureExt};
 use nillion_client_core::values::PartyId;
 use node_api::errors::StatusExt;
-use std::{future::Future, iter, mem, time::Duration};
+use std::{fmt, future::Future, iter, mem, time::Duration};
 use tonic::{async_trait, Code, Status};
 use tracing::{info, warn};
 
@@ -12,8 +12,8 @@ pub(crate) const RETRY_CODES: &[Code] =
     &[Code::DeadlineExceeded, Code::ResourceExhausted, Code::Unavailable, Code::Unknown];
 const RETRY_DELAYS: &[Duration] = &[Duration::from_secs(1), Duration::from_secs(3), Duration::from_secs(5)];
 
-struct PartyRequest<'a, C, R> {
-    party: PartyId,
+struct PartyRequest<'a, P, C, R> {
+    party: P,
     client: &'a C,
     request: R,
 }
@@ -22,30 +22,29 @@ struct PartyRequest<'a, C, R> {
 ///
 /// This will retry each failed client request until all nodes reply with a success. If the max
 /// retries are reached, the last failure will be returned for nodes that failed.
-pub(crate) struct Retrier<'a, C, R, S = TokioSleeper> {
-    requests: Vec<PartyRequest<'a, C, R>>,
+pub(crate) struct Retrier<'a, C, R, P = PartyId, S = TokioSleeper> {
+    requests: Vec<PartyRequest<'a, P, C, R>>,
     max_retries: usize,
     sleeper: S,
 }
 
-impl<'a, C, R> Retrier<'a, C, R, TokioSleeper> {
-    pub(crate) fn with_max_retries(mut self, max_retries: usize) -> Self {
-        self.max_retries = max_retries;
-        self
-    }
-}
-
-impl<'a, C, R> Default for Retrier<'a, C, R, TokioSleeper> {
+impl<'a, C, R, P> Default for Retrier<'a, C, R, P, TokioSleeper> {
     fn default() -> Self {
         Self { requests: Default::default(), max_retries: DEFAULT_MAX_RETRIES, sleeper: TokioSleeper }
     }
 }
 
-impl<'a, C, R, S> Retrier<'a, C, R, S>
+impl<'a, C, R, P, S> Retrier<'a, C, R, P, S>
 where
     R: Clone,
+    P: fmt::Display,
     S: Sleeper,
 {
+    pub(crate) fn with_max_retries(mut self, max_retries: usize) -> Self {
+        self.max_retries = max_retries;
+        self
+    }
+
     pub(crate) fn retry_delays() -> impl Iterator<Item = &'static Duration> {
         #[allow(clippy::unwrap_used)]
         // SAFETY: this is a non empty slice so `last` can't fail
@@ -53,12 +52,12 @@ where
         RETRY_DELAYS.iter().chain(iter::repeat(RETRY_DELAYS.last().unwrap()))
     }
 
-    pub(crate) fn add_request(&mut self, party: PartyId, client: &'a C, request: R) {
+    pub(crate) fn add_request(&mut self, party: P, client: &'a C, request: R) {
         let request = PartyRequest { party, client, request };
         self.requests.push(request);
     }
 
-    pub(crate) async fn invoke_mapped<I, F, O>(self, invoke_request: I) -> Vec<(PartyId, tonic::Result<O>)>
+    pub(crate) async fn invoke_mapped<I, F, O>(self, invoke_request: I) -> Vec<(P, tonic::Result<O>)>
     where
         I: Fn(&'a C, R) -> F,
         F: Future<Output = tonic::Result<O>>,
@@ -185,7 +184,7 @@ mod tests {
         }
     }
 
-    fn make_retrier<'a>(max_retries: usize) -> Retrier<'a, Client, i32, DummySleeper> {
+    fn make_retrier<'a>(max_retries: usize) -> Retrier<'a, Client, i32, PartyId, DummySleeper> {
         Retrier { sleeper: DummySleeper, requests: Vec::new(), max_retries }
     }
 
