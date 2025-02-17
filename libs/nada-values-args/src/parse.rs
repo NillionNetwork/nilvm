@@ -67,6 +67,15 @@ impl Parse for NadaType {
                 let value: [u8; 32] = value.try_into().map_err(|_| anyhow!("message digest must be 32 bytes long"))?;
                 NadaValue::new_ecdsa_digest_message(value)
             }
+            EddsaMessage => {
+                let value = BASE64_STANDARD.decode(value).map_err(|e| anyhow!("invalid base64 message: {e}"))?;
+                NadaValue::new_eddsa_message(value)
+            }
+            EddsaPublicKey => {
+                let value = BASE64_STANDARD.decode(value).map_err(|e| anyhow!("invalid base64 public key: {e}"))?;
+                let value: [u8; 32] = value.try_into().map_err(|_| anyhow!("public key must be 32 bytes long"))?;
+                NadaValue::new_eddsa_public_key(value)
+            }
             Boolean
             | Tuple { .. }
             | NTuple { .. }
@@ -78,7 +87,9 @@ impl Parse for NadaType {
             | EcdsaPrivateKey
             | EcdsaPublicKey
             | StoreId
-            | EcdsaSignature => Err(anyhow!("{} value", value))?,
+            | EcdsaSignature
+            | EddsaPrivateKey
+            | EddsaSignature => Err(anyhow!("{} value", value))?,
         };
         Ok(Named { name: name.to_string(), value })
     }

@@ -27,6 +27,11 @@ impl PrimitiveTypes for LiteralPrimitiveTypes {
     type EcdsaSignature = NeverPrimitiveType;
     type EcdsaPublicKey = NeverPrimitiveType;
 
+    type EddsaPrivateKey = NeverPrimitiveType;
+    type EddsaPublicKey = NeverPrimitiveType;
+    type EddsaSignature = NeverPrimitiveType;
+    type EddsaMessage = NeverPrimitiveType;
+
     type StoreId = NeverPrimitiveType;
 }
 

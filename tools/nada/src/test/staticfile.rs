@@ -202,7 +202,11 @@ fn nada_type_to_nada_value(ty: &NadaType) -> eyre::Result<NadaValue<Clear>> {
         | ty @ NadaType::ShamirShareUnsignedInteger
         | ty @ NadaType::ShamirShareBoolean
         | ty @ NadaType::EcdsaPrivateKey
-        | ty @ NadaType::EcdsaSignature => Err(eyre!("Unsupported type: {:?}", ty)),
+        | ty @ NadaType::EcdsaSignature
+        | ty @ NadaType::EddsaPrivateKey
+        | ty @ NadaType::EddsaPublicKey
+        | ty @ NadaType::EddsaSignature
+        | ty @ NadaType::EddsaMessage => Err(eyre!("Unsupported type: {:?}", ty)),
         NadaType::Array { inner_type, size } => {
             let value = nada_type_to_nada_value(&inner_type.clone())?;
             Ok(NadaValue::new_array(*inner_type.clone(), vec![value; *size])?)

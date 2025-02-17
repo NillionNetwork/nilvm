@@ -50,6 +50,9 @@ pub enum UnderlyingType {
 
     /// Ecdsa signature.
     EcdsaSignature,
+
+    /// Eddsa signature.
+    EddsaSignature,
 }
 
 /// Data type representation for the operations.
@@ -132,6 +135,10 @@ impl DataType {
                     Identifier::Tuple => "tuple",
                     Identifier::NTuple => "tuple",
                     Identifier::Object => "dict",
+                    Identifier::EddsaPrivateKey => "bytes",
+                    Identifier::EddsaPublicKey => "bytes",
+                    Identifier::EddsaSignature => "dict",
+                    Identifier::EddsaMessage => "bytes",
                 }
             }
         }
@@ -157,6 +164,10 @@ impl DataType {
                 Identifier::EcdsaSignature => false,
                 Identifier::EcdsaPublicKey => false,
                 Identifier::StoreId => false,
+                Identifier::EddsaPrivateKey => false,
+                Identifier::EddsaPublicKey => false,
+                Identifier::EddsaSignature => false,
+                Identifier::EddsaMessage => false,
                 Identifier::Array | Identifier::Tuple | Identifier::NTuple | Identifier::Object => false,
             },
         }
@@ -187,6 +198,10 @@ impl DataType {
                 Identifier::EcdsaSignature => UnderlyingType::EcdsaSignature,
                 Identifier::EcdsaPublicKey => UnderlyingType::Blob,
                 Identifier::StoreId => UnderlyingType::Blob,
+                Identifier::EddsaPrivateKey => UnderlyingType::Blob,
+                Identifier::EddsaPublicKey => UnderlyingType::Blob,
+                Identifier::EddsaSignature => UnderlyingType::EddsaSignature,
+                Identifier::EddsaMessage => UnderlyingType::Blob,
                 Identifier::Array | Identifier::Tuple | Identifier::NTuple | Identifier::Object => return None,
             },
         })
@@ -246,7 +261,11 @@ impl DataType {
             | DataType::Identifier(Identifier::EcdsaDigestMessage)
             | DataType::Identifier(Identifier::EcdsaSignature)
             | DataType::Identifier(Identifier::EcdsaPublicKey)
-            | DataType::Identifier(Identifier::StoreId) => unimplemented!(),
+            | DataType::Identifier(Identifier::StoreId)
+            | DataType::Identifier(Identifier::EddsaPrivateKey)
+            | DataType::Identifier(Identifier::EddsaPublicKey)
+            | DataType::Identifier(Identifier::EddsaSignature)
+            | DataType::Identifier(Identifier::EddsaMessage) => unimplemented!(),
         }
     }
 
@@ -278,6 +297,11 @@ impl DataType {
             DataType::Identifier(Identifier::EcdsaPublicKey) => 21,
 
             DataType::Identifier(Identifier::StoreId) => 22,
+
+            DataType::Identifier(Identifier::EddsaPrivateKey) => 23,
+            DataType::Identifier(Identifier::EddsaPublicKey) => 24,
+            DataType::Identifier(Identifier::EddsaSignature) => 25,
+            DataType::Identifier(Identifier::EddsaMessage) => 26,
 
             DataType::Identifier(Identifier::Array)
             | DataType::Identifier(Identifier::Tuple)
@@ -769,12 +793,16 @@ fn force_boolean(
         | DataType::Identifier(Identifier::Boolean)
         | DataType::Identifier(Identifier::EcdsaDigestMessage)
         | DataType::Identifier(Identifier::EcdsaPublicKey)
+        | DataType::Identifier(Identifier::EddsaPublicKey)
+        | DataType::Identifier(Identifier::EddsaSignature)
+        | DataType::Identifier(Identifier::EddsaMessage)
         | DataType::Identifier(Identifier::StoreId) => primitive,
 
         DataType::Identifier(Identifier::SecretInteger)
         | DataType::Identifier(Identifier::SecretUnsignedInteger)
         | DataType::Identifier(Identifier::SecretBoolean)
         | DataType::Identifier(Identifier::SecretBlob)
+        | DataType::Identifier(Identifier::EddsaPrivateKey)
         | DataType::Identifier(Identifier::EcdsaPrivateKey)
         | DataType::Identifier(Identifier::EcdsaSignature) => secret,
 

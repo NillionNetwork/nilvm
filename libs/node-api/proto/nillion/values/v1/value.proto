@@ -57,6 +57,18 @@ message Value {
 
     // A store id.
     StoreId store_id = 14;
+
+    // An Eddsa private key share.
+    EddsaPrivateKeyShare eddsa_private_key_share = 15;
+
+    // An Eddsa signature.
+    EddsaSignature eddsa_signature = 16;
+
+    // An Eddsa message.
+    EddsaMessage eddsa_message = 17;
+
+    // An Eddsa public key.
+    EddsaPublicKey eddsa_public_key = 18;
   }  
 }
 
@@ -134,6 +146,40 @@ message StoreId {
   bytes store_id = 1;
 }
 
+
+// An Eddsa private key share.
+message EddsaPrivateKeyShare {
+  // Index of local party in key generation protocol.
+  uint32 i = 1;
+
+  // The secret share x.
+  bytes x = 2;
+
+  // Public key corresponding to shared secret key, in compressed form.
+  bytes shared_public_key = 3;
+
+  // Public shares of all signers sharing the key, in compressed form.
+  repeated bytes public_shares = 4;
+}
+
+// An Eddsa signature.
+message EddsaSignature {
+  // The signature.
+  bytes signature = 1;
+}
+
+// An Eddsa message.
+message EddsaMessage {
+  // The message.
+  bytes message = 1;
+}
+
+// An Eddsa public key.
+message EddsaPublicKey {
+  // The public key.
+  bytes public_key = 1;
+}
+
 // Shamir shares of a blob.
 message ShamirSharesBlob {
   // The shares.
@@ -184,6 +230,19 @@ message ValueType {
 
     // A store id.
     google.protobuf.Empty store_id = 13; 
+
+    // An Eddsa private key share.
+    google.protobuf.Empty eddsa_private_key_share = 14; 
+
+    // An Eddsa signature.
+    google.protobuf.Empty eddsa_signature = 15; 
+
+    // An Eddsa message.
+    google.protobuf.Empty eddsa_message = 16; 
+
+    // An Eddsa public key.
+    google.protobuf.Empty eddsa_public_key = 17; 
+    
   } 
 }
 

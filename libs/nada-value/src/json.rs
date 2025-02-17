@@ -151,7 +151,11 @@ impl NadaValue<Clear> {
                 | NadaType::EcdsaDigestMessage
                 | NadaType::EcdsaSignature
                 | NadaType::EcdsaPublicKey
-                | NadaType::StoreId => return Err(anyhow!("Unsupported type: {:?}", nada_type)),
+                | NadaType::StoreId
+                | NadaType::EddsaPrivateKey
+                | NadaType::EddsaPublicKey
+                | NadaType::EddsaSignature
+                | NadaType::EddsaMessage => return Err(anyhow!("Unsupported type: {:?}", nada_type)),
                 NadaType::Array { inner_type, size } => {
                     let JsonValue::Array(inner_values) = value else {
                         return Err(anyhow!("Invalid json value for {nada_type:?}, expected array",));
@@ -244,7 +248,11 @@ impl NadaValue<Clear> {
                 | NadaType::EcdsaDigestMessage
                 | NadaType::EcdsaSignature
                 | NadaType::EcdsaPublicKey
-                | NadaType::StoreId => return Err(anyhow!("Unsupported type: {:?}", nada_type)),
+                | NadaType::StoreId
+                | NadaType::EddsaPrivateKey
+                | NadaType::EddsaPublicKey
+                | NadaType::EddsaSignature
+                | NadaType::EddsaMessage => return Err(anyhow!("Unsupported type: {:?}", nada_type)),
                 NadaType::Array { inner_type, size } => {
                     let mut array_values = vec![];
                     for _ in 0..*size {
@@ -312,7 +320,11 @@ impl NadaValue<Clear> {
             | NadaValue::EcdsaDigestMessage(_)
             | NadaValue::EcdsaSignature(_)
             | NadaValue::EcdsaPublicKey(_)
-            | NadaValue::StoreId(_) => return Err(anyhow!("Unsupported type: {:?}", self)),
+            | NadaValue::StoreId(_)
+            | NadaValue::EddsaPrivateKey(_)
+            | NadaValue::EddsaPublicKey(_)
+            | NadaValue::EddsaSignature(_)
+            | NadaValue::EddsaMessage(_) => return Err(anyhow!("Unsupported type: {:?}", self)),
             NadaValue::Array { values, .. } => {
                 JsonValue::Array(values.iter().map(|v| v.to_json_value()).collect::<Result<_, _>>()?)
             }

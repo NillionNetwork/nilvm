@@ -27,6 +27,9 @@ impl<M: Modular> PrimitiveTypes for ClearModular<M> {
     type Boolean = ModularNumber<M>;
     type EcdsaDigestMessage = NeverPrimitiveType;
     type EcdsaPublicKey = NeverPrimitiveType;
+    type EddsaPublicKey = NeverPrimitiveType;
+    type EddsaMessage = NeverPrimitiveType;
+    type EddsaSignature = NeverPrimitiveType; // It is a public value
     type StoreId = NeverPrimitiveType;
 
     // Abstract secrets
@@ -43,8 +46,11 @@ impl<M: Modular> PrimitiveTypes for ClearModular<M> {
     // Ecdsa Private Key
     type EcdsaPrivateKey = NeverPrimitiveType;
 
+    // Eddsa Private Key
+    type EddsaPrivateKey = NeverPrimitiveType;
+
     // Ecdsa Signature
-    type EcdsaSignature = NeverPrimitiveType;
+    type EcdsaSignature = NeverPrimitiveType; // It is a secret value
 }
 
 impl<T: Modular> NadaValue<ClearModular<T>> {
@@ -121,7 +127,11 @@ impl<T: Modular> NadaValue<ClearModular<T>> {
                 | NadaType::EcdsaDigestMessage
                 | NadaType::EcdsaSignature
                 | NadaType::EcdsaPublicKey
-                | NadaType::StoreId => unreachable!(),
+                | NadaType::StoreId
+                | NadaType::EddsaPrivateKey
+                | NadaType::EddsaPublicKey
+                | NadaType::EddsaSignature
+                | NadaType::EddsaMessage => unreachable!(),
             }
         }
         resultant_values.pop().ok_or(ClearModularError::NotEnoughValues)
@@ -150,7 +160,11 @@ impl<T: Modular> TryFrom<NadaValue<ClearModular<T>>> for ModularNumber<T> {
             | NadaValue::EcdsaDigestMessage(_)
             | NadaValue::EcdsaSignature(_)
             | NadaValue::EcdsaPublicKey(_)
-            | NadaValue::StoreId(_) => unreachable!(),
+            | NadaValue::StoreId(_)
+            | NadaValue::EddsaPrivateKey(_)
+            | NadaValue::EddsaPublicKey(_)
+            | NadaValue::EddsaSignature(_)
+            | NadaValue::EddsaMessage(_) => unreachable!(),
         }
     }
 }
@@ -195,7 +209,11 @@ impl<T: Modular> TryFrom<NadaValue<Clear>> for NadaValue<ClearModular<T>> {
                 | NadaValue::EcdsaDigestMessage(_)
                 | NadaValue::EcdsaSignature(_)
                 | NadaValue::EcdsaPublicKey(_)
-                | NadaValue::StoreId(_) => unreachable!(),
+                | NadaValue::StoreId(_)
+                | NadaValue::EddsaPrivateKey(_)
+                | NadaValue::EddsaPublicKey(_)
+                | NadaValue::EddsaSignature(_)
+                | NadaValue::EddsaMessage(_) => unreachable!(),
             }
         }
         NadaValue::from_iter(modular_values, ty)

@@ -1,6 +1,13 @@
 use cggmp21::signing::{DataToSign, Signature};
 use client_fixture::compute::{ClientsMode, ComputeValidator};
-use generic_ec::{curves::Secp256k1, NonZero, Scalar, SecretScalar};
+use generic_ec::{
+    curves::{Ed25519, Secp256k1},
+    NonZero, Point, Scalar, SecretScalar,
+};
+use givre::{
+    ciphersuite::{Ed25519 as Ed25519Ciphersuite, NormalizedPoint},
+    signing::aggregate::Signature as givreEddsaSignature,
+};
 use k256::{
     ecdsa::{signature::Verifier, Signature as ecdsaSignature, SigningKey as ecdsaSigningKey},
     elliptic_curve::FieldBytes,
@@ -32,7 +39,11 @@ use rand_chacha::rand_core::OsRng;
 use rstest::rstest;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use threshold_keypair::{privatekey::ThresholdPrivateKey, publickey::ThresholdPublicKey, signature::EcdsaSignature};
+use threshold_keypair::{
+    privatekey::ThresholdPrivateKey,
+    publickey::ThresholdPublicKey,
+    signature::{EcdsaSignature, EddsaSignature},
+};
 use tokio::sync::{mpsc::channel, Mutex};
 use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
@@ -235,6 +246,100 @@ async fn retrieve_values(nodes: &Nodes) {
         .await
         .expect("failed to retrieve values");
     assert_eq!(values, expected_values);
+}
+
+#[rstest]
+#[tokio::test]
+async fn store_retrieve_update_eddsa_private_keys_msg_and_signature(nodes: &Nodes) {
+    // Create eddsa private key
+    let mut csprng = OsRng;
+    let sk = SecretScalar::<Ed25519>::random(&mut csprng);
+    let eddsa_sk = ThresholdPrivateKey::from_scalar(sk).unwrap();
+
+    let sk_update = SecretScalar::<Ed25519>::random(&mut csprng);
+    let eddsa_sk_update = ThresholdPrivateKey::from_scalar(sk_update).unwrap();
+
+    // Create eddsa digest message
+    let msg = b"This is a transactions with some specific lenght";
+
+    let msg_update = b"This is another transactions with a different lenght";
+
+    // Create eddsa signature
+    // random point r_point = k * G
+    let k = Scalar::<Ed25519>::random(&mut csprng);
+    let r_point = Point::<Ed25519>::generator().to_point() * &k;
+    let r = NormalizedPoint::<Ed25519Ciphersuite, Point<Ed25519>>::try_normalize(r_point).unwrap();
+    let z = Scalar::<Ed25519>::random(&mut csprng);
+    let signature = givreEddsaSignature::<Ed25519Ciphersuite> { r, z };
+
+    let eddsa_sig = EddsaSignature { signature };
+    // random point r_point = k * G
+    let k = Scalar::<Ed25519>::random(&mut csprng);
+    let r_point = Point::<Ed25519>::generator().to_point() * &k;
+    let r = NormalizedPoint::<Ed25519Ciphersuite, Point<Ed25519>>::try_normalize(r_point).unwrap();
+    let z = Scalar::<Ed25519>::random(&mut csprng);
+    let signature_update = givreEddsaSignature::<Ed25519Ciphersuite> { r, z };
+    let eddsa_sig_update = EddsaSignature { signature: signature_update };
+
+    let expected_values: HashMap<String, NadaValue<Clear>> = [
+        ("eddsa".into(), NadaValue::new_eddsa_private_key(eddsa_sk)),
+        ("msg".into(), NadaValue::new_eddsa_message(msg)),
+        ("signature".into(), NadaValue::new_eddsa_signature(eddsa_sig)),
+    ]
+    .into();
+    let expected_updated_values: HashMap<String, NadaValue<Clear>> = [
+        ("eddsa_update".into(), NadaValue::new_eddsa_private_key(eddsa_sk_update)),
+        ("msg_update".into(), NadaValue::new_eddsa_message(msg_update)),
+        ("signature_update".into(), NadaValue::new_eddsa_signature(eddsa_sig_update)),
+    ]
+    .into();
+
+    // Store
+    let client = nodes.build_client().await;
+    let store_identifier = client
+        .store_values()
+        .add_values(expected_values.clone().into_iter())
+        .ttl_days(3)
+        .build()
+        .expect("failed to build operation")
+        .invoke()
+        .await
+        .expect("failed to store values");
+    // Retrieve
+    let values = client
+        .retrieve_values()
+        .values_id(store_identifier)
+        .build()
+        .expect("failed to build")
+        .invoke()
+        .await
+        .expect("failed to retrieve values");
+    // Compare stored and retrieved
+    assert_eq!(values, expected_values);
+    // Update
+    let update_identifier = client
+        .store_values()
+        .add_values(expected_updated_values.clone().into_iter())
+        .ttl_days(3)
+        .update_identifier(store_identifier)
+        .build()
+        .expect("failed to build operation")
+        .invoke()
+        .await
+        .expect("failed to update values");
+    assert_eq!(store_identifier, update_identifier);
+    // Retrieve updated
+    let updated_values = client
+        .retrieve_values()
+        .values_id(update_identifier)
+        .build()
+        .expect("failed to build")
+        .invoke()
+        .await
+        .expect("failed to retrieve values");
+    assert!(updated_values.contains_key("eddsa_update"), "'eddsa_update' missing: {updated_values:?}");
+    // Compare stored and retrieved
+    assert_eq!(updated_values, expected_updated_values);
 }
 
 #[rstest]

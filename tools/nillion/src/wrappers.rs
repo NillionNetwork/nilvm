@@ -278,6 +278,13 @@ impl fmt::Display for DisplayFriendlyValue {
             NadaValue::EcdsaDigestMessage(value) => write!(f, "{value:?}"),
             NadaValue::EcdsaPublicKey(value) => write!(f, "{}", hex::encode(value.0)),
             NadaValue::StoreId(value) => write!(f, "{}", Uuid::from_bytes(*value)),
+            NadaValue::EddsaMessage(value) => write!(f, "{value:?}"),
+            NadaValue::EddsaPublicKey(value) => write!(f, "{value:?}"),
+            NadaValue::EddsaSignature(value) => {
+                let r = hex::encode(value.signature.r.to_bytes());
+                let z = hex::encode(value.signature.z.to_be_bytes());
+                write!(f, "(r={r}, z={z})")
+            }
             NadaValue::Array { values, .. } => {
                 write!(f, "[")?;
                 for value in values {
@@ -319,7 +326,8 @@ impl fmt::Display for DisplayFriendlyValue {
             | NadaValue::ShamirShareInteger(_)
             | NadaValue::ShamirShareUnsignedInteger(_)
             | NadaValue::ShamirShareBoolean(_)
-            | NadaValue::EcdsaPrivateKey(_) => Err(fmt::Error),
+            | NadaValue::EcdsaPrivateKey(_)
+            | NadaValue::EddsaPrivateKey(_) => Err(fmt::Error),
         }
     }
 }

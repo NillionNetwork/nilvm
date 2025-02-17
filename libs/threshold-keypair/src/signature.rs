@@ -1,7 +1,7 @@
 //! The ecdsa signature implementation.
 
 use generic_ec::{curves::Secp256k1, NonZero, Scalar};
-use givre::{ciphersuite, signing::aggregate::Signature};
+use givre::{ciphersuite, ciphersuite::Ciphersuite, signing::aggregate::Signature};
 use rand::rngs::OsRng;
 use std::{
     cmp::PartialEq,
@@ -15,11 +15,24 @@ use thiserror::Error;
 /// The private key is a non-zero scalar defined on the ed25519 elliptic curve.
 /// Note: EddsaSignature is considered a public value, so we do not implement
 /// the corresponding share version, i.e., EddsaSignatureShare.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EddsaSignature {
     /// The signature
     pub signature: Signature<ciphersuite::Ed25519>,
+}
+
+impl EddsaSignature {
+    /// Returns the serialized length of the Eddsa Signature
+    pub fn serialized_len(&self) -> usize {
+        ciphersuite::Ed25519::NORMALIZED_POINT_SIZE + ciphersuite::Ed25519::SCALAR_SIZE
+    }
+}
+
+impl fmt::Display for EddsaSignature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "EddsaSignature {{ R: {:?}, z: {:?} }}", self.signature.r, self.signature.z)
+    }
 }
 
 /// A struct representing an ECDSA private key.

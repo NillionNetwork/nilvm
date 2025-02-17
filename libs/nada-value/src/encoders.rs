@@ -65,6 +65,10 @@ impl<'s, M: SafePrime> TryFrom<EncodingNadaValueEncryptedState<'s, M>> for NadaV
             ShamirShareBoolean(value) => ShamirShareBoolean(value.encode()),
             EcdsaPrivateKey(value) => EcdsaPrivateKey(value.clone()),
             EcdsaSignature(value) => EcdsaSignature(value.clone()),
+            EddsaPrivateKey(value) => EddsaPrivateKey(value.clone()),
+            EddsaPublicKey(value) => EddsaPublicKey(*value),
+            EddsaSignature(value) => EddsaSignature(*value),
+            EddsaMessage(value) => EddsaMessage(value.clone()),
             Array { inner_type, .. } => Self::new_array(inner_type.clone(), value.content)?,
             Tuple { .. } => {
                 let mut values = value.content.into_iter();
@@ -100,12 +104,16 @@ impl<'s, M: SafePrime> TryFrom<DecodingNadaValueEncryptedState<'s, M>> for NadaV
             Boolean(value) => Boolean(value.try_decode()?),
             EcdsaDigestMessage(value) => EcdsaDigestMessage(*value),
             EcdsaPublicKey(value) => EcdsaPublicKey(value.clone()),
+            EddsaMessage(value) => EddsaMessage(value.clone()),
+            EddsaPublicKey(value) => EddsaPublicKey(*value),
+            EddsaSignature(value) => EddsaSignature(*value),
             StoreId(value) => StoreId(*value),
             ShamirShareInteger(value) => ShamirShareInteger(value.try_decode()?),
             ShamirShareUnsignedInteger(value) => ShamirShareUnsignedInteger(value.try_decode()?),
             ShamirShareBoolean(value) => ShamirShareBoolean(value.try_decode()?),
 
             EcdsaPrivateKey(value) => EcdsaPrivateKey(value.clone()),
+            EddsaPrivateKey(value) => EddsaPrivateKey(value.clone()),
             EcdsaSignature(value) => EcdsaSignature(value.clone()),
             Array { inner_type, .. } => Self::new_array(inner_type.clone(), value.content)?,
             Tuple { .. } => {
@@ -231,7 +239,11 @@ impl<'s, M: Modular, T: PrimitiveTypes, C> EncodeVariableState<'s, M, T, C> {
             | ShamirShareUnsignedInteger(_)
             | ShamirShareBoolean(_)
             | EcdsaPrivateKey(_)
-            | EcdsaSignature(_) => None,
+            | EcdsaSignature(_)
+            | EddsaPrivateKey(_)
+            | EddsaPublicKey(_)
+            | EddsaSignature(_)
+            | EddsaMessage(_) => None,
             Tuple { left, right } => {
                 if self.content.is_empty() {
                     Some(left.as_ref())
@@ -268,7 +280,11 @@ impl<'s, M: Modular, T: PrimitiveTypes, C> EncodeVariableState<'s, M, T, C> {
             | ShamirShareUnsignedInteger(_)
             | ShamirShareBoolean(_)
             | EcdsaPrivateKey(_)
-            | EcdsaSignature(_) => {
+            | EcdsaSignature(_)
+            | EddsaPrivateKey(_)
+            | EddsaPublicKey(_)
+            | EddsaSignature(_)
+            | EddsaMessage(_) => {
                 Err(EncodeVariableError::UnsupportedContainment(format!("{:?}", self.variable_type.to_type_kind())))
             }
             Array { .. } => {
