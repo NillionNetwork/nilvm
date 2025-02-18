@@ -59,7 +59,7 @@ impl EcdsaSignProtocol {
 
 impl Protocol for EcdsaSignProtocol {
     type State = EcdsaSignState;
-    type PrepareOutput = EcdsSignConfig;
+    type PrepareOutput = EcdsaSignConfig;
 
     fn prepare(&self, parties: &[PartyId]) -> Result<Self::PrepareOutput, Error> {
         let sorted_parties = SortedParties::new(parties.to_vec());
@@ -76,7 +76,7 @@ impl Protocol for EcdsaSignProtocol {
             private_key_shares.insert(party_id.clone(), pk_share.clone());
         }
 
-        Ok(EcdsSignConfig {
+        Ok(EcdsaSignConfig {
             eid: self.eid.clone(),
             parties: parties.to_vec(),
             private_key_shares,
@@ -112,7 +112,7 @@ impl Protocol for EcdsaSignProtocol {
 }
 
 /// The internal configuration of a EcdsSignConfig protocol.
-struct EcdsSignConfig {
+struct EcdsaSignConfig {
     eid: Vec<u8>,
     parties: Vec<PartyId>,
     private_key_shares: PartyShares<ThresholdPrivateKeyShare<Secp256k1>>,

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-key-share = { version = "0.5.0", default-features = false, features = ["spof"] }
+key-share = { version = "0.6.0", default-features = false, features = ["spof"] }
 
 basic-types = { path = "../basic-types" }
 threshold-keypair = { path = "../../libs/threshold-keypair", default-features = false }
