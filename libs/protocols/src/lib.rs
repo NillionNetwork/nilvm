@@ -22,6 +22,7 @@ pub mod multiplication;
 pub mod random;
 pub mod reveal;
 pub mod threshold_ecdsa;
+pub mod threshold_eddsa;
 
 #[cfg(any(test, feature = "validation"))]
 pub mod simulator;
