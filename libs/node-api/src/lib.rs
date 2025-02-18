@@ -34,4 +34,16 @@ pub use tonic::{Code, Result, Status};
 #[cfg(feature = "rust-types")]
 pub mod errors {
     pub use tonic_types::{ErrorDetails, PreconditionViolation, QuotaFailure, QuotaViolation, RetryInfo, StatusExt};
+
+    /// An error parsing an identifier from hex.
+    #[derive(Debug, thiserror::Error)]
+    pub enum InvalidHexId {
+        /// The hex encoding was malformed.
+        #[error("invalid hex encoding")]
+        HexEncoding,
+
+        /// The length of the identifier was wrong.
+        #[error("invalid length")]
+        InvalidLength,
+    }
 }

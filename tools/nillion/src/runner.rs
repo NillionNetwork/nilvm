@@ -1,7 +1,7 @@
 use crate::{
     args::{
-        AddFundsArgs, AddIdentityArgs, AddNetworkArgs, BalanceCommand, Cli, Command, ComputeArgs, ConfigCommand,
-        DeleteValuesArgs, EditIdentityArgs, EditNetworkArgs, IdentityGenArgs, OverwritePermissionsArgs,
+        AddFundsArgs, AddIdentityArgs, AddNetworkArgs, BalanceCommand, Cli, ClusterConfigArgs, Command, ComputeArgs,
+        ConfigCommand, DeleteValuesArgs, EditIdentityArgs, EditNetworkArgs, IdentityGenArgs, OverwritePermissionsArgs,
         PreprocessingPoolStatusArgs, RemoveIdentityArgs, RemoveNetworkArgs, RetrievePermissionsArgs,
         RetrieveValuesArgs, ShowIdentityArgs, ShowNetworkArgs, StoreProgramArgs, StoreValuesArgs,
         UpdatePermissionsArgs, UseContextArgs,
@@ -51,7 +51,7 @@ impl Runner {
     /// run a command
     pub async fn run(&self, command: Command) -> Result<Box<dyn SerializeAsAny>> {
         match command {
-            Command::ClusterInformation | Command::Config(ConfigCommand::Cluster) => self.cluster_information().await,
+            Command::ClusterInformation => self.cluster_information().await,
             Command::Compute(args) => self.compute(args).await,
             Command::DeleteValues(args) => self.delete_values(args).await,
             Command::InspectIds => self.inspect_ids(),
@@ -69,6 +69,7 @@ impl Runner {
             Command::Balance(BalanceCommand::Show) => self.show_balance().await,
             Command::Balance(BalanceCommand::AddFunds(args)) => self.add_funds(args).await,
             Command::Config(ConfigCommand::Payments) => self.payments_config().await,
+            Command::Config(ConfigCommand::Cluster(args)) => self.cluster_config(args).await,
         }
     }
 
@@ -593,6 +594,19 @@ impl Runner {
             minimum_add_funds_payment_unil: config.minimum_add_funds_payment,
             credits_per_nil: config.credits_per_nil,
         }))
+    }
+
+    async fn cluster_config(&self, args: ClusterConfigArgs) -> Result<Box<dyn SerializeAsAny>> {
+        let cluster = match args.node_id {
+            Some(node_id) => {
+                let clients =
+                    self.client.node_clients(node_id).ok_or_else(|| anyhow!("node is not part of cluster"))?;
+                clients.membership.cluster().await.context("fetching cluster config")?
+            }
+            None => self.client.cluster().clone(),
+        };
+        let info = ClusterInfo::from(&cluster);
+        Ok(Box::new(info))
     }
 
     async fn serialize_quote<'a, O: PaidVmOperation>(

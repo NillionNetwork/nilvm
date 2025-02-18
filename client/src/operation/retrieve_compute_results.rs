@@ -8,7 +8,7 @@ use crate::{
 };
 use futures::{future, StreamExt};
 use nada_value::protobuf::nada_values_from_protobuf;
-use nillion_client_core::values::{CleartextValues, PartyJar};
+use nillion_client_core::values::{CleartextValues, PartyId, PartyJar};
 use node_api::{compute::rust::RetrieveResultsResponse, TryIntoRust};
 use tokio::time::sleep;
 use tonic::{async_trait, Status};
@@ -24,7 +24,7 @@ pub struct RetrieveComputeResultsOperation {
 
 impl RetrieveComputeResultsOperation {
     async fn wait_result(client: ComputeClient, compute_id: Uuid) -> Result<RetrieveResultsResponse, InvokeError> {
-        let mut delays = Retrier::<(), (), TokioSleeper>::retry_delays().take(RETRIES);
+        let mut delays = Retrier::<(), (), PartyId, TokioSleeper>::retry_delays().take(RETRIES);
 
         loop {
             match Self::do_wait_result(&client, compute_id).await {

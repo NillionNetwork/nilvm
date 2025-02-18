@@ -8,8 +8,10 @@ pub mod proto {
 /// Rust types that can be converted from/to their protobuf counterparts.
 #[cfg(feature = "rust-types")]
 pub mod rust {
+    use std::{fmt, str::FromStr};
+
     use super::proto;
-    use crate::{auth::rust::PublicKey, ConvertProto, ProtoError, TransparentProto, TryIntoRust};
+    use crate::{auth::rust::PublicKey, errors::InvalidHexId, ConvertProto, ProtoError, TransparentProto, TryIntoRust};
 
     // A node's information.
     pub type NodeVersion = proto::version::NodeVersion;
@@ -123,6 +125,21 @@ pub mod rust {
 
         fn try_from_proto(model: Self::ProtoType) -> Result<Self, ProtoError> {
             Ok(Self(model.contents))
+        }
+    }
+
+    impl fmt::Display for NodeId {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", hex::encode(&self.0))
+        }
+    }
+
+    impl FromStr for NodeId {
+        type Err = InvalidHexId;
+
+        fn from_str(id: &str) -> Result<Self, Self::Err> {
+            let id = hex::decode(id).map_err(|_| InvalidHexId::HexEncoding)?;
+            Ok(Self(id))
         }
     }
 
