@@ -209,6 +209,7 @@ pub struct Nodes {
     next_signing_key_id: AtomicU64,
     funded_payers: tokio::sync::Mutex<Vec<NillionChainClientPayer>>,
     bootnode_party_id: Option<PartyId>,
+    payments_seed: String,
 }
 
 impl Nodes {
@@ -330,13 +331,13 @@ impl Nodes {
             let mut keys = Vec::new();
             for _ in 0..PAYER_FUND_CHUNK {
                 let payment_key_id = self.next_payment_key_id.fetch_add(1, Ordering::AcqRel);
-                let payments_seed = format!("payment-seed-{payment_key_id}");
+                let payments_seed = format!("{}-{payment_key_id}", self.payments_seed);
                 let key = NillionChainPrivateKey::from_seed(&payments_seed).expect("private key creation failed");
                 let address = key.address.clone();
                 keys.push(key);
                 addresses.push(address);
             }
-            self.top_up_balances(addresses, TokenAmount::Nil(5)).await;
+            self.top_up_balances(addresses, TokenAmount::Nil(1)).await;
 
             // Create all the clients in bulk as this performs a lookup on the chain.
             let mut futs = Vec::new();
@@ -468,6 +469,8 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         cleanup::register_child_process(child_process);
     }
 
+    let payments_seed = env::var("TEST_PAYMENTS_SEED").unwrap_or_else(|_| "payment-seed".to_string());
+
     let mut nodes = Nodes {
         context,
         uploaded_programs: UploadedPrograms(Default::default()),
@@ -477,6 +480,7 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         next_signing_key_id: Default::default(),
         funded_payers: Default::default(),
         bootnode_party_id: None,
+        payments_seed,
     };
 
     // This is because this is a non async rstest fixture but it gets run within an async context
