@@ -1,10 +1,13 @@
 use crate::args::CommandOutputFormat;
 use anyhow::Result;
+use erased_serde::serialize_trait_object;
 use serde::Serialize;
 use std::any::Any;
 
 pub trait SerializeAsAny: erased_serde::Serialize + Any {}
 impl<T: erased_serde::Serialize + Any> SerializeAsAny for T {}
+
+serialize_trait_object!(SerializeAsAny);
 
 #[derive(Serialize)]
 pub struct NoOutput;

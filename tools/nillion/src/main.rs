@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{error::ErrorKind, CommandFactory};
 use clap_utils::ParserExt;
 use nillion::{
-    args::{Cli, Command, ContextCommand, IdentitiesCommand, NetworksCommand},
+    args::{Cli, Command, ContextCommand, IdentitiesCommand, NetworksCommand, ShowContextArgs},
     config::Config,
     context::ContextConfig,
     runner::Runner,
@@ -34,7 +34,8 @@ async fn run(cli: Cli) -> Result<Box<dyn SerializeAsAny>> {
         }
         Command::Context(command) => match command {
             ContextCommand::Use(args) => return Runner::use_context(args),
-            ContextCommand::Show => return Runner::show_context(),
+            ContextCommand::Show(ShowContextArgs { verbose: true }) => return Runner::show_detailed_context(),
+            ContextCommand::Show(ShowContextArgs { verbose: false }) => return Runner::show_context(),
         },
         _ => (),
     }

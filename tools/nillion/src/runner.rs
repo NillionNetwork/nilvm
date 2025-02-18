@@ -29,6 +29,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     env,
     fs::{self},
+    iter,
     path::Path,
 };
 use tools_config::{
@@ -487,7 +488,13 @@ impl Runner {
                 nilchain_private_key,
                 nilchain_chain_id,
             } = payments;
-            let nilchain_private_key: String = nilchain_private_key.chars().take(3).collect();
+            let nilchain_private_key: String = nilchain_private_key
+                .chars()
+                // take the first 3 and replace the rest with * so we don't expose the private key
+                .take(3)
+                .chain(iter::repeat('*'))
+                .take(nilchain_private_key.len())
+                .collect();
             output.insert("nilchain_rpc_endpoint", nilchain_rpc_endpoint);
             if let Some(grpc_endpoint) = nilchain_grpc_endpoint {
                 output.insert("nilchain_grpc_endpoint", grpc_endpoint);
@@ -538,6 +545,22 @@ impl Runner {
             return Ok(Box::new(HashMap::<(), ()>::new()));
         };
         let ContextConfig { identity, network } = context;
+        Ok(Box::new(Output { identity, network }))
+    }
+
+    pub fn show_detailed_context() -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct Output {
+            identity: Box<dyn SerializeAsAny>,
+            network: Box<dyn SerializeAsAny>,
+        }
+
+        let Some(context) = ContextConfig::load() else {
+            return Ok(Box::new(HashMap::<(), ()>::new()));
+        };
+        let ContextConfig { identity, network } = context;
+        let identity = Self::show_identity(ShowIdentityArgs { name: identity })?;
+        let network = Self::show_network(ShowNetworkArgs { name: network })?;
         Ok(Box::new(Output { identity, network }))
     }
 

@@ -252,7 +252,7 @@ pub enum ContextCommand {
     Use(UseContextArgs),
 
     /// Show the current context.
-    Show,
+    Show(ShowContextArgs),
 }
 
 /// The arguments for the context use command.
@@ -263,6 +263,14 @@ pub struct UseContextArgs {
 
     /// The network to be used.
     pub network: String,
+}
+
+/// The arguments for the context show command.
+#[derive(Args)]
+pub struct ShowContextArgs {
+    /// Whether to show details for the network and identity in use.
+    #[clap(short, long)]
+    pub verbose: bool,
 }
 
 /// The arguments for the store value command.
