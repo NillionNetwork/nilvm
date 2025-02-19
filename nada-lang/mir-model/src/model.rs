@@ -322,6 +322,7 @@ impl LiteralReference {
 }
 unary_operation!(Not, "not");
 unary_operation!(Reveal, "reveal");
+unary_operation!(PublicKeyDerive, "public-key-derive");
 unary_operation!(Unzip, "unzip");
 binary_operation!(LessThan, "less-than", false);
 binary_operation!(LessOrEqualThan, "less-or-equal-than", false);
@@ -345,6 +346,7 @@ binary_operation!(BooleanAnd, "boolean-and", false);
 binary_operation!(BooleanOr, "boolean-or", false);
 binary_operation!(BooleanXor, "boolean-xor", false);
 binary_operation!(EcdsaSign, "EcdsaSign", false);
+binary_operation!(EddsaSign, "eddsa-sign", false);
 ternary_operation!(IfElse, "if-else");
 
 /// MIR Cast operation
@@ -653,8 +655,12 @@ pub enum Operation {
     BooleanOr(BooleanOr) = 34,
     /// Boolean XOR operation variant
     BooleanXor(BooleanXor) = 35,
-    /// Boolean XOR operation variant
+    /// Ecdsa sign operation variant
     EcdsaSign(EcdsaSign) = 36,
+    /// Eddsa sign operation variant
+    EddsaSign(EddsaSign) = 37,
+    /// Public key derive operation variant
+    PublicKeyDerive(PublicKeyDerive) = 38,
 }
 
 impl Operation {
@@ -690,12 +696,14 @@ impl Operation {
             Random(_) => vec![],
             IfElse(o) => vec![o.this, o.arg_0, o.arg_1],
             Reveal(o) => vec![o.this],
+            PublicKeyDerive(o) => vec![o.this],
             TruncPr(o) => vec![o.left, o.right],
             InnerProduct(o) => vec![o.left, o.right],
             BooleanAnd(o) => vec![o.left, o.right],
             BooleanOr(o) => vec![o.left, o.right],
             BooleanXor(o) => vec![o.left, o.right],
             EcdsaSign(o) => vec![o.left, o.right],
+            EddsaSign(o) => vec![o.left, o.right],
         }
     }
 

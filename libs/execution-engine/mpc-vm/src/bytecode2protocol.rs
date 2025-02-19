@@ -3,9 +3,9 @@ use crate::protocols::MPCProtocol;
 use jit_compiler::{
     bytecode2protocol::{errors::Bytecode2ProtocolError, Bytecode2ProtocolContext, ProtocolFactory},
     models::bytecode::{
-        memory::BytecodeAddress, Addition, Cast, Division, EcdsaSign, Equals, IfElse, InnerProduct, LeftShift,
-        LessThan, Modulo, Multiplication, Not, Power, PublicOutputEquality, Random, Reveal, RightShift, Subtraction,
-        TruncPr,
+        memory::BytecodeAddress, Addition, Cast, Division, EcdsaSign, EddsaSign, Equals, IfElse, InnerProduct,
+        LeftShift, LessThan, Modulo, Multiplication, Not, Power, PublicKeyDerive, PublicOutputEquality, Random, Reveal,
+        RightShift, Subtraction, TruncPr,
     },
 };
 use nada_value::NadaType;
@@ -147,6 +147,16 @@ impl ProtocolFactory<MPCProtocol> for MPCProtocolFactory {
         crate::protocols::reveal::Reveal::transform(context, o)
     }
 
+    fn create_public_key_derive(
+        self,
+        _context: &mut Bytecode2ProtocolContext<MPCProtocol, Self>,
+        _o: &PublicKeyDerive,
+    ) -> Result<MPCProtocol, Bytecode2ProtocolError> {
+        // crate::protocols::public_key_derive::PublicKeyDerive::transform(context, o)
+        // TODO(@manel1874): To be added after the implementation of the protocol
+        Err(Bytecode2ProtocolError::OperationNotSupported(String::from("public_key_derive")))
+    }
+
     fn create_trunc_pr(
         self,
         context: &mut Bytecode2ProtocolContext<MPCProtocol, Self>,
@@ -161,6 +171,16 @@ impl ProtocolFactory<MPCProtocol> for MPCProtocolFactory {
         o: &EcdsaSign,
     ) -> Result<MPCProtocol, Bytecode2ProtocolError> {
         crate::protocols::ecdsa_sign::EcdsaSign::transform(context, o)
+    }
+
+    fn create_eddsa_sign(
+        self,
+        _context: &mut Bytecode2ProtocolContext<MPCProtocol, Self>,
+        _o: &EddsaSign,
+    ) -> Result<MPCProtocol, Bytecode2ProtocolError> {
+        // crate::protocols::eddsa_sign::EddsaSign::transform(context, o)
+        // TODO(@manel1874): To be added after the implementation of the protocol
+        Err(Bytecode2ProtocolError::OperationNotSupported(String::from("eddsa_sign")))
     }
 
     fn create_random(

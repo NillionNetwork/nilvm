@@ -332,22 +332,65 @@ fn public_output_equality() -> Result<(), Error> {
 
 #[test]
 // private_key.ecdsa_sign(digest)
-fn ecdsa_sign() -> Result<(), Error> {
-    let mir = PROGRAMS.mir("ecdsa_sign")?;
+fn ecdsa_sign_with_public_key() -> Result<(), Error> {
+    let mir = PROGRAMS.mir("ecdsa_sign_with_public_key")?;
     let bytecode = MIR2Bytecode::transform(&mir)?;
-    assert_parties(&bytecode, vec!["Party1"]);
-    let (pk_addr, d_addr) = (1, 0);
+    assert_parties(&bytecode, vec!["tecdsa_key_party", "tecdsa_digest_message_party", "tecdsa_output_party"]);
+    let (pubk_addr, sig_addr, privk_addr, d_addr) = (3, 2, 1, 0);
     assert_inputs(
         &bytecode,
-        vec![(pk_addr, "private_key", NadaType::EcdsaPrivateKey), (d_addr, "digest", NadaType::EcdsaDigestMessage)],
+        vec![
+            (privk_addr, "tecdsa_private_key", NadaType::EcdsaPrivateKey),
+            (d_addr, "tecdsa_digest_message", NadaType::EcdsaDigestMessage),
+        ],
     )?;
 
-    assert_eq!(bytecode.operations_count(), 3);
-    assert_load(&bytecode, pk_addr, NadaType::EcdsaPrivateKey, pk_addr)?; // private_key
+    assert_eq!(bytecode.operations_count(), 4);
+    assert_load(&bytecode, privk_addr, NadaType::EcdsaPrivateKey, privk_addr)?; // private_key
+    assert_public_key_derive(&bytecode, pubk_addr, NadaType::EcdsaPublicKey, privk_addr)?; // private_key.public_key()
     assert_load(&bytecode, d_addr, NadaType::EcdsaDigestMessage, d_addr)?; // digest
-    assert_ecdsa_sign(&bytecode, 2, NadaType::EcdsaSignature, pk_addr, d_addr)?; // private_key.ecdsa_sign(digest)
+    assert_ecdsa_sign(&bytecode, sig_addr, NadaType::EcdsaSignature, privk_addr, d_addr)?; // private_key.ecdsa_sign(digest)
 
-    assert_outputs(&bytecode, vec![(0, "my_output", NadaType::EcdsaSignature, 2)]);
+    assert_outputs(
+        &bytecode,
+        vec![
+            (0, "tecdsa_signature", NadaType::EcdsaSignature, sig_addr),
+            (1, "tecdsa_digest_message", NadaType::EcdsaDigestMessage, d_addr),
+            (2, "tecdsa_public_key", NadaType::EcdsaPublicKey, pubk_addr),
+        ],
+    );
+    Ok(())
+}
+
+#[test]
+// private_key.eddsa_sign(message)
+fn eddsa_sign_with_public_key() -> Result<(), Error> {
+    let mir = PROGRAMS.mir("eddsa_sign_with_public_key")?;
+    let bytecode = MIR2Bytecode::transform(&mir)?;
+    assert_parties(&bytecode, vec!["teddsa_key_party", "teddsa_message_party", "teddsa_output_party"]);
+    let (pubk_addr, sig_addr, d_addr, privk_addr) = (3, 2, 1, 0);
+    assert_inputs(
+        &bytecode,
+        vec![
+            (privk_addr, "teddsa_private_key", NadaType::EddsaPrivateKey),
+            (d_addr, "teddsa_message", NadaType::EddsaMessage),
+        ],
+    )?;
+
+    assert_eq!(bytecode.operations_count(), 4);
+    assert_load(&bytecode, privk_addr, NadaType::EddsaPrivateKey, privk_addr)?; // private_key
+    assert_public_key_derive(&bytecode, pubk_addr, NadaType::EddsaPublicKey, privk_addr)?; // private_key.public_key()
+    assert_load(&bytecode, d_addr, NadaType::EddsaMessage, d_addr)?; // message
+    assert_eddsa_sign(&bytecode, sig_addr, NadaType::EddsaSignature, privk_addr, d_addr)?; // private_key.eddsa_sign(message)
+
+    assert_outputs(
+        &bytecode,
+        vec![
+            (0, "teddsa_signature", NadaType::EddsaSignature, sig_addr),
+            (1, "teddsa_message", NadaType::EddsaMessage, d_addr),
+            (2, "teddsa_public_key", NadaType::EddsaPublicKey, pubk_addr),
+        ],
+    );
     Ok(())
 }
 

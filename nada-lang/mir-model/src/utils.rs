@@ -244,6 +244,7 @@ macro_rules! delegate_to_inner {
             Operation::Random(o) => o.$method($($opt),*),
             Operation::IfElse(o) => o.$method($($opt),*),
             Operation::Reveal(o) => o.$method($($opt),*),
+            Operation::PublicKeyDerive(o) => o.$method($($opt),*),
             Operation::Not(o) => o.$method($($opt),*),
             Operation::LeftShift(o) => o.$method($($opt),*),
             Operation::RightShift(o) => o.$method($($opt),*),
@@ -254,6 +255,7 @@ macro_rules! delegate_to_inner {
             Operation::BooleanOr(o) => o.$method($($opt),*),
             Operation::BooleanXor(o) => o.$method($($opt),*),
             Operation::EcdsaSign(o) => o.$method($($opt),*),
+            Operation::EddsaSign(o) => o.$method($($opt),*),
         }
     };
 }

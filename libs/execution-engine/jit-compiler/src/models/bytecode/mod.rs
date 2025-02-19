@@ -792,14 +792,18 @@ pub enum Operation {
     IfElse(IfElse),
     /// Reveal operation variant
     Reveal(Reveal),
+    /// Public key derive operation variant
+    PublicKeyDerive(PublicKeyDerive),
     /// Random operation variant
     Random(Random),
     /// Probabilistic truncation operation variant
     TruncPr(TruncPr),
     /// Inner product bytecode operation variant
     InnerProduct(InnerProduct),
-    /// Inner product bytecode operation variant
+    /// Ecdsa sign operation variant
     EcdsaSign(EcdsaSign),
+    /// Eddsa sign operation variant
+    EddsaSign(EddsaSign),
 }
 
 impl Display for Operation {
@@ -825,9 +829,11 @@ impl Display for Operation {
             Operation::Literal(op) => write!(f, "{}", op),
             Operation::IfElse(op) => write!(f, "{}", op),
             Operation::Reveal(op) => write!(f, "{}", op),
+            Operation::PublicKeyDerive(op) => write!(f, "{}", op),
             Operation::TruncPr(op) => write!(f, "{}", op),
             Operation::InnerProduct(op) => write!(f, "{}", op),
             Operation::EcdsaSign(op) => write!(f, "{}", op),
+            Operation::EddsaSign(op) => write!(f, "{}", op),
         }
     }
 }
@@ -859,15 +865,18 @@ impl TypedElement for Operation {
             Literal(op) => op.ty(),
             IfElse(op) => op.ty(),
             Reveal(op) => op.ty(),
+            PublicKeyDerive(op) => op.ty(),
             TruncPr(op) => op.ty(),
             InnerProduct(op) => op.ty(),
             EcdsaSign(op) => op.ty(),
+            EddsaSign(op) => op.ty(),
         }
     }
 }
 
 unary_operation_bytecode!(Not, "not");
 unary_operation_bytecode!(Reveal, "reveal");
+unary_operation_bytecode!(PublicKeyDerive, "public-key-derive");
 
 binary_operation_bytecode!(Addition, "addition");
 binary_operation_bytecode!(Subtraction, "subtraction");
@@ -882,7 +891,8 @@ binary_operation_bytecode!(Equals, "equals");
 binary_operation_bytecode!(LessThan, "less-than");
 binary_operation_bytecode!(PublicOutputEquality, "public-output-equality");
 binary_operation_bytecode!(InnerProduct, "inner-product");
-binary_operation_bytecode!(EcdsaSign, "EcdsaSign");
+binary_operation_bytecode!(EcdsaSign, "ecdsa-sign");
+binary_operation_bytecode!(EddsaSign, "eddsa-sign");
 ternary_operation_bytecode!(IfElse, "if-else");
 
 /// Bytecode cast operation

@@ -307,6 +307,7 @@ impl ConvertProto for Operation {
             Operation::Random(o) => op_rust_to_proto::random(o),
             Operation::IfElse(o) => op_rust_to_proto::if_else(o),
             Operation::Reveal(o) => op_rust_to_proto::reveal(o),
+            Operation::PublicKeyDerive(o) => op_rust_to_proto::public_key_derive(o),
             Operation::Not(o) => op_rust_to_proto::not(o),
             Operation::LeftShift(o) => op_rust_to_proto::left_shift(o),
             Operation::RightShift(o) => op_rust_to_proto::right_shift(o),
@@ -317,6 +318,7 @@ impl ConvertProto for Operation {
             Operation::BooleanOr(o) => op_rust_to_proto::boolean_or(o),
             Operation::BooleanXor(o) => op_rust_to_proto::boolean_xor(o),
             Operation::EcdsaSign(o) => op_rust_to_proto::ecdsa_sign(o),
+            Operation::EddsaSign(o) => op_rust_to_proto::eddsa_sign(o),
         }
     }
 
@@ -351,6 +353,7 @@ impl ConvertProto for Operation {
                 BinaryOperationVariant::Zip => op_proto_to_rust::zip(operation, binary),
                 BinaryOperationVariant::InnerProduct => op_proto_to_rust::inner_product(operation, binary),
                 BinaryOperationVariant::EcdsaSign => op_proto_to_rust::ecdsa_sign(operation, binary),
+                BinaryOperationVariant::EddsaSign => op_proto_to_rust::eddsa_sign(operation, binary),
             },
             ProtoOperation::Unary(unary) => match UnaryOperationVariant::try_from(unary.variant)
                 .map_err(|_| ProtoError("Can't parse binary variant into enum"))?
@@ -358,6 +361,7 @@ impl ConvertProto for Operation {
                 UnaryOperationVariant::Unzip => op_proto_to_rust::unzip(operation, unary),
                 UnaryOperationVariant::Reveal => op_proto_to_rust::reveal(operation, unary),
                 UnaryOperationVariant::Not => op_proto_to_rust::not(operation, unary),
+                UnaryOperationVariant::PublicKeyDerive => op_proto_to_rust::public_key_derive(operation, unary),
             },
             ProtoOperation::Ifelse(o) => op_proto_to_rust::if_else(operation, o),
             ProtoOperation::Random(_) => op_proto_to_rust::random(operation),
@@ -379,10 +383,10 @@ impl ConvertProto for Operation {
 mod op_rust_to_proto {
     use crate::{
         proto::ConvertProto, Addition, ArrayAccessor, BooleanAnd, BooleanOr, BooleanXor, Cast, Division, EcdsaSign,
-        Equals, GreaterOrEqualThan, GreaterThan, IfElse, InnerProduct, InputReference, LeftShift, LessOrEqualThan,
-        LessThan, LiteralReference, Map, Modulo, Multiplication, NadaFunctionArgRef, NadaFunctionCall, New, Not,
-        NotEquals, Power, PublicOutputEquality, Random, Reduce, Reveal, RightShift, Subtraction, TruncPr,
-        TupleAccessor, Unzip, Zip,
+        EddsaSign, Equals, GreaterOrEqualThan, GreaterThan, IfElse, InnerProduct, InputReference, LeftShift,
+        LessOrEqualThan, LessThan, LiteralReference, Map, Modulo, Multiplication, NadaFunctionArgRef, NadaFunctionCall,
+        New, Not, NotEquals, Power, PublicKeyDerive, PublicOutputEquality, Random, Reduce, Reveal, RightShift,
+        Subtraction, TruncPr, TupleAccessor, Unzip, Zip,
     };
     use mir_proto::nillion::nada::operations::v1::{
         operation::Operation as OperationVariant, ArrayAccessor as ArrayAccessorOperation, BinaryOperation,
@@ -715,6 +719,18 @@ mod op_rust_to_proto {
         }
     }
 
+    pub(crate) fn public_key_derive(public_key_derive: PublicKeyDerive) -> Operation {
+        Operation {
+            id: public_key_derive.id.into_proto(),
+            r#type: Some(public_key_derive.ty.into_proto()),
+            source_ref_index: public_key_derive.source_ref_index.into_proto(),
+            operation: Some(OperationVariant::Unary(UnaryOperation {
+                variant: UnaryOperationVariant::PublicKeyDerive as i32,
+                this: public_key_derive.this.into_proto(),
+            })),
+        }
+    }
+
     pub(crate) fn not(not: Not) -> Operation {
         Operation {
             id: not.id.into_proto(),
@@ -843,15 +859,29 @@ mod op_rust_to_proto {
             })),
         }
     }
+
+    pub(crate) fn eddsa_sign(eddsa_sign: EddsaSign) -> Operation {
+        Operation {
+            id: eddsa_sign.id.into_proto(),
+            r#type: Some(eddsa_sign.ty.into_proto()),
+            source_ref_index: eddsa_sign.source_ref_index.into_proto(),
+            operation: Some(OperationVariant::Binary(BinaryOperation {
+                variant: BinaryOperationVariant::EddsaSign as i32,
+                left: eddsa_sign.left.into_proto(),
+                right: eddsa_sign.right.into_proto(),
+            })),
+        }
+    }
 }
 
 mod op_proto_to_rust {
     use crate::{
         proto::{ProtoError, TryIntoRust},
-        Addition, ArrayAccessor, BooleanAnd, BooleanOr, BooleanXor, Cast, Division, EcdsaSign, Equals,
+        Addition, ArrayAccessor, BooleanAnd, BooleanOr, BooleanXor, Cast, Division, EcdsaSign, EddsaSign, Equals,
         GreaterOrEqualThan, GreaterThan, IfElse, InnerProduct, InputReference, LeftShift, LessOrEqualThan, LessThan,
         LiteralReference, Map, Modulo, Multiplication, NadaFunctionArgRef, New, Not, NotEquals, Operation, Power,
-        PublicOutputEquality, Random, Reduce, Reveal, RightShift, Subtraction, TruncPr, TupleAccessor, Unzip, Zip,
+        PublicKeyDerive, PublicOutputEquality, Random, Reduce, Reveal, RightShift, Subtraction, TruncPr, TupleAccessor,
+        Unzip, Zip,
     };
     use mir_proto::nillion::nada::operations::v1::{
         ArrayAccessor as ArrayAccessorOperation, BinaryOperation, CastOperation, IfElseOperation,
@@ -1111,6 +1141,16 @@ mod op_proto_to_rust {
         }))
     }
 
+    pub(crate) fn eddsa_sign(operation: ProtoOperation, eddsa_sign: BinaryOperation) -> Result<Operation, ProtoError> {
+        Ok(Operation::EddsaSign(EddsaSign {
+            id: operation.id.try_into_rust()?,
+            ty: operation.r#type.ok_or(ProtoError("type not set"))?.try_into_rust()?,
+            source_ref_index: operation.source_ref_index.try_into_rust()?,
+            left: eddsa_sign.left.try_into_rust()?,
+            right: eddsa_sign.right.try_into_rust()?,
+        }))
+    }
+
     pub(crate) fn unzip(operation: ProtoOperation, unzip: UnaryOperation) -> Result<Operation, ProtoError> {
         Ok(Operation::Unzip(Unzip {
             id: operation.id.try_into_rust()?,
@@ -1126,6 +1166,18 @@ mod op_proto_to_rust {
             ty: operation.r#type.ok_or(ProtoError("type not set"))?.try_into_rust()?,
             source_ref_index: operation.source_ref_index.try_into_rust()?,
             this: reveal.this.try_into_rust()?,
+        }))
+    }
+
+    pub(crate) fn public_key_derive(
+        operation: ProtoOperation,
+        public_key_derive: UnaryOperation,
+    ) -> Result<Operation, ProtoError> {
+        Ok(Operation::PublicKeyDerive(PublicKeyDerive {
+            id: operation.id.try_into_rust()?,
+            ty: operation.r#type.ok_or(ProtoError("type not set"))?.try_into_rust()?,
+            source_ref_index: operation.source_ref_index.try_into_rust()?,
+            this: public_key_derive.this.try_into_rust()?,
         }))
     }
 
@@ -1364,8 +1416,12 @@ impl ConvertProto for NadaType {
                 right: Some(right_type.into_proto()),
             })),
             NadaType::EcdsaPrivateKey => ProtoNadaType::EcdsaPrivateKey(()),
+            NadaType::EddsaPrivateKey => ProtoNadaType::EddsaPrivateKey(()),
+            NadaType::EcdsaPublicKey => ProtoNadaType::EcdsaPublicKey(()),
+            NadaType::EddsaPublicKey => ProtoNadaType::EddsaPublicKey(()),
             NadaType::NTuple { types } => ProtoNadaType::Ntuple(proto_ty::Ntuple { fields: types.into_proto() }),
             NadaType::EcdsaDigestMessage => ProtoNadaType::EcdsaDigestMessage(()),
+            NadaType::EddsaMessage => ProtoNadaType::EddsaMessage(()),
             NadaType::Object { types } => {
                 let fields = types
                     .0
@@ -1375,16 +1431,9 @@ impl ConvertProto for NadaType {
                 ProtoNadaType::Object(proto_ty::Object { fields })
             }
             NadaType::EcdsaSignature => ProtoNadaType::EcdsaSignature(()),
-            NadaType::SecretBlob
-            | NadaType::StoreId
-            | NadaType::EcdsaPublicKey
-            | NadaType::EddsaPrivateKey
-            | NadaType::EddsaPublicKey
-            | NadaType::EddsaSignature
-            | NadaType::EddsaMessage => {
-                unreachable!(
-                    "SecretBlob, StoreId, EcdsaPublicKey, EddsaPrivateKey, EddsaPublicKey, EddsaSignature and EddsaMessage are not valid types in MIR"
-                )
+            NadaType::EddsaSignature => ProtoNadaType::EddsaSignature(()),
+            NadaType::SecretBlob | NadaType::StoreId => {
+                unreachable!("SecretBlob, StoreId, EcdsaPublicKey and EddsaPublicKey are not valid types in MIR")
             }
         };
 
@@ -1403,8 +1452,13 @@ impl ConvertProto for NadaType {
             ProtoNadaType::SecretUnsignedInteger(_) => NadaType::SecretUnsignedInteger,
             ProtoNadaType::SecretBoolean(_) => NadaType::SecretBoolean,
             ProtoNadaType::EcdsaPrivateKey(_) => NadaType::EcdsaPrivateKey,
+            ProtoNadaType::EcdsaPublicKey(_) => NadaType::EcdsaPublicKey,
+            ProtoNadaType::EddsaPrivateKey(_) => NadaType::EddsaPrivateKey,
+            ProtoNadaType::EddsaPublicKey(_) => NadaType::EddsaPublicKey,
             ProtoNadaType::EcdsaDigestMessage(_) => NadaType::EcdsaDigestMessage,
             ProtoNadaType::EcdsaSignature(_) => NadaType::EcdsaSignature,
+            ProtoNadaType::EddsaSignature(_) => NadaType::EddsaSignature,
+            ProtoNadaType::EddsaMessage(_) => NadaType::EddsaMessage,
             ProtoNadaType::Array(array) => NadaType::Array {
                 inner_type: array.contained_type.ok_or(ProtoError("contained type not set"))?.try_into_rust()?,
                 size: array.size as usize,
