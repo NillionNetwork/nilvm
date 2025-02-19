@@ -121,6 +121,25 @@ fn assert_reveal(bytecode: &ProgramBytecode, address: usize, ty: NadaType, opera
     Ok(())
 }
 
+/// Check if a public key derive operation matches the expected one.
+fn assert_public_key_derive(
+    bytecode: &ProgramBytecode,
+    address: usize,
+    ty: NadaType,
+    operand: usize,
+) -> Result<(), Error> {
+    let address = BytecodeAddress(address, AddressType::Heap);
+    let operand = BytecodeAddress(operand, AddressType::Heap);
+    let operation = bytecode.operation(address)?.unwrap();
+    let Operation::PublicKeyDerive(operation) = operation else {
+        bail!("expected PublicKeyDerive, found {operation:?}")
+    };
+    assert_eq!(operation.address, address);
+    assert_eq!(operation.operand, operand);
+    assert_eq!(&operation.ty, &ty);
+    Ok(())
+}
+
 /// Generate assert for a binary operation
 macro_rules! assert_binary_operation {
     ($o:ident, $fn_name:ident) => {
@@ -169,7 +188,7 @@ assert_binary_operation!(Division, assert_division);
 assert_binary_operation!(LessThan, assert_less_than);
 assert_binary_operation!(PublicOutputEquality, assert_public_output_equality);
 assert_binary_operation!(EcdsaSign, assert_ecdsa_sign);
-
+assert_binary_operation!(EddsaSign, assert_eddsa_sign);
 fn assert_if_else(
     bytecode: &ProgramBytecode,
     address: usize,

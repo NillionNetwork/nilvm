@@ -64,6 +64,33 @@ impl UnaryOperation for RevealOperation {
     }
 }
 
+pub(crate) struct PublicKeyDeriveOperation;
+
+impl UnaryOperation for PublicKeyDeriveOperation {
+    fn display_info(&self) -> OperationDisplay {
+        OperationDisplay { name: "public_key_derive", symbol: "public_key_derive" }
+    }
+
+    fn output_type<T: Prime>(&self, operand: &NadaValue<ClearModular<T>>) -> Result<NadaType, EvaluationError> {
+        let operand_type: NadaTypeMetadata = (&operand.to_type()).into();
+        let output_primitive_type = if let Some(primitive_type) = operand_type.nada_primitive_type() {
+            primitive_type
+        } else {
+            return Err(InvalidOperandTypes);
+        };
+
+        let output_type = NadaTypeMetadata::PrimitiveType {
+            nada_primitive_type: output_primitive_type,
+            shape: Shape::PublicVariable,
+        };
+        Ok((&output_type).try_into()?)
+    }
+
+    fn execute<T: Prime>(&self, operand: NadaValue<ClearModular<T>>) -> Result<ModularNumber<T>, EvaluationError> {
+        Ok(operand.try_into()?)
+    }
+}
+
 fn default_arithmetic_operation_output_type<T: Prime>(
     lhs: &NadaValue<ClearModular<T>>,
     rhs: &NadaValue<ClearModular<T>>,

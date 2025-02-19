@@ -1,14 +1,15 @@
 use crate::operations::{
     AddOperation, BinaryOperation, DivOperation, EqualsOperation, IfElseOperation, LeftShiftOperation, LtOperation,
-    ModuloOperation, MulOperation, NotOperation, OperationDisplay, PowerOperation, PublicOutputEqualityOperation,
-    RevealOperation, RightShiftOperation, SubOperation, TernaryOperation, TruncPrOperation, UnaryOperation,
+    ModuloOperation, MulOperation, NotOperation, OperationDisplay, PowerOperation, PublicKeyDeriveOperation,
+    PublicOutputEqualityOperation, RevealOperation, RightShiftOperation, SubOperation, TernaryOperation,
+    TruncPrOperation, UnaryOperation,
 };
 use anyhow::{anyhow, Error};
 use jit_compiler::models::{
     bytecode::{
-        memory::BytecodeAddress, Addition, Division, EcdsaSign, Equals, Get, IfElse, InnerProduct, Input, LeftShift,
-        LessThan, LiteralRef, Load, Modulo, Multiplication, New, Not, Operation, Power, ProgramBytecode,
-        PublicOutputEquality, Random, Reveal, RightShift, Subtraction, TruncPr,
+        memory::BytecodeAddress, Addition, Division, EcdsaSign, EddsaSign, Equals, Get, IfElse, InnerProduct, Input,
+        LeftShift, LessThan, LiteralRef, Load, Modulo, Multiplication, New, Not, Operation, Power, ProgramBytecode,
+        PublicKeyDerive, PublicOutputEquality, Random, Reveal, RightShift, Subtraction, TruncPr,
     },
     memory::{address_count, AddressType},
 };
@@ -461,11 +462,17 @@ impl<T: SafePrime> Evaluator<T> {
                 Operation::Reveal(Reveal { operand, .. }) => {
                     self.run_unary_operation(*operand, operation_text_repr, RevealOperation)?;
                 }
+                Operation::PublicKeyDerive(PublicKeyDerive { operand, .. }) => {
+                    self.run_unary_operation(*operand, operation_text_repr, PublicKeyDeriveOperation)?;
+                }
                 Operation::InnerProduct(InnerProduct { left, right, .. }) => {
                     self.run_binary_operation(*left, *right, operation_text_repr, InnerProductOperation)?;
                 }
                 Operation::EcdsaSign(EcdsaSign { .. }) => {
                     return Err(anyhow!("EcdsaSign operation is not implemented by the bytecode-evaluator"));
+                }
+                Operation::EddsaSign(EddsaSign { .. }) => {
+                    return Err(anyhow!("EddsaSign operation is not implemented by the bytecode-evaluator"));
                 }
             }
         }
