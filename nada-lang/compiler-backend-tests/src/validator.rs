@@ -88,6 +88,7 @@ pub fn read_test_mir(test_id: &str) -> Result<ProgramMIR> {
 #[case::ecdsa_sign_with_public_key("ecdsa_sign_with_public_key", true)]
 #[case::eddsa_sign("eddsa_sign", true)]
 #[case::eddsa_sign_with_public_key("eddsa_sign_with_public_key", true)]
+#[case::eddsa_sign("eddsa_sign", true)]
 fn tests(#[case] program_name: &str, #[case] is_valid: bool) -> Result<()> {
     let mir_program = if is_valid { PROGRAMS.mir(program_name)? } else { read_test_mir(program_name)? };
     let validation_result = mir_program.validate()?;
