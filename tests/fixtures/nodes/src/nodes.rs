@@ -33,12 +33,15 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
     thread::{self, sleep},
     time::{Duration, Instant},
+    sync::Arc,
 };
 use tempfile::TempDir;
 use tokio::runtime::Runtime;
+use tokio::sync::Mutex; // <--- for interior mutability
 use tracing_fixture::{tracing, Tracing};
 use xshell::{cmd, Shell};
 
+const MAX_PAYER_KEY_IDS: u64 = 40;
 const PAYER_FUND_CHUNK: usize = 20;
 const SIGNING_KEY_PREFIX: &str = "signinig-key-";
 const TOTAL_PREFUNDED_KEYS: u64 = 1024;
@@ -204,25 +207,34 @@ pub struct Nodes {
     context: NodeContext,
     pub uploaded_programs: UploadedPrograms,
     nillion_chain_node: Box<dyn NillionChainNode>,
-    stash_client: tokio::sync::Mutex<NillionChainClient>,
+    stash_client: Mutex<NillionChainClient>,
     next_payment_key_id: AtomicU64,
     next_signing_key_id: AtomicU64,
-    funded_payers: tokio::sync::Mutex<Vec<NillionChainClientPayer>>,
-    bootnode_party_id: Option<PartyId>,
+    funded_payers: Mutex<Vec<NillionChainClientPayer>>,
+    bootnode_party_id: Mutex<Option<PartyId>>,
     payments_seed: String,
 }
 
 impl Nodes {
-    pub fn bootnode_channel(&self, key: SigningKey) -> AuthenticatedGrpcChannel {
-        let party_id = self.bootnode_party_id.clone().expect("no bootnode party id");
+    pub async fn bootnode_channel(&self, key: SigningKey) -> AuthenticatedGrpcChannel {
+        let party_id = {
+            let guard = self.bootnode_party_id.lock().await;
+            guard.clone().expect("no bootnode party id")
+        };
+
         let config = self.bootnode_channel_config();
         let authenticator = TokenAuthenticator::new(key, party_id.as_ref().to_vec().into(), Duration::from_secs(60));
         config.authentication(authenticator).build().expect("failed to build channel")
     }
 
-    pub async fn build_client(&self) -> VmClient {
+    /// Build a ManagedVmClient that automatically returns its payer on drop.
+    /// We accept `&Arc<Self>` so we can call it multiple times without moving the Arc.
+    pub async fn build_client(self: &Arc<Self>) -> ManagedVmClient {
         let payer = self.allocate_payer().await;
-        self.build_custom_client(move |builder| builder.nilchain_payer(payer)).await
+        let vm_client = self
+            .build_custom_client(|builder| builder.nilchain_payer(payer.clone()))
+            .await;
+        ManagedVmClient::new(Arc::clone(self), vm_client, payer)
     }
 
     pub fn node_channel_config(&self, endpoint: String) -> GrpcChannelConfig {
@@ -245,7 +257,7 @@ impl Nodes {
     pub async fn top_up_balances(&self, addresses: Vec<NillionChainAddress>, amount: TokenAmount) {
         let _guard = PAYMENTS_RUNTIME.enter();
         let mut stash_client = self.stash_client.lock().await;
-        info!("Topping up address {} addresses up to amount of {amount}", addresses.len());
+        info!("Topping up {} addresses up to amount of {amount}", addresses.len());
         let target = TokenAmount::Unil((amount.to_unil() as f64 * 1.1) as u64);
         stash_client.top_up_balances(addresses, amount, target).await.expect("failed to fund key");
         info!("Addresses funded");
@@ -277,7 +289,7 @@ impl Nodes {
         builder.build().await.expect("failed to build client")
     }
 
-    async fn wait_network_ready(&mut self) -> Result<(), Error> {
+    pub async fn wait_network_ready(&self) -> Result<(), Error> {
         let start_time = Instant::now();
         let timeout = Duration::from_secs(300);
         let membership_client =
@@ -288,12 +300,12 @@ impl Nodes {
                     break cluster;
                 }
                 Err(e) => {
-                    warn!("Bootnode is not up yet, retrying: {e}")
+                    warn!("Bootnode is not up yet, retrying: {e}");
                 }
             }
             tokio::time::sleep(Duration::from_millis(500)).await;
             if start_time.elapsed() > timeout {
-                bail!("Timed out waiting for bootnode to have gRPC endpoint up",);
+                bail!("Timed out waiting for bootnode to have gRPC endpoint up");
             }
         };
         let bootnode_endpoint = self.context.bootnode_endpoint();
@@ -301,8 +313,14 @@ impl Nodes {
             .members
             .iter()
             .find(|m| m.grpc_endpoint == bootnode_endpoint)
-            .expect("bootnode not found in cluster");
-        self.bootnode_party_id = Some(PartyId::from(Vec::from(bootnode.identity.clone())));
+            .ok_or_else(|| anyhow!("bootnode not found in cluster"))?;
+
+        {
+            let mut guard = self.bootnode_party_id.lock().await;
+            *guard = Some(PartyId::from(Vec::from(bootnode.identity.clone())));
+        }
+
+        // Check that all cluster members have a reachable gRPC endpoint
         for node in &cluster.members {
             let endpoint =
                 node.grpc_endpoint.trim_start_matches("http://").trim_start_matches("https://").trim_end_matches("/");
@@ -313,7 +331,7 @@ impl Nodes {
                 info!("Connection to node {endpoint} failed, retrying");
                 sleep(Duration::from_millis(500));
                 if start_time.elapsed() > timeout {
-                    bail!("Timed out waiting for node {endpoint} to have gRPC endpoint up",);
+                    bail!("Timed out waiting for node {endpoint} to have gRPC endpoint up");
                 }
             }
         }
@@ -321,37 +339,132 @@ impl Nodes {
     }
 
     pub async fn allocate_payer(&self) -> NillionChainClientPayer {
-        // enter the payments runtime so all payers share the same reqwest client pool
+        // Enter the payments runtime so all payers share the same reqwest client pool
         let _guard = PAYMENTS_RUNTIME.enter();
-        let mut funded_payers = self.funded_payers.lock().await;
 
-        if funded_payers.is_empty() {
-            // Otherwise fund a chunk of payers at once if we don't have any
-            let mut addresses = Vec::new();
-            let mut keys = Vec::new();
-            for _ in 0..PAYER_FUND_CHUNK {
-                let payment_key_id = self.next_payment_key_id.fetch_add(1, Ordering::AcqRel);
-                let payments_seed = format!("{}-{payment_key_id}", self.payments_seed);
-                let key = NillionChainPrivateKey::from_seed(&payments_seed).expect("private key creation failed");
-                let address = key.address.clone();
-                keys.push(key);
-                addresses.push(address);
-            }
-            self.top_up_balances(addresses, TokenAmount::Nil(1)).await;
+        loop {
+            let mut funded_payers = self.funded_payers.lock().await;
 
-            // Create all the clients in bulk as this performs a lookup on the chain.
-            let mut futs = Vec::new();
-            for key in keys {
-                let payments_rpc_endpoint = self.nillion_chain_rpc_endpoint();
-                futs.push(NillionChainClient::new(payments_rpc_endpoint, key));
+            // If there's already a free payer, just return it
+            if let Some(payer) = funded_payers.pop() {
+                println!("======> Allocating existing payer from the pool.");
+                return payer;
             }
-            for result in future::join_all(futs).await {
-                let client = result.expect("failed to look up client");
-                let payer = NillionChainClientPayer::new(client);
-                funded_payers.push(payer);
+
+            // Check if we can create more
+            let current_id = self.next_payment_key_id.load(Ordering::Relaxed);
+            if current_id < MAX_PAYER_KEY_IDS {
+                // Figure out how many we *actually* can create right now, given that others might be close to the limit.
+                let remaining = MAX_PAYER_KEY_IDS.saturating_sub(current_id);
+                // We'll create the minimum of `remaining` and `PAYER_FUND_CHUNK`.
+                let to_allocate = remaining.min(PAYER_FUND_CHUNK as u64) as usize;
+                if to_allocate == 0 {
+                    // If something changed in another thread, just wait
+                    drop(funded_payers);
+                    println!("======> Another thread just reached the limit, waiting...");
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                    continue;
+                }
+
+                println!("======> Current ID is {}, will allocate {} new payers (limit={})", current_id, to_allocate, MAX_PAYER_KEY_IDS);
+
+                // Reserve space for payers
+                let mut addresses = Vec::with_capacity(to_allocate);
+                let mut keys = Vec::with_capacity(to_allocate);
+
+                // Increment the ID while holding the lock, so we don't overshoot
+                for _ in 0..to_allocate {
+                    let payment_key_id = self.next_payment_key_id.fetch_add(1, Ordering::AcqRel);
+                    let payments_seed = format!("{}-{payment_key_id}", self.payments_seed);
+                    let key = NillionChainPrivateKey::from_seed(&payments_seed)
+                        .expect("private key creation failed");
+                    addresses.push(key.address.clone());
+                    keys.push(key);
+                }
+
+                // Drop the lock to perform slow operations (funding, building clients).
+                drop(funded_payers);
+
+                println!("======> Creating more payers: {}...", addresses.len());
+                self.top_up_balances(addresses, TokenAmount::Nil(1)).await;
+
+                // Create all the clients in bulk (this does a chain lookup).
+                let mut futs = Vec::with_capacity(keys.len());
+                for key in keys {
+                    let payments_rpc_endpoint = self.nillion_chain_rpc_endpoint();
+                    futs.push(NillionChainClient::new(payments_rpc_endpoint, key));
+                }
+                let results = future::join_all(futs).await;
+
+                // Convert them into NillionChainClientPayers
+                let mut newly_created = Vec::new();
+                for res in results {
+                    let client = res.expect("failed to look up client");
+                    newly_created.push(NillionChainClientPayer::new(client));
+                }
+
+                // Reacquire the lock to put newly created payers in the pool
+                let mut funded_payers = self.funded_payers.lock().await;
+                funded_payers.extend(newly_created);
+            } else {
+                // We've hit the limit; wait a bit for someone to release a payer
+                drop(funded_payers);
+                println!("======> We've hit the limit of max payers ({MAX_PAYER_KEY_IDS}), waiting for releases...");
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
         }
-        funded_payers.pop().expect("should not be empty")
+    }
+
+    /// Releases the payer to the pool so the next test can reuse it
+    pub async fn release_payer(&self, payer: NillionChainClientPayer) {
+        let mut locked = self.funded_payers.lock().await;
+        locked.push(payer);
+    }
+}
+
+/// A wrapper that returns its payer to the pool when dropped
+pub struct ManagedVmClient {
+    client: VmClient,
+    payer: Option<NillionChainClientPayer>,
+    nodes: Arc<Nodes>,
+}
+
+impl ManagedVmClient {
+    pub fn new(nodes: Arc<Nodes>, client: VmClient, payer: NillionChainClientPayer) -> Self {
+        Self {
+            client,
+            payer: Some(payer),
+            nodes,
+        }
+    }
+
+    pub fn client(&self) -> &VmClient {
+        &self.client
+    }
+
+    pub fn into_inner(self) -> VmClient {
+        self.client.clone()
+    }
+}
+
+/// Deref so you can call `managed_vm_client.cluster()` etc. directly
+impl std::ops::Deref for ManagedVmClient {
+    type Target = VmClient;
+
+    fn deref(&self) -> &Self::Target {
+        &self.client
+    }
+}
+
+/// On Drop, push the payer back to the pool asynchronously
+impl Drop for ManagedVmClient {
+    fn drop(&mut self) {
+        if let Some(payer) = self.payer.take() {
+            let nodes = Arc::clone(&self.nodes);
+            tokio::spawn(async move {
+                nodes.release_payer(payer).await;
+            });
+        }
     }
 }
 
@@ -372,7 +485,11 @@ impl fmt::Display for TestMode {
 
 impl TestMode {
     fn from_env() -> Self {
-        if let Ok(config_path) = env::var("REMOTE_NODES") { Self::RemoteManaged { config_path } } else { Self::Process }
+        if let Ok(config_path) = env::var("REMOTE_NODES") {
+            Self::RemoteManaged { config_path }
+        } else {
+            Self::Process
+        }
     }
 }
 
@@ -413,7 +530,7 @@ impl NillionChainNode for RemoteNillionChainNode {
 
 #[fixture]
 #[once]
-pub fn nodes(_tracing: &Tracing) -> Nodes {
+pub fn nodes(_tracing: &Tracing) -> Arc<Nodes> {
     let mode = TestMode::from_env();
     info!("Node mode: {mode}");
 
@@ -443,7 +560,10 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         }
     };
 
-    let stash_key = nillion_chain_node.get_genesis_account_private_key("stash").expect("failed to get stash key");
+    let stash_key = nillion_chain_node
+        .get_genesis_account_private_key("stash")
+        .expect("failed to get stash key");
+
     let stash_client = thread::scope(|s| {
         s.spawn(|| {
             // `HttpClient` uses reqwest/hyper which spin up a background task to do connection
@@ -458,8 +578,8 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
                     .expect("failed to create stash client")
             })
         })
-        .join()
-        .expect("waiting for network ready thread failed")
+            .join()
+            .expect("waiting for network ready thread failed")
     });
 
     // Keep the children handle ourselves to clean it up at the end. The `Nodes` fixture is owned
@@ -471,36 +591,37 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
 
     let payments_seed = env::var("TEST_PAYMENTS_SEED").unwrap_or_else(|_| "payment-seed".to_string());
 
+    context.bootnode_endpoint();
+
     let mut nodes = Nodes {
         context,
         uploaded_programs: UploadedPrograms(Default::default()),
         nillion_chain_node,
-        stash_client: stash_client.into(),
+        stash_client: Mutex::new(stash_client),
         next_payment_key_id: Default::default(),
         next_signing_key_id: Default::default(),
-        funded_payers: Default::default(),
-        bootnode_party_id: None,
+        funded_payers: Mutex::new(Vec::new()),
+        bootnode_party_id: Mutex::new(None),
         payments_seed,
     };
 
     // This is because this is a non async rstest fixture but it gets run within an async context
     // because all tests are async. So to get around that we spin up a runtime and run a future
     // inside it.
-    nodes.uploaded_programs = thread::scope(|s| {
-        let namespace = s
-            .spawn(|| {
-                PAYMENTS_RUNTIME
-                    .block_on(async {
-                        nodes.wait_network_ready().await.expect("network did not become ready in time");
-                        upload_programs(&nodes).await
-                    })
-                    .expect("uploading programs failed")
+    let uploaded_programs = thread::scope(|s| {
+        s.spawn(|| {
+            PAYMENTS_RUNTIME.block_on(async {
+                nodes.wait_network_ready().await.expect("network did not become ready in time");
+                upload_programs(&nodes).await.expect("failed to upload programs")
             })
+        })
             .join()
-            .expect("program upload thread failed");
-        namespace
+            .expect("upload thread failed")
     });
-    nodes
+
+    nodes.uploaded_programs = uploaded_programs;
+
+    Arc::new(nodes)
 }
 
 fn networks_path() -> PathBuf {

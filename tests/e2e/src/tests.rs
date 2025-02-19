@@ -11,10 +11,11 @@ use nodes_fixtures::{
 use pynadac::Compiler;
 use rstest::rstest;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tempfile::tempdir;
 use tracing_fixture::{tracing, Tracing};
 
-async fn test_nada_lang_feature(nodes: &Nodes, type_names: Vec<&str>, template_id: &'static str) -> Result<()> {
+async fn test_nada_lang_feature(nodes: &Arc<Nodes>, type_names: Vec<&str>, template_id: &'static str) -> Result<()> {
     let mut context = tera::Context::new();
     let program_id = match type_names.len() {
         1 => {
@@ -41,14 +42,14 @@ async fn test_nada_lang_feature(nodes: &Nodes, type_names: Vec<&str>, template_i
 /// Helper function to test templates where there is only on type of inputs.
 ///
 /// In other words, there might be many inputs but all of them have the same type.
-async fn test_one_type(nodes: &Nodes, type_name: &str, template_id: &'static str) -> Result<()> {
+async fn test_one_type(nodes: &Arc<Nodes>, type_name: &str, template_id: &'static str) -> Result<()> {
     test_nada_lang_feature(nodes, vec![type_name], template_id).await
 }
 
 /// Helper function to test templates where there are two types of inputs.
 ///
 /// In other words, there might be many inputs in the program but all of them are of any of the two types.
-async fn test_two_types(nodes: &Nodes, type_name1: &str, type_name2: &str, template_id: &'static str) -> Result<()> {
+async fn test_two_types(nodes: &Arc<Nodes>, type_name1: &str, type_name2: &str, template_id: &'static str) -> Result<()> {
     test_nada_lang_feature(nodes, vec![type_name1, type_name2], template_id).await
 }
 
@@ -78,7 +79,7 @@ async fn test_two_types(nodes: &Nodes, type_name1: &str, type_name2: &str, templ
 // #[case::integer_random("SecretInteger", "random_value")] <- We need to figure out how to test this because both the simulator and the bytecode evaluator will generate different randoms independently
 #[tokio::test(flavor = "multi_thread")]
 async fn test_one_type_integers(
-    nodes: &Nodes,
+    nodes: &Arc<Nodes>,
     _tracing: &Tracing,
     #[case] type_name: &str,
     #[case] template_id: &'static str,
@@ -115,7 +116,7 @@ async fn test_one_type_integers(
 #[case::unsigned_integer_complex_add_sub_mult("SecretUnsignedInteger", "complex_add_sub_mult")]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_one_type_unsigned_integers(
-    nodes: &Nodes,
+    nodes: &Arc<Nodes>,
     _tracing: &Tracing,
     #[case] type_name: &str,
     #[case] template_id: &'static str,
@@ -151,7 +152,7 @@ async fn test_one_type_unsigned_integers(
 #[case::integer_public_output_equality_public("SecretInteger", "PublicInteger", "public_output_equality")]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_two_types_integer(
-    nodes: &Nodes,
+    nodes: &Arc<Nodes>,
     _tracing: &Tracing,
     #[case] type_name1: &str,
     #[case] type_name2: &str,
@@ -198,7 +199,7 @@ async fn test_two_types_integer(
 )]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_two_types_unsigned_integer(
-    nodes: &Nodes,
+    nodes: &Arc<Nodes>,
     _tracing: &Tracing,
     #[case] type_name1: &str,
     #[case] type_name2: &str,
@@ -216,7 +217,7 @@ async fn test_two_types_unsigned_integer(
 // #[case::power_secret_integer("SecretInteger-power.inputs.yaml", Some("programs/power-secret-integer.py"))]
 #[case::literals("programs/literals.py")]
 #[tokio::test(flavor = "multi_thread")]
-async fn test_individual_program(nodes: &Nodes, _tracing: &Tracing, #[case] program_path: &str) -> Result<()> {
+async fn test_individual_program(nodes: &Arc<Nodes>, _tracing: &Tracing, #[case] program_path: &str) -> Result<()> {
     let input_program = InputProgram::Filesystem { path: program_path.into() };
     run_end_to_end_test(nodes, input_program).await
 }
@@ -233,7 +234,7 @@ async fn test_individual_program(nodes: &Nodes, _tracing: &Tracing, #[case] prog
 #[case::array_chaining_map_reduce("array_chaining_map_reduce")]
 #[tokio::test(flavor = "multi_thread")]
 async fn test_individual_pre_uploaded_program(
-    nodes: &Nodes,
+    nodes: &Arc<Nodes>,
     _tracing: &Tracing,
     #[case] program_name: &str,
 ) -> Result<()> {
@@ -269,7 +270,7 @@ async fn compile_and_store_program(
 /// # Arguments
 /// * `nodes` - The [`Nodes`] fixture injected by rstest
 /// * `program_path` - The program to be tested.
-async fn run_end_to_end_test(nodes: &Nodes, input_program: InputProgram) -> Result<()> {
+async fn run_end_to_end_test(nodes: &Arc<Nodes>, input_program: InputProgram) -> Result<()> {
     let (program_id, program, bytecode, client) = match input_program {
         InputProgram::Preuploaded { program_id, program, bytecode } => (program_id, program, bytecode, None),
         InputProgram::Filesystem { path } => {

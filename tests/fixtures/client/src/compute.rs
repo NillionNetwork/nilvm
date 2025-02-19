@@ -5,6 +5,7 @@ use nada_value::{clear::Clear, NadaValue};
 use nillion_client::{grpc::membership::Prime, vm::VmClient, UserId};
 use nodes_fixtures::nodes::Nodes;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::info;
 use uuid::Uuid;
 
@@ -51,14 +52,14 @@ impl ComputeValidatorBuilder {
         self
     }
 
-    pub async fn run(self, nodes: &Nodes) {
+    pub async fn run(self, nodes: Arc<Nodes>) {
         let program_id = self.program_id.expect("no program id");
         let (program, bytecode) = self.program.expect("no program");
         let seed = self.seed.unwrap_or(RANDOM_SEED);
         let clients_mode = self.clients_mode;
         let client = match self.invoker_client {
             Some(client) => client,
-            None => nodes.build_client().await,
+            None => nodes.build_client().await.into_inner(),
         };
         let cluster = client.cluster();
         let prime = match cluster.prime {
@@ -139,7 +140,7 @@ impl ComputeValidator {
         self
     }
 
-    async fn run(self, nodes: &Nodes, invoker_client: VmClient) {
+    async fn run(self, nodes: Arc<Nodes>, invoker_client: VmClient) {
         let spec = self.build_spec(nodes, &invoker_client).await;
         let mut builder = invoker_client
             .invoke_compute()
@@ -166,7 +167,7 @@ impl ComputeValidator {
         assert_eq!(all_outputs, self.expected_outputs, "outputs (left) don't match expectations (right)");
     }
 
-    async fn build_spec(&self, nodes: &Nodes, invoker_client: &VmClient) -> ExecutionSpec {
+    async fn build_spec(&self, nodes: Arc<Nodes>, invoker_client: &VmClient) -> ExecutionSpec {
         match self.clients_mode {
             ClientsMode::Single => {
                 // we are everyone
@@ -193,13 +194,13 @@ impl ComputeValidator {
                 for (party, inputs) in &self.party_inputs {
                     let client = nodes.build_client().await;
                     let values_id =
-                        Self::store_values(nodes, &self.program_id, invoker_client.user_id(), inputs.clone()).await;
+                        Self::store_values(nodes.clone(), &self.program_id, invoker_client.user_id(), inputs.clone()).await;
                     value_ids.push(values_id);
                     input_bindings.push((party.clone(), client.user_id()));
                 }
                 // create one client per output party
                 for party in self.party_outputs.keys() {
-                    let client = nodes.build_client().await;
+                    let client = nodes.build_client().await.into_inner();
                     output_bindings.push((party.clone(), client.user_id()));
                     output_clients.push(client);
                 }
@@ -215,7 +216,7 @@ impl ComputeValidator {
     }
 
     async fn store_values(
-        nodes: &Nodes,
+        nodes: Arc<Nodes>,
         program_id: &str,
         invoker_user: UserId,
         inputs: HashMap<String, NadaValue<Clear>>,

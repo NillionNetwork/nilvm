@@ -32,6 +32,7 @@ use rand_chacha::rand_core::OsRng;
 use rstest::rstest;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::sync::Arc;
 use threshold_keypair::{privatekey::ThresholdPrivateKey, publickey::ThresholdPublicKey, signature::EcdsaSignature};
 use tokio::sync::{mpsc::channel, Mutex};
 use tokio_stream::wrappers::ReceiverStream;
@@ -39,7 +40,7 @@ use uuid::Uuid;
 
 #[rstest]
 #[tokio::test]
-async fn cluster_definition(nodes: &Nodes) {
+async fn cluster_definition(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let expected_cluster = client.cluster();
 
@@ -54,14 +55,14 @@ async fn cluster_definition(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn pool_status(nodes: &Nodes) {
+async fn pool_status(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     client.pool_status().invoke().await.expect("failed to get pool status");
 }
 
 #[rstest]
 #[tokio::test]
-async fn node_version(nodes: &Nodes) {
+async fn node_version(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let member = &client.cluster().leader;
     client.node_version(member.identity.clone()).await.expect("failed to get node version");
@@ -69,7 +70,7 @@ async fn node_version(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn store_program(nodes: &Nodes) {
+async fn store_program(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let program = PROGRAMS.metadata("reduce_simple").expect("'simple' program not found").raw_mir();
     client
@@ -85,7 +86,7 @@ async fn store_program(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn store_invalid_program_name(nodes: &Nodes) {
+async fn store_invalid_program_name(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let program = PROGRAMS.metadata("reduce_simple").expect("'simple' program not found").raw_mir();
     client
@@ -99,7 +100,7 @@ async fn store_invalid_program_name(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn store_invalid_program(nodes: &Nodes) {
+async fn store_invalid_program(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let program = test_programs::PROGRAMS.metadata("invalid_program").expect("'invalid_program' not found").raw_mir();
     client
@@ -115,7 +116,7 @@ async fn store_invalid_program(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn store_values(nodes: &Nodes) {
+async fn store_values(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let values_id = client
         .store_values()
@@ -132,7 +133,7 @@ async fn store_values(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn update_values(nodes: &Nodes) {
+async fn update_values(nodes: &Arc<Nodes>) {
     // Create ecdsa private key Nada value
     let mut csprng = OsRng;
     let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
@@ -178,7 +179,7 @@ async fn update_values(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn delete_values(nodes: &Nodes) {
+async fn delete_values(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let values_id = client
         .store_values()
@@ -201,7 +202,7 @@ async fn delete_values(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn retrieve_values(nodes: &Nodes) {
+async fn retrieve_values(nodes: &Arc<Nodes>) {
     // Create ecdsa private key Nada value
     let mut csprng = OsRng;
     let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
@@ -239,7 +240,7 @@ async fn retrieve_values(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn store_retrieve_update_ecdsa_private_keys_digest_msg_and_signature(nodes: &Nodes) {
+async fn store_retrieve_update_ecdsa_private_keys_digest_msg_and_signature(nodes: &Arc<Nodes>) {
     // Create ecdsa private key
     let mut csprng = OsRng;
     let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
@@ -322,7 +323,7 @@ async fn store_retrieve_update_ecdsa_private_keys_digest_msg_and_signature(nodes
 
 #[rstest]
 #[tokio::test]
-async fn values_permission_denied(nodes: &Nodes) {
+async fn values_permission_denied(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let values_id = client
         .store_values()
@@ -357,7 +358,7 @@ async fn values_permission_denied(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn retrieve_unknown_value_id(nodes: &Nodes) {
+async fn retrieve_unknown_value_id(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     client
         .retrieve_values()
@@ -371,7 +372,7 @@ async fn retrieve_unknown_value_id(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn retrieve_permissions(nodes: &Nodes) {
+async fn retrieve_permissions(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let values_id = client
         .store_values()
@@ -401,7 +402,7 @@ async fn retrieve_permissions(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn update_permissions(nodes: &Nodes) {
+async fn update_permissions(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let user_id = client.user_id();
 
@@ -467,7 +468,7 @@ async fn update_permissions(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn manage_permissions(nodes: &Nodes) {
+async fn manage_permissions(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let other_client = nodes.build_client().await;
     let values_id = client
@@ -530,10 +531,10 @@ async fn manage_permissions(nodes: &Nodes) {
 #[case::three_dealer_product("3dealer-product")]
 #[case::greater_or_equal_than("greater_or_equal_than")]
 #[tokio::test]
-async fn invoke_compute(nodes: &Nodes, #[case] program_name: &str) {
+async fn invoke_compute(nodes: &Arc<Nodes>, #[case] program_name: &str) {
     let (program, bytecode) = PROGRAMS.program(program_name).expect("program not found");
     let program_id = nodes.uploaded_programs.program_id(program_name);
-    ComputeValidator::builder().program_id(program_id).program(program, bytecode).run(nodes).await;
+    ComputeValidator::builder().program_id(program_id).program(program, bytecode).run(nodes.clone()).await;
 }
 
 fn verify(pk: ThresholdPublicKey<Secp256k1>, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
@@ -546,7 +547,7 @@ fn verify(pk: ThresholdPublicKey<Secp256k1>, signature: EcdsaSignature, message:
 
 #[rstest]
 #[tokio::test]
-async fn tecdsa_sign(nodes: &Nodes) {
+async fn tecdsa_sign(nodes: &Arc<Nodes>) {
     let program_id = TECDSA_SIGN_PROGRAM_ID;
 
     let message = b"This is my message that is going be get signed";
@@ -616,7 +617,7 @@ async fn tecdsa_sign(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn dkg_no_parties_bound(nodes: &Nodes) {
+async fn dkg_no_parties_bound(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     client
         .invoke_compute()
@@ -630,7 +631,7 @@ async fn dkg_no_parties_bound(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn dkg_and_retrieve_private_key(nodes: &Nodes) {
+async fn dkg_and_retrieve_private_key(nodes: &Arc<Nodes>) {
     // Tests:
     // 1. Generate the public key and private key
     // 2. Retrieve the created private key
@@ -707,7 +708,7 @@ async fn dkg_and_retrieve_private_key(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn dkg_and_sign(nodes: &Nodes) {
+async fn dkg_and_sign(nodes: &Arc<Nodes>) {
     // Tests:
     // 1. Generate the public key and private key
     // 2. Sign a message and verify the signature with the public key
@@ -817,16 +818,16 @@ async fn dkg_and_sign(nodes: &Nodes) {
 #[case::single_client(ClientsMode::Single)]
 #[case::multiple_clients(ClientsMode::OnePerParty)]
 #[tokio::test]
-async fn multi_dealer_and_result(nodes: &Nodes, #[case] mode: ClientsMode) {
+async fn multi_dealer_and_result(nodes: &Arc<Nodes>, #[case] mode: ClientsMode) {
     let program_name = "multi-dealer-and-result";
     let program_id = nodes.uploaded_programs.program_id(program_name);
     let (program, bytecode) = PROGRAMS.program(program_name).expect("program not found");
-    ComputeValidator::builder().program_id(program_id).program(program, bytecode).clients_mode(mode).run(nodes).await;
+    ComputeValidator::builder().program_id(program_id).program(program, bytecode).clients_mode(mode).run(nodes.clone()).await;
 }
 
 #[rstest]
 #[tokio::test]
-async fn pay_with_funds(nodes: &Nodes) {
+async fn pay_with_funds(nodes: &Arc<Nodes>) {
     let payer = nodes.allocate_payer().await;
     // Generate a custom client with a random key to make sure it's not pre-funded
     let client = nodes
@@ -863,7 +864,7 @@ async fn pay_with_funds(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn add_too_few_funds(nodes: &Nodes) {
+async fn add_too_few_funds(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
 
     client
@@ -878,7 +879,7 @@ async fn add_too_few_funds(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn compute_unauthorized(nodes: &Nodes) {
+async fn compute_unauthorized(nodes: &Arc<Nodes>) {
     let client = nodes.build_client().await;
     let user_id = client.user_id().clone();
     let program_id = nodes.uploaded_programs.program_id("array_simple_shares");
@@ -910,8 +911,8 @@ async fn compute_unauthorized(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn invoke_stream_preprocessing(nodes: &Nodes) {
-    let grpc_channel = nodes.bootnode_channel(SigningKey::generate_secp256k1());
+async fn invoke_stream_preprocessing(nodes: &Arc<Nodes>) {
+    let grpc_channel = nodes.bootnode_channel(SigningKey::generate_secp256k1()).await;
     let mut client = PreprocessingClient::new(grpc_channel.into_channel());
     let (tx, rx) = channel(16);
     tx.send(
@@ -930,8 +931,8 @@ async fn invoke_stream_preprocessing(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn invoke_generate_preprocessing(nodes: &Nodes) {
-    let grpc_channel = nodes.bootnode_channel(SigningKey::generate_secp256k1());
+async fn invoke_generate_preprocessing(nodes: &Arc<Nodes>) {
+    let grpc_channel = nodes.bootnode_channel(SigningKey::generate_secp256k1()).await;
     let mut client = PreprocessingClient::new(grpc_channel.into_channel());
     let request = GeneratePreprocessingRequest {
         generation_id: Uuid::new_v4().as_bytes().to_vec(),
@@ -946,8 +947,8 @@ async fn invoke_generate_preprocessing(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn invoke_stream_compute(nodes: &Nodes) {
-    let grpc_channel = nodes.bootnode_channel(SigningKey::generate_secp256k1());
+async fn invoke_stream_compute(nodes: &Arc<Nodes>) {
+    let grpc_channel = nodes.bootnode_channel(SigningKey::generate_secp256k1()).await;
     let mut client = ComputeClient::new(grpc_channel.into_channel());
     let (tx, rx) = channel(16);
     tx.send(
@@ -966,7 +967,7 @@ async fn invoke_stream_compute(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn reuse_payment(nodes: &Nodes) {
+async fn reuse_payment(nodes: &Arc<Nodes>) {
     struct Payer {
         payer: NillionChainClientPayer,
         nonce: Mutex<Option<Vec<u8>>>,

@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use nillion_chain_client::{
     client::NillionChainClient,
     key::NillionChainPrivateKey,
@@ -10,7 +11,7 @@ use tracing_fixture::{tracing, Tracing};
 
 #[rstest]
 #[tokio::test]
-async fn test_payment(nodes: &Nodes, _tracing: &Tracing) {
+async fn test_payment(nodes: &Arc<Nodes>, _tracing: &Tracing) {
     // Create tx validator
     let tx_retriever = DefaultPaymentTransactionRetriever::new(&nodes.nillion_chain_rpc_endpoint())
         .expect("could not create tx retriever");

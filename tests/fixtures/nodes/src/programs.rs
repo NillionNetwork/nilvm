@@ -16,7 +16,8 @@ pub(crate) async fn upload_programs(nodes: &Nodes) -> anyhow::Result<UploadedPro
     let mut clients = Vec::new();
     // Create up to this number of clients and reuse them in all uploads.
     for _ in 0..MAX_CLIENTS {
-        let client = nodes.build_client().await;
+
+        let client = nodes.build_custom_client(|builder| builder).await;
         clients.push(client);
     }
     let mut futs = Vec::new();
