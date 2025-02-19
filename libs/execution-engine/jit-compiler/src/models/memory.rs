@@ -63,7 +63,11 @@ pub fn address_count(ty: &NadaType) -> Result<usize, AddressCountError> {
             | NadaType::ShamirShareUnsignedInteger
             | NadaType::ShamirShareBoolean
             | NadaType::EcdsaPrivateKey
-            | NadaType::EcdsaSignature => {}
+            | NadaType::EcdsaSignature
+            | NadaType::EddsaPrivateKey
+            | NadaType::EddsaPublicKey
+            | NadaType::EddsaSignature
+            | NadaType::EddsaMessage => {}
             NadaType::Array { size, inner_type } => {
                 let multiplier = multiplier.checked_mul(*size).ok_or(AddressCountError::MemoryOverflow)?;
                 inner_types.push((inner_type, multiplier));
@@ -107,7 +111,11 @@ pub fn result_element_address_count(ty: &NadaType) -> usize {
         | NadaType::ShamirShareUnsignedInteger
         | NadaType::ShamirShareBoolean
         | NadaType::EcdsaPrivateKey
-        | NadaType::EcdsaSignature => 1,
+        | NadaType::EcdsaSignature
+        | NadaType::EddsaPrivateKey
+        | NadaType::EddsaPublicKey
+        | NadaType::EddsaSignature
+        | NadaType::EddsaMessage => 1,
         // The inner elements for the compound types that are calculated in runtime are
         // represented as pointers. This means we do not need to traverse the type in depth.
         NadaType::Array { size, .. } => (*size).wrapping_add(1),

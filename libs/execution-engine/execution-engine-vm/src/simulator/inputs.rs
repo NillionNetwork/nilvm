@@ -139,6 +139,10 @@ impl InputGenerator {
             NadaType::EcdsaSignature => Err(anyhow!("Ecdsa signatures are not supported during computation")),
             NadaType::EcdsaPublicKey => Err(anyhow!("Ecdsa public keys are not supported during computation")),
             NadaType::StoreId => Err(anyhow!("Store ids are not supported during computation")),
+            NadaType::EddsaPrivateKey => Err(anyhow!("Eddsa private keys are not supported during computation")),
+            NadaType::EddsaPublicKey => Err(anyhow!("Eddsa public keys are not supported during computation")),
+            NadaType::EddsaSignature => Err(anyhow!("Eddsa signatures are not supported during computation")),
+            NadaType::EddsaMessage => Err(anyhow!("Eddsa messages are not supported during computation")),
             NadaType::Array { inner_type, size } => {
                 let mut inner_values = Vec::new();
                 for _ in 0..*size {

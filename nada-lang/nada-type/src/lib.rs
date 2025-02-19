@@ -97,6 +97,14 @@ pub enum NadaPrimitiveType {
     EcdsaPublicKey,
     /// The value is a store id
     StoreId,
+    /// The value is a private eddsa key
+    EddsaPrivateKey,
+    /// The value is a public eddsa key
+    EddsaPublicKey,
+    /// The value is an eddsa signature
+    EddsaSignature,
+    /// The value is an eddsa message
+    EddsaMessage,
 }
 
 /// This struct is used to extract the meta data for a nada type
@@ -223,7 +231,11 @@ impl NadaTypeMetadata {
             | NadaPrimitiveType::EcdsaDigestMessage
             | NadaPrimitiveType::EcdsaSignature
             | NadaPrimitiveType::EcdsaPublicKey
-            | NadaPrimitiveType::StoreId => false,
+            | NadaPrimitiveType::StoreId
+            | NadaPrimitiveType::EddsaPrivateKey
+            | NadaPrimitiveType::EddsaPublicKey
+            | NadaPrimitiveType::EddsaSignature
+            | NadaPrimitiveType::EddsaMessage => false,
         }
     }
 }
@@ -246,6 +258,26 @@ impl From<&NadaType> for NadaTypeMetadata {
             NadaType::EcdsaDigestMessage => NadaTypeMetadata::PrimitiveType {
                 shape: Shape::PublicVariable,
                 nada_primitive_type: NadaPrimitiveType::EcdsaDigestMessage,
+            },
+            NadaType::EddsaMessage => NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EddsaMessage,
+            },
+            NadaType::EddsaSignature => NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EddsaSignature,
+            },
+            NadaType::EcdsaPublicKey => NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EcdsaPublicKey,
+            },
+            NadaType::StoreId => NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::StoreId,
+            },
+            NadaType::EddsaPublicKey => NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EddsaPublicKey,
             },
             NadaType::SecretInteger => NadaTypeMetadata::PrimitiveType {
                 shape: Shape::Secret,
@@ -289,17 +321,13 @@ impl From<&NadaType> for NadaTypeMetadata {
                 shape: Shape::Secret,
                 nada_primitive_type: NadaPrimitiveType::EcdsaPrivateKey,
             },
+            NadaType::EddsaPrivateKey => NadaTypeMetadata::PrimitiveType {
+                shape: Shape::Secret,
+                nada_primitive_type: NadaPrimitiveType::EddsaPrivateKey,
+            },
             NadaType::EcdsaSignature => NadaTypeMetadata::PrimitiveType {
                 shape: Shape::Secret,
                 nada_primitive_type: NadaPrimitiveType::EcdsaSignature,
-            },
-            NadaType::EcdsaPublicKey => NadaTypeMetadata::PrimitiveType {
-                shape: Shape::PublicVariable,
-                nada_primitive_type: NadaPrimitiveType::EcdsaPublicKey,
-            },
-            NadaType::StoreId => NadaTypeMetadata::PrimitiveType {
-                shape: Shape::PublicVariable,
-                nada_primitive_type: NadaPrimitiveType::StoreId,
             },
             NadaType::NTuple { types } => {
                 NadaTypeMetadata::NTuple { types: types.iter().map(|inner_type| inner_type.into()).collect() }
@@ -422,6 +450,22 @@ pub enum NadaType {
     /// Store id.
     #[primitive]
     StoreId,
+
+    /// Private EdDSA key.
+    #[primitive]
+    EddsaPrivateKey,
+
+    /// Public EdDSA key.
+    #[primitive]
+    EddsaPublicKey,
+
+    /// Public EdDSA signature.
+    #[primitive]
+    EddsaSignature,
+
+    /// PublicEdDSA message.
+    #[primitive]
+    EddsaMessage,
 }
 
 impl NadaType {
@@ -547,7 +591,11 @@ impl NadaType {
                 | SecretBoolean
                 | SecretBlob
                 | EcdsaPrivateKey
-                | EcdsaSignature => {
+                | EcdsaSignature
+                | EddsaPrivateKey
+                | EddsaPublicKey
+                | EddsaSignature
+                | EddsaMessage => {
                     // Do nothing
                 },
                 // Share types convert to usual secret types
@@ -590,6 +638,9 @@ impl NadaType {
                 | Boolean
                 | EcdsaDigestMessage
                 | EcdsaPublicKey
+                | EddsaPublicKey
+                | EddsaMessage
+                | EddsaSignature
                 | StoreId
                 // ShamirShares are already 'internal types'
                 | ShamirShareBoolean
@@ -598,7 +649,8 @@ impl NadaType {
                 // Secret Blob is already 'internal type'
                 | SecretBlob
                 | EcdsaPrivateKey
-                | EcdsaSignature => {
+                | EcdsaSignature
+                | EddsaPrivateKey => {
                     // Do nothing
                 }
                 SecretInteger => *ty = ShamirShareInteger,
@@ -674,7 +726,11 @@ impl NadaType {
                 | ShamirShareUnsignedInteger
                 | ShamirShareBoolean
                 | EcdsaPrivateKey
-                | EcdsaSignature => count = count.wrapping_add(multiplier),
+                | EcdsaSignature
+                | EddsaPrivateKey
+                | EddsaPublicKey
+                | EddsaSignature
+                | EddsaMessage => count = count.wrapping_add(multiplier),
                 Array { size, inner_type } => {
                     inner_types.push((inner_type, multiplier.wrapping_mul(*size)));
                 }
@@ -700,11 +756,20 @@ impl NadaType {
     /// Count the shares and public elements in a [`NadaType`].
     pub fn elements_count(&self) -> Result<ElementsCount, CantCountError> {
         use NadaType::*;
-        let mut count = ElementsCount { public: 0, share: 0, ecdsa_private_key_shares: 0, ecdsa_signature_shares: 0 };
+        let mut count = ElementsCount {
+            public: 0,
+            share: 0,
+            ecdsa_private_key_shares: 0,
+            ecdsa_signature_shares: 0,
+            eddsa_private_key_shares: 0,
+        };
         let mut inner_types = vec![(self, 1)];
         while let Some((ty, multiplier)) = inner_types.pop() {
             match ty {
-                Integer | UnsignedInteger | Boolean | EcdsaDigestMessage | EcdsaPublicKey | StoreId => {
+                // Note: EddsaMessage has varying size depending on the message but since it is public and used as a vec<u8>
+                // we count it as a single element.
+                Integer | UnsignedInteger | Boolean | EcdsaDigestMessage | EcdsaPublicKey | StoreId
+                | EddsaPublicKey | EddsaSignature | EddsaMessage => {
                     count.public = count.public.saturating_add(multiplier)
                 }
                 SecretInteger
@@ -719,6 +784,10 @@ impl NadaType {
                 EcdsaSignature => {
                     count.ecdsa_signature_shares = count.ecdsa_signature_shares.saturating_add(multiplier)
                 }
+                EddsaPrivateKey => {
+                    count.eddsa_private_key_shares = count.eddsa_private_key_shares.saturating_add(multiplier)
+                }
+
                 Array { inner_type, size } => {
                     inner_types.push((inner_type, multiplier.wrapping_mul(*size)));
                 }
@@ -775,7 +844,11 @@ impl NadaType {
                 | ShamirShareUnsignedInteger
                 | ShamirShareBoolean
                 | EcdsaPrivateKey
-                | EcdsaSignature => {}
+                | EcdsaSignature
+                | EddsaPrivateKey
+                | EddsaPublicKey
+                | EddsaSignature
+                | EddsaMessage => {}
                 Array { inner_type, .. } => {
                     stack.push((inner_type, depth + 1));
                 }
@@ -828,7 +901,11 @@ impl NadaType {
                 | NadaType::EcdsaPrivateKey
                 | NadaType::EcdsaSignature
                 | NadaType::EcdsaPublicKey
-                | NadaType::StoreId => flattened_types.push(ty),
+                | NadaType::StoreId
+                | NadaType::EddsaPrivateKey
+                | NadaType::EddsaPublicKey
+                | NadaType::EddsaSignature
+                | NadaType::EddsaMessage => flattened_types.push(ty),
                 NadaType::Array { inner_type, size } => {
                     types.extend(vec![inner_type.as_ref().clone(); *size]);
                     flattened_types.push(ty);
@@ -860,6 +937,8 @@ pub struct ElementsCount {
     pub share: usize,
     /// The number of ecdsa key share elements.
     pub ecdsa_private_key_shares: usize,
+    /// The number of eddsa key share elements.
+    pub eddsa_private_key_shares: usize,
     /// The number of ecdsa signature share elements.
     pub ecdsa_signature_shares: usize,
 }
@@ -925,6 +1004,21 @@ impl TryFrom<&NadaTypeMetadata> for NadaType {
             } => NadaType::EcdsaPublicKey,
             NadaTypeMetadata::PrimitiveType {
                 shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EddsaPublicKey,
+                ..
+            } => NadaType::EddsaPublicKey,
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EddsaSignature,
+                ..
+            } => NadaType::EddsaSignature,
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EddsaMessage,
+                ..
+            } => NadaType::EddsaMessage,
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
                 nada_primitive_type: NadaPrimitiveType::StoreId,
                 ..
             } => NadaType::StoreId,
@@ -943,6 +1037,11 @@ impl TryFrom<&NadaTypeMetadata> for NadaType {
                 nada_primitive_type: NadaPrimitiveType::EcdsaSignature,
                 ..
             } => return Err(TypeError::unimplemented("public variable ecdsa signature")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::PublicVariable,
+                nada_primitive_type: NadaPrimitiveType::EddsaPrivateKey,
+                ..
+            } => return Err(TypeError::unimplemented("public variable eddsa private key")),
             NadaTypeMetadata::PrimitiveType {
                 shape: Shape::Secret,
                 nada_primitive_type: NadaPrimitiveType::Integer,
@@ -975,6 +1074,21 @@ impl TryFrom<&NadaTypeMetadata> for NadaType {
             } => return Err(TypeError::unimplemented("secret variable store id")),
             NadaTypeMetadata::PrimitiveType {
                 shape: Shape::Secret,
+                nada_primitive_type: NadaPrimitiveType::EddsaPublicKey,
+                ..
+            } => return Err(TypeError::unimplemented("secret variable eddsa public key")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::Secret,
+                nada_primitive_type: NadaPrimitiveType::EddsaSignature,
+                ..
+            } => return Err(TypeError::unimplemented("secret variable eddsa signature")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::Secret,
+                nada_primitive_type: NadaPrimitiveType::EddsaMessage,
+                ..
+            } => return Err(TypeError::unimplemented("secret variable eddsa message")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::Secret,
                 nada_primitive_type: NadaPrimitiveType::Blob,
                 ..
             } => NadaType::SecretBlob,
@@ -983,6 +1097,11 @@ impl TryFrom<&NadaTypeMetadata> for NadaType {
                 nada_primitive_type: NadaPrimitiveType::EcdsaPrivateKey,
                 ..
             } => NadaType::EcdsaPrivateKey,
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::Secret,
+                nada_primitive_type: NadaPrimitiveType::EddsaPrivateKey,
+                ..
+            } => NadaType::EddsaPrivateKey,
             NadaTypeMetadata::PrimitiveType {
                 shape: Shape::Secret,
                 nada_primitive_type: NadaPrimitiveType::EcdsaSignature,
@@ -1033,6 +1152,26 @@ impl TryFrom<&NadaTypeMetadata> for NadaType {
                 nada_primitive_type: NadaPrimitiveType::EcdsaSignature,
                 ..
             } => return Err(TypeError::unimplemented("shamir share ecdsa signautre")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::ShamirShare,
+                nada_primitive_type: NadaPrimitiveType::EddsaPrivateKey,
+                ..
+            } => return Err(TypeError::unimplemented("shamir share eddsa private key")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::ShamirShare,
+                nada_primitive_type: NadaPrimitiveType::EddsaPublicKey,
+                ..
+            } => return Err(TypeError::unimplemented("shamir share eddsa public key")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::ShamirShare,
+                nada_primitive_type: NadaPrimitiveType::EddsaSignature,
+                ..
+            } => return Err(TypeError::unimplemented("shamir share eddsa signature")),
+            NadaTypeMetadata::PrimitiveType {
+                shape: Shape::ShamirShare,
+                nada_primitive_type: NadaPrimitiveType::EddsaMessage,
+                ..
+            } => return Err(TypeError::unimplemented("shamir share eddsa message")),
 
             NadaTypeMetadata::Array { size, inner } => {
                 NadaType::Array { size: *size, inner_type: Box::new(inner.as_ref().try_into()?) }

@@ -51,7 +51,11 @@ impl<T: SafePrime> MemoryValue<T> for NadaValue<Encrypted<T>> {
             | NadaType::EcdsaPrivateKey
             | NadaType::EcdsaSignature
             | NadaType::EcdsaPublicKey
-            | NadaType::StoreId => Err(anyhow!("{ty} cannot be a memory value")),
+            | NadaType::StoreId
+            | NadaType::EddsaPrivateKey
+            | NadaType::EddsaPublicKey
+            | NadaType::EddsaSignature
+            | NadaType::EddsaMessage => Err(anyhow!("{ty} cannot be a memory value")),
         }
     }
 
@@ -77,7 +81,11 @@ impl<T: SafePrime> MemoryValue<T> for NadaValue<Encrypted<T>> {
             | NadaValue::EcdsaPrivateKey(_)
             | NadaValue::EcdsaSignature(_)
             | NadaValue::EcdsaPublicKey(_)
-            | NadaValue::StoreId(_) => {
+            | NadaValue::StoreId(_)
+            | NadaValue::EddsaPrivateKey(_)
+            | NadaValue::EddsaPublicKey(_)
+            | NadaValue::EddsaSignature(_)
+            | NadaValue::EddsaMessage(_) => {
                 Err(anyhow!("{} cannot be converted into a memory value", self.to_type()))
             }
         }
@@ -176,7 +184,11 @@ impl<T: SafePrime> RuntimeMemoryPool<T> {
                 | NadaType::StoreId
                 | NadaType::ShamirShareInteger
                 | NadaType::ShamirShareUnsignedInteger
-                | NadaType::ShamirShareBoolean => flattened_values.push(self.read_primitive_value(address)?),
+                | NadaType::ShamirShareBoolean
+                | NadaType::EddsaPrivateKey
+                | NadaType::EddsaPublicKey
+                | NadaType::EddsaSignature
+                | NadaType::EddsaMessage => flattened_values.push(self.read_primitive_value(address)?),
                 NadaType::Array { inner_type, size } if inner_type.is_primitive() => {
                     flattened_values.push(self.read_primitive_array(address, *size)?);
                 }
@@ -218,7 +230,11 @@ impl<T: SafePrime> RuntimeMemoryPool<T> {
                 | NadaType::StoreId
                 | NadaType::ShamirShareInteger
                 | NadaType::ShamirShareUnsignedInteger
-                | NadaType::ShamirShareBoolean => result.extend(flattened_values.pop()),
+                | NadaType::ShamirShareBoolean
+                | NadaType::EddsaPrivateKey
+                | NadaType::EddsaPublicKey
+                | NadaType::EddsaSignature
+                | NadaType::EddsaMessage => result.extend(flattened_values.pop()),
                 NadaType::Array { inner_type, .. } if inner_type.is_primitive() => {
                     result.extend(flattened_values.pop())
                 }
@@ -378,7 +394,11 @@ impl<T: SafePrime> RuntimeMemoryPool<T> {
                 | NadaValue::EcdsaSignature(_)
                 | NadaValue::EcdsaPublicKey(_)
                 | NadaValue::StoreId(_)
-                | NadaValue::ShamirShareBoolean(_) => {
+                | NadaValue::ShamirShareBoolean(_)
+                | NadaValue::EddsaPrivateKey(_)
+                | NadaValue::EddsaPublicKey(_)
+                | NadaValue::EddsaSignature(_)
+                | NadaValue::EddsaMessage(_) => {
                     RuntimeMemoryElement::Value(ReadableValue { value, reads: self.reads(&address) })
                 }
                 NadaValue::Array { mut values, .. } | NadaValue::NTuple { mut values } => {

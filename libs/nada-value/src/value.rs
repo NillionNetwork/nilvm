@@ -101,6 +101,18 @@ pub enum NadaValue<T: PrimitiveTypes> {
 
     /// Store id.
     StoreId(T::StoreId),
+
+    /// Eddsa private key.
+    EddsaPrivateKey(T::EddsaPrivateKey),
+
+    /// Eddsa public key.
+    EddsaPublicKey(T::EddsaPublicKey),
+
+    /// Eddsa signature.
+    EddsaSignature(T::EddsaSignature),
+
+    /// Eddsa message.
+    EddsaMessage(T::EddsaMessage),
 }
 
 impl<T: PrimitiveTypes> Clone for NadaValue<T> {
@@ -109,9 +121,6 @@ impl<T: PrimitiveTypes> Clone for NadaValue<T> {
             Self::Integer(value) => Self::Integer(value.clone()),
             Self::UnsignedInteger(value) => Self::UnsignedInteger(value.clone()),
             Self::Boolean(value) => Self::Boolean(value.clone()),
-            Self::EcdsaDigestMessage(value) => Self::EcdsaDigestMessage(value.clone()),
-            Self::EcdsaPublicKey(value) => Self::EcdsaPublicKey(value.clone()),
-            Self::StoreId(value) => Self::StoreId(value.clone()),
             Self::SecretInteger(value) => Self::SecretInteger(value.clone()),
             Self::SecretUnsignedInteger(value) => Self::SecretUnsignedInteger(value.clone()),
             Self::SecretBoolean(value) => Self::SecretBoolean(value.clone()),
@@ -123,10 +132,17 @@ impl<T: PrimitiveTypes> Clone for NadaValue<T> {
                 Self::Array { inner_type: inner_type.clone(), values: values.clone() }
             }
             Self::Tuple { left, right } => Self::Tuple { left: left.clone(), right: right.clone() },
-            Self::EcdsaPrivateKey(value) => Self::EcdsaPrivateKey(value.clone()),
-            Self::EcdsaSignature(value) => Self::EcdsaSignature(value.clone()),
             Self::NTuple { values } => Self::NTuple { values: values.clone() },
             Self::Object { values } => Self::Object { values: values.clone() },
+            Self::EcdsaDigestMessage(value) => Self::EcdsaDigestMessage(value.clone()),
+            Self::EcdsaPublicKey(value) => Self::EcdsaPublicKey(value.clone()),
+            Self::EcdsaPrivateKey(value) => Self::EcdsaPrivateKey(value.clone()),
+            Self::EcdsaSignature(value) => Self::EcdsaSignature(value.clone()),
+            Self::EddsaMessage(value) => Self::EddsaMessage(value.clone()),
+            Self::EddsaPublicKey(value) => Self::EddsaPublicKey(value.clone()),
+            Self::EddsaPrivateKey(value) => Self::EddsaPrivateKey(value.clone()),
+            Self::EddsaSignature(value) => Self::EddsaSignature(value.clone()),
+            Self::StoreId(value) => Self::StoreId(value.clone()),
         }
     }
 }
@@ -249,7 +265,11 @@ impl<T: PrimitiveTypes> NadaValue<T> {
                 | EcdsaPrivateKey(_)
                 | EcdsaSignature(_)
                 | EcdsaPublicKey(_)
-                | StoreId(_) => {}
+                | StoreId(_)
+                | EddsaPrivateKey(_)
+                | EddsaPublicKey(_)
+                | EddsaSignature(_)
+                | EddsaMessage(_) => {}
                 Array { values, .. } | NTuple { values } => {
                     for value in values {
                         stack.push((value, depth + 1));
@@ -299,7 +319,11 @@ impl<T: PrimitiveTypes> NadaValue<T> {
                 | EcdsaPrivateKey(_)
                 | EcdsaSignature(_)
                 | EcdsaPublicKey(_)
-                | StoreId(_) => flattened_values.push(value),
+                | StoreId(_)
+                | EddsaPrivateKey(_)
+                | EddsaPublicKey(_)
+                | EddsaSignature(_)
+                | EddsaMessage(_) => flattened_values.push(value),
                 Array { values: inner_values, inner_type } => {
                     values.extend(inner_values.clone());
                     flattened_values.push(Array { values: inner_values, inner_type });
@@ -350,7 +374,11 @@ impl<'a, T: PrimitiveTypes> Iterator for NadaValueIter<'a, T> {
                 | EcdsaPrivateKey(_)
                 | EcdsaSignature(_)
                 | EcdsaPublicKey(_)
-                | StoreId(_) => return Some(value),
+                | StoreId(_)
+                | EddsaPrivateKey(_)
+                | EddsaPublicKey(_)
+                | EddsaSignature(_)
+                | EddsaMessage(_) => return Some(value),
                 Array { values, .. } | NTuple { values } => {
                     for value in values.iter().rev() {
                         self.stack.push(value);
@@ -399,7 +427,11 @@ impl<'a, T: PrimitiveTypes> Iterator for NadaValueIterMut<'a, T> {
                 | EcdsaPrivateKey(_)
                 | EcdsaSignature(_)
                 | EcdsaPublicKey(_)
-                | StoreId(_) => return Some(value),
+                | StoreId(_)
+                | EddsaPrivateKey(_)
+                | EddsaPublicKey(_)
+                | EddsaSignature(_)
+                | EddsaMessage(_) => return Some(value),
                 Array { values, .. } | NTuple { values } => {
                     for value in values.iter_mut().rev() {
                         self.stack.push(value);
@@ -448,7 +480,11 @@ impl<T: PrimitiveTypes> Iterator for NadaValueIntoIter<T> {
                 | EcdsaPrivateKey(_)
                 | EcdsaSignature(_)
                 | EcdsaPublicKey(_)
-                | StoreId(_) => return Some(value),
+                | StoreId(_)
+                | EddsaPrivateKey(_)
+                | EddsaPublicKey(_)
+                | EddsaSignature(_)
+                | EddsaMessage(_) => return Some(value),
                 Array { values, .. } => {
                     for value in values.into_iter().rev() {
                         self.stack.push(value);
@@ -797,6 +833,10 @@ mod tests {
         type EcdsaDigestMessage = [u8; 32];
         type EcdsaSignature = i32;
         type EcdsaPublicKey = [u8; 33];
+        type EddsaPrivateKey = [u8; 32];
+        type EddsaPublicKey = [u8; 32];
+        type EddsaSignature = i32;
+        type EddsaMessage = Vec<u8>;
         type StoreId = [u8; 16];
     }
 

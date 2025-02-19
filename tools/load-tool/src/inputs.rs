@@ -134,6 +134,10 @@ impl ArgsGenerator {
             | EcdsaPrivateKey
             | EcdsaSignature
             | EcdsaPublicKey
+            | EddsaPrivateKey
+            | EddsaPublicKey
+            | EddsaSignature
+            | EddsaMessage
             | StoreId => bail!("type not supported {:?}", nada_type),
         };
         Ok(secret)

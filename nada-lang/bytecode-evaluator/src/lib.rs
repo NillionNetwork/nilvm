@@ -355,7 +355,11 @@ impl<T: SafePrime> Evaluator<T> {
                 | EcdsaPrivateKey
                 | EcdsaSignature
                 | EcdsaPublicKey
-                | StoreId => Err(anyhow!("type is not compound")),
+                | StoreId
+                | EddsaPrivateKey
+                | EddsaPublicKey
+                | EddsaSignature
+                | EddsaMessage => Err(anyhow!("type is not compound")),
             }
         }
     }

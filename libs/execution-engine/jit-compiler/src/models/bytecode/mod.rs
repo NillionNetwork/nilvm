@@ -297,7 +297,11 @@ impl<E: AddressedElement + NamedElement> MemoryPool<E> {
             | EcdsaPrivateKey
             | EcdsaPublicKey
             | StoreId
-            | EcdsaSignature => vec![],
+            | EcdsaSignature
+            | EddsaPrivateKey
+            | EddsaPublicKey
+            | EddsaSignature
+            | EddsaMessage => vec![],
         }
     }
 
@@ -451,7 +455,11 @@ fn get_children_addresses<T: TypedElement>(
         | EcdsaPrivateKey
         | EcdsaSignature
         | EcdsaPublicKey
-        | StoreId => Ok(vec![]),
+        | StoreId
+        | EddsaPrivateKey
+        | EddsaPublicKey
+        | EddsaSignature
+        | EddsaMessage => Ok(vec![]),
     }
 }
 

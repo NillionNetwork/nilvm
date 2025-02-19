@@ -19,7 +19,7 @@ use shamir_sharing::{
 use threshold_keypair::{
     privatekey::{ThresholdPrivateKey, ThresholdPrivateKeyShare},
     publickey::EcdsaPublicKeyArray,
-    signature::EcdsaSignatureShare,
+    signature::{EcdsaSignatureShare, EddsaSignature},
 };
 
 use crate::{
@@ -28,7 +28,7 @@ use crate::{
     errors::{ClearToEncryptedError, DecodingError, EncodingError, EncryptedToClearError},
     NadaValue, NeverPrimitiveType,
 };
-use generic_ec::curves::Secp256k1;
+use generic_ec::curves::{Ed25519, Secp256k1};
 use nada_type::{NadaType, PrimitiveTypes, TypeError};
 
 /// Share generic over the Prime
@@ -73,6 +73,9 @@ impl PrimitiveTypes for Encrypted<Encoded> {
     type Boolean = EncodedModularNumber;
     type EcdsaDigestMessage = [u8; 32];
     type EcdsaPublicKey = EcdsaPublicKeyArray;
+    type EddsaPublicKey = [u8; 32];
+    type EddsaMessage = Vec<u8>;
+    type EddsaSignature = EddsaSignature;
     type StoreId = [u8; 16];
 
     // Abstract secrets
@@ -92,6 +95,9 @@ impl PrimitiveTypes for Encrypted<Encoded> {
     // Ecdsa Private Key
     type EcdsaPrivateKey = ThresholdPrivateKeyShare<Secp256k1>;
 
+    // Eddsa Private Key
+    type EddsaPrivateKey = ThresholdPrivateKeyShare<Ed25519>;
+
     // Ecdsa Signature
     type EcdsaSignature = EcdsaSignatureShare;
 }
@@ -103,6 +109,9 @@ impl<T: SafePrime> PrimitiveTypes for Encrypted<T> {
     type Boolean = ModularNumber<T>;
     type EcdsaDigestMessage = [u8; 32];
     type EcdsaPublicKey = EcdsaPublicKeyArray;
+    type EddsaPublicKey = [u8; 32];
+    type EddsaMessage = Vec<u8>;
+    type EddsaSignature = EddsaSignature;
     type StoreId = [u8; 16];
 
     // Abstract secrets
@@ -121,6 +130,9 @@ impl<T: SafePrime> PrimitiveTypes for Encrypted<T> {
     // depend on any generic prime.
     // Ecdsa Private Key
     type EcdsaPrivateKey = ThresholdPrivateKeyShare<Secp256k1>;
+
+    // Eddsa Private Key
+    type EddsaPrivateKey = ThresholdPrivateKeyShare<Ed25519>;
 
     // Ecdsa Signature
     type EcdsaSignature = EcdsaSignatureShare;
@@ -183,8 +195,23 @@ where
                 let party_values = secret_sharer.parties().into_iter().map(|p| (p, value.clone()));
                 flattened_values.push(PartyJar::new_with_elements(party_values)?);
             }
+            NadaValue::EddsaMessage(value) => {
+                let value = NadaValue::new_eddsa_message(value.clone());
+                let party_values = secret_sharer.parties().into_iter().map(|p| (p, value.clone()));
+                flattened_values.push(PartyJar::new_with_elements(party_values)?);
+            }
             NadaValue::EcdsaPublicKey(value) => {
                 let value = NadaValue::new_ecdsa_public_key(value.clone());
+                let party_values = secret_sharer.parties().into_iter().map(|p| (p, value.clone()));
+                flattened_values.push(PartyJar::new_with_elements(party_values)?);
+            }
+            NadaValue::EddsaPublicKey(value) => {
+                let value = NadaValue::new_eddsa_public_key(*value);
+                let party_values = secret_sharer.parties().into_iter().map(|p| (p, value.clone()));
+                flattened_values.push(PartyJar::new_with_elements(party_values)?);
+            }
+            NadaValue::EddsaSignature(value) => {
+                let value = NadaValue::new_eddsa_signature(*value);
                 let party_values = secret_sharer.parties().into_iter().map(|p| (p, value.clone()));
                 flattened_values.push(PartyJar::new_with_elements(party_values)?);
             }
@@ -200,6 +227,7 @@ where
             | NadaValue::SecretBoolean(_)
             | NadaValue::SecretBlob(_)
             | NadaValue::EcdsaPrivateKey(_)
+            | NadaValue::EddsaPrivateKey(_)
             | NadaValue::EcdsaSignature(_) => flattened_values.push(nada_value_to_share(inner_value, secret_sharer)?),
 
             NadaValue::Array { values, .. } => inner_values.extend(values.iter().rev()),
@@ -255,6 +283,7 @@ where
             | NadaType::UnsignedInteger
             | NadaType::Boolean
             | NadaType::EcdsaDigestMessage
+            | NadaType::EddsaMessage
             | NadaType::EcdsaPublicKey
             | NadaType::StoreId
             | NadaType::SecretBlob
@@ -262,7 +291,10 @@ where
             | NadaType::SecretUnsignedInteger
             | NadaType::SecretBoolean
             | NadaType::EcdsaPrivateKey
-            | NadaType::EcdsaSignature => {
+            | NadaType::EcdsaSignature
+            | NadaType::EddsaPrivateKey
+            | NadaType::EddsaPublicKey
+            | NadaType::EddsaSignature => {
                 resultant_values.push(flattened_values.pop().ok_or(ClearToEncryptedError::NotEnoughValues)?)
             }
             NadaType::Array { size, .. } => {
@@ -394,6 +426,26 @@ where
 
             Ok(party_jar)
         }
+        NadaValue::EddsaPrivateKey(value) => {
+            let n_usize = secret_sharer.party_count();
+            let n_u16 = n_usize.try_into().map_err(|_| ClearToEncryptedError::TooManyPartiesForEcdsaSignature)?;
+            let mut party_jar = PartyJar::new(n_usize);
+
+            let party_ids = secret_sharer.parties();
+            let shares: Vec<ThresholdPrivateKeyShare<Ed25519>> = value.generate_shares(n_u16)?;
+            let zipped: Vec<(PartyId, ThresholdPrivateKeyShare<Ed25519>)> = party_ids.into_iter().zip(shares).collect();
+
+            // Note: Each [`EddsaPrivateKeyShare`] corresponds to an indexed party that must consistently align
+            // across all signature-related protocols (e.g., distributed key generation, auxiliary information generation,
+            // and signature generation). The `.parties()` method ensures that the list of parties is sorted in ascending order.
+            // This alignment is maintained across all signature protocols to ensure consistency.
+            for (party_id, share) in zipped {
+                let share: NadaValue<Encrypted<T>> = NadaValue::new_eddsa_private_key(share);
+                party_jar.add_element(party_id, share)?;
+            }
+
+            Ok(party_jar)
+        }
         NadaValue::EcdsaSignature(value) => {
             let share_count_usize = secret_sharer.party_count();
             let share_count_u16 =
@@ -416,6 +468,9 @@ where
         | NadaValue::Boolean(_)
         | NadaValue::EcdsaDigestMessage(_)
         | NadaValue::EcdsaPublicKey(_)
+        | NadaValue::EddsaPublicKey(_)
+        | NadaValue::EddsaMessage(_)
+        | NadaValue::EddsaSignature(_)
         | NadaValue::StoreId(_)
         | NadaValue::ShamirShareInteger(_)
         | NadaValue::ShamirShareUnsignedInteger(_)
@@ -479,11 +534,15 @@ where
             | NadaType::Boolean
             | NadaType::EcdsaDigestMessage
             | NadaType::EcdsaPublicKey
+            | NadaType::EddsaMessage
+            | NadaType::EddsaPublicKey
+            | NadaType::EddsaSignature
             | NadaType::StoreId
             | NadaType::SecretBlob
             | NadaType::ShamirShareInteger
             | NadaType::ShamirShareUnsignedInteger
             | NadaType::ShamirShareBoolean
+            | NadaType::EddsaPrivateKey
             | NadaType::EcdsaPrivateKey
             | NadaType::EcdsaSignature => {
                 resultant_values.push(flattened_clear_values.pop().ok_or(EncryptedToClearError::NotEnoughValues)?)
@@ -543,7 +602,10 @@ where
             | NadaType::Boolean
             | NadaType::EcdsaDigestMessage
             | NadaType::EcdsaPublicKey
-            | NadaType::StoreId => {
+            | NadaType::StoreId
+            | NadaType::EddsaPublicKey
+            | NadaType::EddsaMessage
+            | NadaType::EddsaSignature => {
                 flattened_values.push(encrypted_values_to_public_variable(party_values.into_values())?);
             }
             NadaType::SecretBlob => flattened_values.push(encrypted_values_to_secret_blob(party_values, sharer)?),
@@ -560,7 +622,7 @@ where
             }
             NadaType::EcdsaPrivateKey => flattened_values.push(encrypted_values_to_ecdsa_private_key(party_values)?),
             NadaType::EcdsaSignature => flattened_values.push(encrypted_values_to_ecdsa_signature(party_values)?),
-
+            NadaType::EddsaPrivateKey => flattened_values.push(encrypted_values_to_eddsa_private_key(party_values)?),
             NadaType::Array { .. } => {
                 // The map of party elements for each element of the array. The key corresponds to the index
                 // We will use this map to generate the different party jars
@@ -659,6 +721,9 @@ where
         NadaValue::EcdsaDigestMessage(value) => Ok(NadaValue::new_ecdsa_digest_message(value)),
         NadaValue::EcdsaPublicKey(value) => Ok(NadaValue::new_ecdsa_public_key(value)),
         NadaValue::StoreId(value) => Ok(NadaValue::new_store_id(value)),
+        NadaValue::EddsaPublicKey(value) => Ok(NadaValue::new_eddsa_public_key(value)),
+        NadaValue::EddsaMessage(value) => Ok(NadaValue::new_eddsa_message(value)),
+        NadaValue::EddsaSignature(value) => Ok(NadaValue::new_eddsa_signature(value)),
         NadaValue::SecretInteger(_)
         | NadaValue::SecretUnsignedInteger(_)
         | NadaValue::SecretBoolean(_)
@@ -671,7 +736,8 @@ where
         | NadaValue::EcdsaPrivateKey(_)
         | NadaValue::NTuple { .. }
         | NadaValue::Object { .. }
-        | NadaValue::EcdsaSignature(_) => Err(EncryptedToClearError::InvalidType(ty)),
+        | NadaValue::EcdsaSignature(_)
+        | NadaValue::EddsaPrivateKey(_) => Err(EncryptedToClearError::InvalidType(ty)),
     }
 }
 
@@ -706,7 +772,11 @@ where
             | NadaValue::EcdsaPrivateKey(_)
             | NadaValue::NTuple { .. }
             | NadaValue::Object { .. }
-            | NadaValue::EcdsaSignature(_) => return Err(EncryptedToClearError::InvalidType(value.to_type())),
+            | NadaValue::EcdsaSignature(_)
+            | NadaValue::EddsaPrivateKey(_)
+            | NadaValue::EddsaPublicKey(_)
+            | NadaValue::EddsaMessage(_)
+            | NadaValue::EddsaSignature(_) => return Err(EncryptedToClearError::InvalidType(value.to_type())),
         };
         shares.push((party_id, ModularNumber::<T>::try_from_encoded(&alpha_share)?));
     }
@@ -731,7 +801,11 @@ where
         | NadaType::EcdsaPrivateKey
         | NadaType::NTuple { .. }
         | NadaType::Object { .. }
-        | NadaType::EcdsaSignature => Err(EncryptedToClearError::InvalidType(result_type)),
+        | NadaType::EcdsaSignature
+        | NadaType::EddsaPrivateKey
+        | NadaType::EddsaPublicKey
+        | NadaType::EddsaMessage
+        | NadaType::EddsaSignature => Err(EncryptedToClearError::InvalidType(result_type)),
     }
 }
 
@@ -750,6 +824,23 @@ fn encrypted_values_to_ecdsa_private_key(
     let ecdsa_private_key = ThresholdPrivateKey::<Secp256k1>::recover(ecdsa_private_key_shares)
         .map_err(|_| EncryptedToClearError::SharedSecretRecovery(NadaType::EcdsaPrivateKey.to_string()))?;
     Ok(NadaValue::new_ecdsa_private_key(ecdsa_private_key))
+}
+
+/// Transforms eddsa private key shares into a private eddsa key
+fn encrypted_values_to_eddsa_private_key(
+    values: HashMap<PartyId, NadaValue<Encrypted<Encoded>>>,
+) -> Result<NadaValue<Clear>, EncryptedToClearError> {
+    let mut eddsa_private_key_shares = vec![];
+    for eddsa_private_key_share in values.into_values() {
+        match eddsa_private_key_share {
+            NadaValue::EddsaPrivateKey(share) => eddsa_private_key_shares.push(share),
+            _ => return Err(EncryptedToClearError::InvalidType(eddsa_private_key_share.to_type())),
+        }
+    }
+
+    let eddsa_private_key = ThresholdPrivateKey::<Ed25519>::recover(eddsa_private_key_shares)
+        .map_err(|_| EncryptedToClearError::SharedSecretRecovery(NadaType::EddsaPrivateKey.to_string()))?;
+    Ok(NadaValue::new_eddsa_private_key(eddsa_private_key))
 }
 
 /// Transforms ecdsa signature shares into an ecdsa signature

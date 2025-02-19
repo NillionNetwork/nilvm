@@ -4,13 +4,21 @@ use crate::{
     encrypted::{BlobPrimitiveType, Encoded, Encrypted},
     NadaValue,
 };
-use generic_ec::{curves::Secp256k1, serde::CurveName, NonZero, Point, Scalar, SecretScalar};
+use generic_ec::{
+    curves::{Ed25519, Secp256k1},
+    serde::CurveName,
+    Curve, NonZero, Point, Scalar, SecretScalar,
+};
+use givre::{ciphersuite, signing::aggregate::Signature};
 use key_share::{DirtyCoreKeyShare, DirtyKeyInfo, Validate};
 use math_lib::modular::{EncodedModularNumber, EncodedModulo};
 use nada_type::{NadaType, TypeError};
 use node_api::values::proto::value::{self, value::Value, ShamirShare};
 use std::collections::HashMap;
-use threshold_keypair::{privatekey::ThresholdPrivateKeyShare, signature::EcdsaSignatureShare};
+use threshold_keypair::{
+    privatekey::ThresholdPrivateKeyShare,
+    signature::{EcdsaSignatureShare, EddsaSignature},
+};
 
 /// Encode nada values into protobuf.
 pub fn nada_values_to_protobuf(
@@ -78,17 +86,34 @@ pub(crate) fn nada_value_to_protobuf(value: NadaValue<Encrypted<Encoded>>) -> Re
                 public_shares: value.key_info.public_shares.iter().map(|s| s.to_bytes(true).to_vec()).collect(),
             })
         }
+        NadaValue::EddsaPrivateKey(value) => {
+            let value = value.as_inner();
+            Value::EddsaPrivateKeyShare(value::EddsaPrivateKeyShare {
+                i: value.i.into(),
+                x: value.x.clone().into_inner().as_ref().to_le_bytes().to_vec(),
+                shared_public_key: value.key_info.shared_public_key.to_bytes(true).to_vec(),
+                public_shares: value.key_info.public_shares.iter().map(|s| s.to_bytes(true).to_vec()).collect(),
+            })
+        }
         NadaValue::EcdsaDigestMessage(value) => {
             Value::EcdsaMessageDigest(value::EcdsaMessageDigest { digest: value.to_vec() })
         }
+        NadaValue::EddsaMessage(value) => Value::EddsaMessage(value::EddsaMessage { message: value }),
         NadaValue::EcdsaPublicKey(value) => {
             Value::EcdsaPublicKey(value::EcdsaPublicKey { public_key: value.0.to_vec() })
         }
+        NadaValue::EddsaPublicKey(value) => Value::EddsaPublicKey(value::EddsaPublicKey { public_key: value.to_vec() }),
         NadaValue::StoreId(value) => Value::StoreId(value::StoreId { store_id: value.to_vec() }),
         NadaValue::EcdsaSignature(value) => Value::EcdsaSignatureShare(value::EcdsaSignatureShare {
             r: value.r.to_le_bytes().to_vec(),
             sigma: value.sigma.to_le_bytes().to_vec(),
         }),
+        NadaValue::EddsaSignature(value) => {
+            let length = value.serialized_len();
+            let mut signature_bytes = vec![0; length];
+            value.signature.write_to_slice(&mut signature_bytes);
+            Value::EddsaSignature(value::EddsaSignature { signature: signature_bytes })
+        }
         NadaValue::SecretInteger(_)
         | NadaValue::SecretUnsignedInteger(_)
         | NadaValue::SecretBoolean(_)
@@ -183,20 +208,49 @@ pub(crate) fn nada_value_from_protobuf(
             .map_err(|e| ValueDecodeError::InvalidEcdsaPrivateKey(e.to_string()))?;
             NadaValue::new_ecdsa_private_key(ThresholdPrivateKeyShare::<Secp256k1>::new(share))
         }
+        Value::EddsaPrivateKeyShare(share) => {
+            let share = DirtyCoreKeyShare {
+                i: share.i.try_into().map_err(|_| ValueDecodeError::EddsaPrivateKeyPartyOverflow(share.i))?,
+                key_info: DirtyKeyInfo {
+                    curve: CurveName::new(),
+                    shared_public_key: non_zero_point_from_bytes(&share.shared_public_key)?,
+                    public_shares: share
+                        .public_shares
+                        .iter()
+                        .map(|s| non_zero_point_from_bytes(s))
+                        .collect::<Result<_, _>>()?,
+                    vss_setup: None,
+                },
+                x: non_zero_secret_scalar_from_bytes(&share.x)?,
+            }
+            .validate()
+            .map_err(|e| ValueDecodeError::InvalidEddsaPrivateKey(e.to_string()))?;
+            NadaValue::new_eddsa_private_key(ThresholdPrivateKeyShare::<Ed25519>::new(share))
+        }
         Value::EcdsaSignatureShare(share) => NadaValue::new_ecdsa_signature(EcdsaSignatureShare {
             r: Scalar::from_le_bytes(&share.r).map_err(|_| ValueDecodeError::InvalidEcdsaSignatureScalar("r"))?,
             sigma: Scalar::from_le_bytes(&share.sigma)
                 .map_err(|_| ValueDecodeError::InvalidEcdsaSignatureScalar("sigma"))?,
+        }),
+        Value::EddsaSignature(share) => NadaValue::new_eddsa_signature(EddsaSignature {
+            signature: Signature::<ciphersuite::Ed25519>::read_from_slice(&share.signature)
+                .ok_or(ValueDecodeError::InvalidEddsaSignature("Eddsa signature"))?,
         }),
         Value::EcdsaMessageDigest(digest) => {
             let digest: [u8; 32] =
                 digest.digest.try_into().map_err(|_| ValueDecodeError::InvalidEcdsaMessageDigestLength)?;
             NadaValue::new_ecdsa_digest_message(digest)
         }
+        Value::EddsaMessage(message) => NadaValue::new_eddsa_message(message.message),
         Value::EcdsaPublicKey(public_key) => {
             let public_key: [u8; 33] =
                 public_key.public_key.try_into().map_err(|_| ValueDecodeError::InvalidStoreIdLength)?;
             NadaValue::new_ecdsa_public_key(public_key)
+        }
+        Value::EddsaPublicKey(public_key) => {
+            let public_key: [u8; 32] =
+                public_key.public_key.try_into().map_err(|_| ValueDecodeError::InvalidStoreIdLength)?;
+            NadaValue::new_eddsa_public_key(public_key)
         }
         Value::StoreId(store_id) => {
             let store_id: [u8; 16] =
@@ -227,6 +281,10 @@ fn nada_type_to_protobuf(nada_type: &NadaType) -> Result<value::ValueType, Value
         NadaType::EcdsaDigestMessage => value::value_type::ValueType::EcdsaMessageDigest(()),
         NadaType::EcdsaSignature => value::value_type::ValueType::EcdsaSignatureShare(()),
         NadaType::EcdsaPublicKey => value::value_type::ValueType::EcdsaPublicKey(()),
+        NadaType::EddsaPrivateKey => value::value_type::ValueType::EddsaPrivateKeyShare(()),
+        NadaType::EddsaPublicKey => value::value_type::ValueType::EddsaPublicKey(()),
+        NadaType::EddsaSignature => value::value_type::ValueType::EddsaSignature(()),
+        NadaType::EddsaMessage => value::value_type::ValueType::EddsaMessage(()),
         NadaType::StoreId => value::value_type::ValueType::StoreId(()),
         NadaType::SecretInteger
         | NadaType::SecretUnsignedInteger
@@ -268,20 +326,26 @@ fn nada_type_from_protobuf(value_type: &value::ValueType) -> Result<NadaType, Va
         value::value_type::ValueType::EcdsaMessageDigest(()) => NadaType::EcdsaDigestMessage,
         value::value_type::ValueType::EcdsaSignatureShare(()) => NadaType::EcdsaSignature,
         value::value_type::ValueType::EcdsaPublicKey(()) => NadaType::EcdsaPublicKey,
+        value::value_type::ValueType::EddsaPrivateKeyShare(()) => NadaType::EddsaPrivateKey,
+        value::value_type::ValueType::EddsaPublicKey(()) => NadaType::EddsaPublicKey,
+        value::value_type::ValueType::EddsaSignature(()) => NadaType::EddsaSignature,
+        value::value_type::ValueType::EddsaMessage(()) => NadaType::EddsaMessage,
         value::value_type::ValueType::StoreId(()) => NadaType::StoreId,
     };
     Ok(nada_type)
 }
 
-fn non_zero_point_from_bytes(bytes: &[u8]) -> Result<NonZero<Point<Secp256k1>>, ValueDecodeError> {
-    let point = Point::from_bytes(bytes).map_err(|_| ValueDecodeError::InvalidEcdsaPrivateKeyPoint("invalid bytes"))?;
-    NonZero::from_point(point).ok_or(ValueDecodeError::InvalidEcdsaPrivateKeyPoint("point is zero"))
+fn non_zero_point_from_bytes<E: Curve>(bytes: &[u8]) -> Result<NonZero<Point<E>>, ValueDecodeError> {
+    let point =
+        Point::from_bytes(bytes).map_err(|_| ValueDecodeError::InvalidThresholdPrivateKeyPoint("invalid bytes"))?;
+    NonZero::from_point(point).ok_or(ValueDecodeError::InvalidThresholdPrivateKeyPoint("point is zero"))
 }
 
-fn non_zero_secret_scalar_from_bytes(bytes: &[u8]) -> Result<NonZero<SecretScalar<Secp256k1>>, ValueDecodeError> {
+fn non_zero_secret_scalar_from_bytes<E: Curve>(bytes: &[u8]) -> Result<NonZero<SecretScalar<E>>, ValueDecodeError> {
     let scalar = SecretScalar::from_le_bytes(bytes)
-        .map_err(|_| ValueDecodeError::InvalidEcdsaPrivateKeySecretScalar("invalid bytes"))?;
-    NonZero::from_secret_scalar(scalar).ok_or(ValueDecodeError::InvalidEcdsaPrivateKeySecretScalar("scalar is zero"))
+        .map_err(|_| ValueDecodeError::InvalidThresholdPrivateKeySecretScalar("invalid bytes"))?;
+    NonZero::from_secret_scalar(scalar)
+        .ok_or(ValueDecodeError::InvalidThresholdPrivateKeySecretScalar("scalar is zero"))
 }
 
 /// An error encoding a nada value to protobuf.
@@ -319,25 +383,37 @@ pub enum ValueDecodeError {
     #[error("invalid tuple: {0}")]
     InvalidTuple(&'static str),
 
-    /// Invalid ecdsa private key point.
-    #[error("invalid ecdsa private key point: {0}")]
-    InvalidEcdsaPrivateKeyPoint(&'static str),
+    /// Invalid ecdsa/eddsa private key point.
+    #[error("invalid ecdsa/eddsa private key point: {0}")]
+    InvalidThresholdPrivateKeyPoint(&'static str),
 
-    /// Invalid ecdsa private key secret scalar.
-    #[error("invalid ecdsa private key secret scalar: {0}")]
-    InvalidEcdsaPrivateKeySecretScalar(&'static str),
+    /// Invalid ecdsa/eddsa private key secret scalar.
+    #[error("invalid ecdsa/eddsa private key secret scalar: {0}")]
+    InvalidThresholdPrivateKeySecretScalar(&'static str),
 
     /// Invalid ecdsa private key.
     #[error("invalid ecdsa private key: {0}")]
     InvalidEcdsaPrivateKey(String),
 
+    /// Invalid eddsa private key.
+    #[error("invalid eddsa private key: {0}")]
+    InvalidEddsaPrivateKey(String),
+
     /// ECDSA private key party index is too large.
     #[error("ecdsa private key party is too large: {0}")]
     EcdsaPrivateKeyPartyOverflow(u32),
 
+    /// Eddsa private key party index is too large.
+    #[error("eddsa private key party is too large: {0}")]
+    EddsaPrivateKeyPartyOverflow(u32),
+
     /// ECDSA signature scalar is invalid.
     #[error("ecdsa scalar {0} is invalid")]
     InvalidEcdsaSignatureScalar(&'static str),
+
+    /// Invalid Eddsa signature.
+    #[error("invalid eddsa signature: {0}")]
+    InvalidEddsaSignature(&'static str),
 
     /// Invalid ECDSA message digest length.
     #[error("ecdsa message digest must be 32 bytes")]

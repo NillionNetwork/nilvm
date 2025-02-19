@@ -4,10 +4,14 @@
 //! regardless of whether they are secret or not. They represent the data types used at the client / dealer end.
 
 use crate::{NadaInt, NadaUint, NadaValue, NeverPrimitiveType};
-use generic_ec::curves::Secp256k1;
+use generic_ec::curves::{Ed25519, Secp256k1};
 use nada_type::PrimitiveTypes;
 use std::fmt::Display;
-use threshold_keypair::{privatekey::ThresholdPrivateKey, publickey::EcdsaPublicKeyArray, signature::EcdsaSignature};
+use threshold_keypair::{
+    privatekey::ThresholdPrivateKey,
+    publickey::EcdsaPublicKeyArray,
+    signature::{EcdsaSignature, EddsaSignature},
+};
 
 /// Clear values are the values provided by the user, in clear (plaintext) form,
 /// regardless of whether they are secret or not. They represent the data types used at the client / dealer end.
@@ -22,6 +26,9 @@ impl PrimitiveTypes for Clear {
     type Boolean = bool;
     type EcdsaDigestMessage = [u8; 32];
     type EcdsaPublicKey = EcdsaPublicKeyArray; // assumed to be in compressed format
+    type EddsaPublicKey = [u8; 32];
+    type EddsaMessage = Vec<u8>;
+    type EddsaSignature = EddsaSignature;
     type StoreId = [u8; 16];
 
     // Abstract secrets
@@ -38,6 +45,9 @@ impl PrimitiveTypes for Clear {
 
     // Ecdsa private key
     type EcdsaPrivateKey = ThresholdPrivateKey<Secp256k1>;
+
+    // Eddsa private key
+    type EddsaPrivateKey = ThresholdPrivateKey<Ed25519>;
 
     // Ecdsa signature
     type EcdsaSignature = EcdsaSignature;
@@ -56,6 +66,13 @@ impl Display for NadaValue<Clear> {
             NadaValue::SecretBlob(value) => {
                 write!(f, "Blob({})", value.iter().map(|value| value.to_string()).collect::<Vec<_>>().join(", "))
             }
+            NadaValue::EddsaMessage(value) => {
+                write!(
+                    f,
+                    "EddsaMessage({})",
+                    value.iter().map(|value| value.to_string()).collect::<Vec<_>>().join(", ")
+                )
+            }
             NadaValue::EcdsaDigestMessage(value) => {
                 write!(
                     f,
@@ -68,6 +85,13 @@ impl Display for NadaValue<Clear> {
                     f,
                     "EcdsaPublicKey({})",
                     value.0.iter().map(|value| value.to_string()).collect::<Vec<_>>().join(", ")
+                )
+            }
+            NadaValue::EddsaPublicKey(value) => {
+                write!(
+                    f,
+                    "EddsaPublicKey({})",
+                    value.iter().map(|value| value.to_string()).collect::<Vec<_>>().join(", ")
                 )
             }
             NadaValue::StoreId(value) => {
@@ -83,6 +107,8 @@ impl Display for NadaValue<Clear> {
             NadaValue::Tuple { left, right } => write!(f, "Tuple({}, {})", left, right),
             NadaValue::EcdsaPrivateKey(value) => write!(f, "{}({})", self.to_type_kind(), value),
             NadaValue::EcdsaSignature(value) => write!(f, "{}({})", self.to_type_kind(), value),
+            NadaValue::EddsaPrivateKey(value) => write!(f, "{}({})", self.to_type_kind(), value),
+            NadaValue::EddsaSignature(value) => write!(f, "{}({})", self.to_type_kind(), value),
             NadaValue::NTuple { values } => {
                 write!(f, "NTuple({})", values.iter().map(|value| value.to_string()).collect::<Vec<_>>().join(", "))
             }

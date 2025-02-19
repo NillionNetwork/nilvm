@@ -131,7 +131,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use generic_ec::{curves::Secp256k1, SecretScalar};
+    use generic_ec::{
+        curves::{Ed25519, Secp256k1},
+        SecretScalar,
+    };
     use rand_chacha::rand_core::OsRng;
     use threshold_keypair::privatekey::ThresholdPrivateKey;
 
@@ -144,8 +147,8 @@ mod tests {
     }
 
     #[test]
-    fn mask_unmask_shares() {
-        let values = HashMap::from([
+    fn mask_unmask_values() {
+        let mut values = HashMap::from([
             ("a".into(), NadaValue::new_secret_integer(42)),
             ("b".into(), NadaValue::new_secret_blob(vec![1, 2, 3])),
             ("c".into(), NadaValue::new_secret_boolean(true)),
@@ -159,38 +162,19 @@ mod tests {
                 .unwrap(),
             ),
         ]);
-        let masker = make_masker();
-        let masked_values = masker.mask(values.clone()).expect("failed to mask");
-        let unmasked_values =
-            masker.unmask(PartyJar::new_with_elements(masked_values).unwrap()).expect("failed to unmask");
-        assert_eq!(unmasked_values, values);
-    }
-
-    #[test]
-    fn mask_unmask_ecdsa_keys() {
-        let mut values = HashMap::new();
 
         let mut csprng = OsRng;
+
+        // Add ECDSA key
         let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
         let ecdsa_sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk).unwrap();
+        values.insert("f".into(), NadaValue::<Clear>::new_ecdsa_private_key(ecdsa_sk));
 
-        values.insert(values.len().to_string(), NadaValue::<Clear>::new_ecdsa_private_key(ecdsa_sk));
-        let masker = make_masker();
-        let masked_values = masker.mask(values.clone()).expect("failed to mask");
-        let unmasked_values =
-            masker.unmask(PartyJar::new_with_elements(masked_values).unwrap()).expect("failed to unmask");
-        assert_eq!(unmasked_values, values);
-    }
+        // Add EdDSA key
+        let sk = SecretScalar::<Ed25519>::random(&mut csprng);
+        let eddsa_sk = ThresholdPrivateKey::<Ed25519>::from_scalar(sk).unwrap();
+        values.insert("g".into(), NadaValue::<Clear>::new_eddsa_private_key(eddsa_sk));
 
-    #[test]
-    fn mask_unmask_ecdsa_signatures() {
-        let mut values = HashMap::new();
-
-        let mut csprng = OsRng;
-        let sk = SecretScalar::<Secp256k1>::random(&mut csprng);
-        let ecdsa_sk = ThresholdPrivateKey::<Secp256k1>::from_scalar(sk).unwrap();
-
-        values.insert(values.len().to_string(), NadaValue::<Clear>::new_ecdsa_private_key(ecdsa_sk));
         let masker = make_masker();
         let masked_values = masker.mask(values.clone()).expect("failed to mask");
         let unmasked_values =

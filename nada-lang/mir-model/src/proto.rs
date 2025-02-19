@@ -1375,8 +1375,16 @@ impl ConvertProto for NadaType {
                 ProtoNadaType::Object(proto_ty::Object { fields })
             }
             NadaType::EcdsaSignature => ProtoNadaType::EcdsaSignature(()),
-            NadaType::SecretBlob | NadaType::EcdsaPublicKey | NadaType::StoreId => {
-                unreachable!("SecretBlob, EcdsaPublicKey and StoreId are not valid types in MIR")
+            NadaType::SecretBlob
+            | NadaType::StoreId
+            | NadaType::EcdsaPublicKey
+            | NadaType::EddsaPrivateKey
+            | NadaType::EddsaPublicKey
+            | NadaType::EddsaSignature
+            | NadaType::EddsaMessage => {
+                unreachable!(
+                    "SecretBlob, StoreId, EcdsaPublicKey, EddsaPrivateKey, EddsaPublicKey, EddsaSignature and EddsaMessage are not valid types in MIR"
+                )
             }
         };
 
