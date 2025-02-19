@@ -12,7 +12,7 @@ generic-ec = { version = "0.4.2", default-features = false, features = ["alloc",
 givre = { version = "0.2.0", features = ["ciphersuite-secp256k1", "ciphersuite-ed25519", "spof", "cggmp21-keygen"] }
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
-strum_macros = "0.26.4"
+strum_macros = "0.27.1"
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1.0.127", optional = true }
 thiserror = "1.0.63"
