@@ -31,7 +31,7 @@ rstest = "0.21.0"
 serde = { version = "1", features = ["derive"] }
 test-programs = { path = "../../../nada-lang/test-programs" }
 mpc-vm = { path = ".", features = ["simulator"] }
-cggmp21 = { version = "0.5.0", features = ["curve-secp256k1"] }
+cggmp21 = { version = "0.6.0", features = ["curve-secp256k1"] }
 
 [features]
 default = []
