@@ -133,8 +133,10 @@ impl Operation {
             Literal(op) => op.source_ref_index(),
             IfElse(op) => op.source_ref_index(),
             Reveal(op) => op.source_ref_index(),
+            PublicKeyDerive(op) => op.source_ref_index(),
             InnerProduct(op) => op.source_ref_index(),
             EcdsaSign(op) => op.source_ref_index(),
+            EddsaSign(op) => op.source_ref_index(),
         }
     }
 }

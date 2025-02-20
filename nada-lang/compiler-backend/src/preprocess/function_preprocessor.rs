@@ -6,11 +6,11 @@
 use std::collections::HashMap;
 
 use mir_model::{
-    delegate_to_inner, Addition, ArrayAccessor, BooleanAnd, BooleanOr, BooleanXor, Cast, Division, EcdsaSign, Equals,
-    GreaterOrEqualThan, GreaterThan, IfElse, InnerProduct, InputReference, LeftShift, LessOrEqualThan, LessThan,
-    LiteralReference, Map, Modulo, Multiplication, NadaFunction, NadaFunctionArgRef, NadaFunctionCall, New, Not,
-    NotEquals, Operation, OperationId, Power, PublicOutputEquality, Random, Reduce, Reveal, RightShift, Subtraction,
-    TruncPr, TupleAccessor, Unzip, Zip,
+    delegate_to_inner, Addition, ArrayAccessor, BooleanAnd, BooleanOr, BooleanXor, Cast, Division, EcdsaSign,
+    EddsaSign, Equals, GreaterOrEqualThan, GreaterThan, IfElse, InnerProduct, InputReference, LeftShift,
+    LessOrEqualThan, LessThan, LiteralReference, Map, Modulo, Multiplication, NadaFunction, NadaFunctionArgRef,
+    NadaFunctionCall, New, Not, NotEquals, Operation, OperationId, Power, PublicKeyDerive, PublicOutputEquality,
+    Random, Reduce, Reveal, RightShift, Subtraction, TruncPr, TupleAccessor, Unzip, Zip,
 };
 
 use super::{
@@ -196,7 +196,8 @@ binary_replace_or_default!(
     BooleanAnd,
     BooleanOr,
     BooleanXor,
-    EcdsaSign
+    EcdsaSign,
+    EddsaSign
 );
 
 binary_replace_nop!(InputReference, LiteralReference, Random, NadaFunctionArgRef);
@@ -205,6 +206,7 @@ unary_replace_or_default!(
     (Not, this),
     (TupleAccessor, source),
     (Reveal, this),
+    (PublicKeyDerive, this),
     (Map, inner),
     (Reduce, inner),
     (Unzip, this),

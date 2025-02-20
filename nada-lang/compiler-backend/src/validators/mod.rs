@@ -10,10 +10,10 @@ use std::collections::{HashMap, HashSet};
 
 use crate::validators::report::ValidationContext;
 use mir_model::{
-    Addition, ArrayAccessor, BinaryOperation, Division, EcdsaSign, Equals, GreaterThan, HasOperands, IfElse,
+    Addition, ArrayAccessor, BinaryOperation, Division, EcdsaSign, EddsaSign, Equals, GreaterThan, HasOperands, IfElse,
     InnerProduct, Input, LeftShift, LessThan, Modulo, Multiplication, NamedElement, New, Not, NotEquals, Operation,
-    OperationId, Power, ProgramMIR, PublicOutputEquality, Reveal, RightShift, SourceInfo, Subtraction, TruncPr,
-    TupleAccessor, TupleIndex, TypedElement,
+    OperationId, Power, ProgramMIR, PublicKeyDerive, PublicOutputEquality, Reveal, RightShift, SourceInfo, Subtraction,
+    TruncPr, TupleAccessor, TupleIndex, TypedElement,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -279,6 +279,29 @@ impl Validatable for Reveal {
     }
 }
 
+impl Validatable for PublicKeyDerive {
+    fn validate(&self, context: &mut ValidationContext, program: &ProgramMIR) -> Result<()> {
+        use NadaType::*;
+        let this_operand = program.operation(self.this)?;
+
+        // Check that the operand has a compatible type
+        match this_operand.ty() {
+            EcdsaPrivateKey => {}
+            EddsaPrivateKey => {}
+            _ => {
+                context.report_error(
+                    self,
+                    "public key derive operation is not supported for the given type",
+                    program,
+                )?;
+                return Ok(());
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl Validatable for TruncPr {
     fn validate(&self, context: &mut ValidationContext, program: &ProgramMIR) -> Result<()> {
         // Check that the return type is always secret.
@@ -314,6 +337,25 @@ impl Validatable for EcdsaSign {
         if !self.ty.is_secret() {
             context.report_error(self, "private ecdsa signature output type is not secret", program)?;
             return Ok(());
+        }
+
+        Ok(())
+    }
+}
+
+impl Validatable for EddsaSign {
+    fn validate(&self, context: &mut ValidationContext, program: &ProgramMIR) -> Result<()> {
+        use NadaType::*;
+        let left = program.operation(self.left)?;
+        let right = program.operation(self.right)?;
+
+        // Check that the operands have compatible types
+        match (left.ty(), right.ty()) {
+            (EddsaPrivateKey, EddsaMessage) => {}
+            (_, _) => {
+                context.report_error(self, "eddsa sign operation is not supported for the given types", program)?;
+                return Ok(());
+            }
         }
 
         Ok(())
@@ -525,12 +567,14 @@ impl Validatable for Operation {
             Power(o) => o.validate(context, program),
             PublicOutputEquality(o) => o.validate(context, program),
             Reveal(o) => o.validate(context, program),
+            PublicKeyDerive(o) => o.validate(context, program),
             RightShift(o) => o.validate(context, program),
             Subtraction(o) => o.validate(context, program),
             TruncPr(o) => o.validate(context, program),
             TupleAccessor(o) => o.validate(context, program),
             InnerProduct(o) => o.validate(context, program),
             EcdsaSign(o) => o.validate(context, program),
+            EddsaSign(o) => o.validate(context, program),
 
             Cast(_)
             | GreaterOrEqualThan(_)

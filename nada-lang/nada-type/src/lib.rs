@@ -532,7 +532,7 @@ impl NadaType {
         // A type will be public if all inner types are public. Otherwise, it is not.
         while let Some(ty) = inner_types.pop() {
             match ty {
-                Integer | UnsignedInteger | Boolean | EcdsaDigestMessage => {
+                Integer | UnsignedInteger | Boolean | EcdsaDigestMessage | EddsaMessage | EddsaSignature => {
                     // Do nothing
                 }
                 Array { inner_type, .. } => inner_types.push(inner_type),

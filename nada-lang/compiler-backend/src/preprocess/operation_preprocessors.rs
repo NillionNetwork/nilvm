@@ -52,12 +52,14 @@ impl IsPreprocessable for Operation {
             | Operation::Random(_)
             | Operation::IfElse(_)
             | Operation::Reveal(_)
+            | Operation::PublicKeyDerive(_)
             | Operation::Not(_)
             | Operation::LeftShift(_)
             | Operation::RightShift(_)
             | Operation::TruncPr(_)
             | Operation::InnerProduct(_)
-            | Operation::EcdsaSign(_) => false,
+            | Operation::EcdsaSign(_)
+            | Operation::EddsaSign(_) => false,
         }
     }
 }
