@@ -29,6 +29,7 @@ mod modulo;
 mod multiplication;
 mod nada_fn;
 mod power;
+mod public_key_derive;
 mod random;
 mod reduce;
 mod reuse;

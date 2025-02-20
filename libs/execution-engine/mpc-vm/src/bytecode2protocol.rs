@@ -149,12 +149,10 @@ impl ProtocolFactory<MPCProtocol> for MPCProtocolFactory {
 
     fn create_public_key_derive(
         self,
-        _context: &mut Bytecode2ProtocolContext<MPCProtocol, Self>,
-        _o: &PublicKeyDerive,
+        context: &mut Bytecode2ProtocolContext<MPCProtocol, Self>,
+        o: &PublicKeyDerive,
     ) -> Result<MPCProtocol, Bytecode2ProtocolError> {
-        // crate::protocols::public_key_derive::PublicKeyDerive::transform(context, o)
-        // TODO(@manel1874): To be added after the implementation of the protocol
-        Err(Bytecode2ProtocolError::OperationNotSupported(String::from("public_key_derive")))
+        crate::protocols::public_key_derive::PublicKeyDerive::transform(context, o)
     }
 
     fn create_trunc_pr(

@@ -26,12 +26,12 @@ fn ecdsa_sign() -> Result<(), Error> {
     ];
 
     let inputs = StaticInputGeneratorBuilder::default()
-        .add_ecdsa_digest_message("digest", digest)
-        .add_ecdsa_private_key("private_key", sk.clone())
+        .add_ecdsa_digest_message("tecdsa_digest_message", digest)
+        .add_ecdsa_private_key("tecdsa_private_key", sk.clone())
         .build();
     let outputs = simulate("ecdsa_sign", inputs)?;
     assert_eq!(outputs.len(), 1);
-    let output = outputs.get("my_output").unwrap();
+    let output = outputs.get("tecdsa_signature").unwrap();
     if let NadaValue::EcdsaSignature(signature) = output {
         let pk = ThresholdPublicKey::<Secp256k1>::from_private_key(&sk);
         let digest_data_to_sign = DataToSign::from_scalar(Scalar::from_be_bytes_mod_order(digest));

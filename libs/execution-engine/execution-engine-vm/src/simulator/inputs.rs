@@ -16,7 +16,10 @@ use nada_value::{
 use num_bigint::RandBigInt;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use shamir_sharing::secret_sharer::{SafePrimeSecretSharer, ShamirSecretSharer};
-use threshold_keypair::{generic_ec::curves::Secp256k1, privatekey::ThresholdPrivateKey};
+use threshold_keypair::{
+    generic_ec::curves::{Ed25519, Secp256k1},
+    privatekey::ThresholdPrivateKey,
+};
 
 /// The inputs for a program.
 #[derive(Default, Debug)]
@@ -251,6 +254,13 @@ impl StaticInputGeneratorBuilder {
         self.add(name, NadaValue::new_ecdsa_private_key(value))
     }
 
+    /// Adds a new eddsa private key.
+    pub fn add_eddsa_private_key<S>(self, name: S, value: ThresholdPrivateKey<Ed25519>) -> Self
+    where
+        S: Into<String>,
+    {
+        self.add(name, NadaValue::new_eddsa_private_key(value))
+    }
     /// Adds an input.
     pub fn add<S>(mut self, name: S, input: NadaValue<Clear>) -> Self
     where

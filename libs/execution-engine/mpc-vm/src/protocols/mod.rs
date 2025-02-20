@@ -14,6 +14,7 @@ pub(crate) mod new;
 pub(crate) mod not;
 
 pub(crate) mod power;
+pub(crate) mod public_key_derive;
 pub(crate) mod random;
 pub(crate) mod reveal;
 pub(crate) mod right_shift;
@@ -39,6 +40,7 @@ use crate::{
         new::{NewArray, NewTuple},
         not::Not,
         power::PowerPublicBasePublicExponent,
+        public_key_derive::PublicKeyDerive,
         random::{RandomBoolean, RandomInteger},
         reveal::Reveal,
         right_shift::{RightShiftPublic, RightShiftShares},
@@ -134,6 +136,8 @@ pub enum MPCProtocol {
     RandomBoolean(RandomBoolean) = 45,
     /// Ecdsa sign protocol
     EcdsaSign(EcdsaSign) = 46,
+    /// Public key derive protocol
+    PublicKeyDerive(PublicKeyDerive) = 47,
 }
 
 impl Display for MPCProtocol {
@@ -173,6 +177,7 @@ impl Display for MPCProtocol {
             RightShiftShares(p) => write!(f, "{}", p),
             PublicOutputEquality(p) => write!(f, "{}", p),
             Reveal(p) => write!(f, "{}", p),
+            PublicKeyDerive(p) => write!(f, "{}", p),
             NewArray(p) => write!(f, "{}", p),
             NewTuple(p) => write!(f, "{}", p),
             InnerProductShares(p) => write!(f, "{}", p),

@@ -32,6 +32,7 @@ macro_rules! delegate_to_inner {
                             MPCProtocol::RightShiftShares(p) => p.$method($($opt),*),
                             MPCProtocol::PublicOutputEquality(p) => p.$method($($opt),*),
                             MPCProtocol::Reveal(p) => p.$method($($opt),*),
+                            MPCProtocol::PublicKeyDerive(p) => p.$method($($opt),*),
                             MPCProtocol::NewArray(p) => p.$method($($opt),*),
                             MPCProtocol::NewTuple(p) => p.$method($($opt),*),
                             MPCProtocol::InnerProductPublic(p) => p.$method($($opt),*),

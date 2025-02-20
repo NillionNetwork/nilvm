@@ -103,6 +103,7 @@ where
             RightShiftShares(p) => p.run(context, share_elements),
             PublicOutputEquality(p) => p.run(context, share_elements),
             Reveal(p) => p.run(context, share_elements),
+            PublicKeyDerive(p) => p.run(context, share_elements),
             InnerProductShares(p) => p.run(context, share_elements),
             InnerProductPublic(p) => p.run(context, share_elements),
             InnerProductSharePublic(p) => p.run(context, share_elements),
