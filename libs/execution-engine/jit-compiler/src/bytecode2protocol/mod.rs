@@ -6,9 +6,9 @@ use crate::{
     bytecode2protocol::errors::Bytecode2ProtocolError,
     models::{
         bytecode::{
-            memory::BytecodeAddress, Addition, AddressedElement, Cast, Division, EcdsaSign, Equals, IfElse,
+            memory::BytecodeAddress, Addition, AddressedElement, Cast, Division, EcdsaSign, EddsaSign, Equals, IfElse,
             InnerProduct, LeftShift, LessThan, LiteralRef, Load, Modulo, Multiplication, Not, Operation, Power,
-            ProgramBytecode, PublicOutputEquality, Random, Reveal, RightShift, Subtraction, TruncPr,
+            ProgramBytecode, PublicKeyDerive, PublicOutputEquality, Random, Reveal, RightShift, Subtraction, TruncPr,
         },
         memory::{address_count, AddressType},
         protocols::{memory::ProtocolAddress, InputMemoryAllocation, OutputMemoryAllocation, Protocol, ProtocolsModel},
@@ -303,6 +303,13 @@ pub trait ProtocolFactory<P: Protocol>: Copy {
         o: &Reveal,
     ) -> Result<P, Bytecode2ProtocolError>;
 
+    /// Creates the protocols for a Public Key Derive operation
+    fn create_public_key_derive(
+        self,
+        context: &mut Bytecode2ProtocolContext<P, Self>,
+        o: &PublicKeyDerive,
+    ) -> Result<P, Bytecode2ProtocolError>;
+
     /// Creates the protocols for a TruncPr operation
     fn create_trunc_pr(
         self,
@@ -315,6 +322,13 @@ pub trait ProtocolFactory<P: Protocol>: Copy {
         self,
         context: &mut Bytecode2ProtocolContext<P, Self>,
         o: &EcdsaSign,
+    ) -> Result<P, Bytecode2ProtocolError>;
+
+    /// Creates the protocols for a EddsaSign operation
+    fn create_eddsa_sign(
+        self,
+        context: &mut Bytecode2ProtocolContext<P, Self>,
+        o: &EddsaSign,
     ) -> Result<P, Bytecode2ProtocolError>;
 
     /// Creates the protocols for a Random operation
@@ -435,8 +449,10 @@ impl Bytecode2Protocol {
             Operation::Literal(o) => return Self::load_literal(context, o),
             Operation::IfElse(o) => factory.create_if_else(context, o)?,
             Operation::Reveal(o) => factory.create_reveal(context, o)?,
+            Operation::PublicKeyDerive(o) => factory.create_public_key_derive(context, o)?,
             Operation::TruncPr(o) => factory.create_trunc_pr(context, o)?,
             Operation::EcdsaSign(o) => factory.create_ecdsa_sign(context, o)?,
+            Operation::EddsaSign(o) => factory.create_eddsa_sign(context, o)?,
             Operation::Random(o) => factory.create_random(context, o)?,
             Operation::InnerProduct(o) => factory.create_inner_product(context, o)?,
             Operation::Cast(o) => factory.create_cast(context, o)?,

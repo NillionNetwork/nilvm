@@ -1,17 +1,18 @@
 use nada_compiler_backend::mir::{
-    Addition as MIRAddition, Division as MIRDivision, EcdsaSign as MIREcdsaSign, Equals as MIREquals,
-    IfElse as MIRIfElse, InnerProduct as MIRInnerProduct, LeftShift as MIRLeftShift, LessThan as MIRLessThan,
-    LiteralReference as MIRLiteralReference, Modulo as MIRModulo, Multiplication as MIRMultiplication, New as MIRNew,
-    Not as MIRNot, Power as MIRPower, PublicOutputEquality as MIRPublicOutputEquality, Random as MIRRandom,
+    Addition as MIRAddition, Division as MIRDivision, EcdsaSign as MIREcdsaSign, EddsaSign as MIREddsaSign,
+    Equals as MIREquals, IfElse as MIRIfElse, InnerProduct as MIRInnerProduct, LeftShift as MIRLeftShift,
+    LessThan as MIRLessThan, LiteralReference as MIRLiteralReference, Modulo as MIRModulo,
+    Multiplication as MIRMultiplication, New as MIRNew, Not as MIRNot, Power as MIRPower,
+    PublicKeyDerive as MIRPublicKeyDerive, PublicOutputEquality as MIRPublicOutputEquality, Random as MIRRandom,
     Reveal as MIRReveal, RightShift as MIRRightShift, Subtraction as MIRSubtraction, TruncPr as MIRTruncPr,
 };
 
 use crate::{
     mir2bytecode::{errors::MIR2BytecodeError, MIR2BytecodeContext, TransformOperationResult},
     models::bytecode::{
-        memory::BytecodeAddress, Addition, Division, EcdsaSign, Equals, Get, IfElse, InnerProduct, LeftShift, LessThan,
-        LiteralRef, Modulo, Multiplication, New, Not, Power, PublicOutputEquality, Random, Reveal, RightShift,
-        Subtraction, TruncPr,
+        memory::BytecodeAddress, Addition, Division, EcdsaSign, EddsaSign, Equals, Get, IfElse, InnerProduct,
+        LeftShift, LessThan, LiteralRef, Modulo, Multiplication, New, Not, Power, PublicKeyDerive,
+        PublicOutputEquality, Random, Reveal, RightShift, Subtraction, TruncPr,
     },
 };
 
@@ -67,6 +68,7 @@ macro_rules! mir2bytecode_unary_operation {
 
 mir2bytecode_unary_operation!(MIRNot, Not, this);
 mir2bytecode_unary_operation!(MIRReveal, Reveal, this);
+mir2bytecode_unary_operation!(MIRPublicKeyDerive, PublicKeyDerive, this);
 
 /// This macro generates the transformation for a binary operation.
 /// It receives the MIR2BytecodeContext and the MIROperation and returns the BytecodeOperation.
@@ -119,6 +121,7 @@ mir2bytecode_binary_operation!(MIRLessThan, LessThan);
 mir2bytecode_binary_operation!(MIRPublicOutputEquality, PublicOutputEquality);
 mir2bytecode_binary_operation!(MIRInnerProduct, InnerProduct);
 mir2bytecode_binary_operation!(MIREcdsaSign, EcdsaSign);
+mir2bytecode_binary_operation!(MIREddsaSign, EddsaSign);
 
 impl IfElse {
     pub(crate) fn from_mir(

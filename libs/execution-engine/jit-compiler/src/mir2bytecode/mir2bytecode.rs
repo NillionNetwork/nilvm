@@ -4,9 +4,10 @@ use crate::{
     mir2bytecode::errors::MIR2BytecodeError,
     models::{
         bytecode::{
-            memory::BytecodeAddress, Addition, AddressedElement, Division, EcdsaSign, Equals, IfElse, InnerProduct,
-            Input, LeftShift, LessThan, Literal, LiteralRef, Load, Modulo, Multiplication, New, Not, Operation, Output,
-            Power, ProgramBytecode, PublicOutputEquality, Random, Reveal, RightShift, Subtraction, TruncPr,
+            memory::BytecodeAddress, Addition, AddressedElement, Division, EcdsaSign, EddsaSign, Equals, IfElse,
+            InnerProduct, Input, LeftShift, LessThan, Literal, LiteralRef, Load, Modulo, Multiplication, New, Not,
+            Operation, Output, Power, ProgramBytecode, PublicKeyDerive, PublicOutputEquality, Random, Reveal,
+            RightShift, Subtraction, TruncPr,
         },
         memory::AddressType,
         SourceRefIndex,
@@ -304,6 +305,7 @@ impl MIR2Bytecode {
         match mir_operation {
             MIROperation::Not(o) => Not::from_mir(context, o),
             MIROperation::Reveal(o) => Reveal::from_mir(context, o),
+            MIROperation::PublicKeyDerive(o) => PublicKeyDerive::from_mir(context, o),
             MIROperation::InputReference(o) => Self::transform_input_reference(context, o),
             MIROperation::LiteralReference(o) => LiteralRef::from_mir(context, o),
             MIROperation::Addition(o) => Addition::from_mir(context, o),
@@ -339,6 +341,7 @@ impl MIR2Bytecode {
             MIROperation::IfElse(o) => IfElse::from_mir(context, o),
             MIROperation::TruncPr(o) => TruncPr::from_mir(context, o),
             MIROperation::EcdsaSign(o) => EcdsaSign::from_mir(context, o),
+            MIROperation::EddsaSign(o) => EddsaSign::from_mir(context, o),
             MIROperation::InnerProduct(o) => InnerProduct::from_mir(context, o),
             MIROperation::BooleanAnd(_) => Err(MIR2BytecodeError::OperationNotSupported("bitwise and")), // MIR pre-processed
             MIROperation::BooleanOr(_) => Err(MIR2BytecodeError::OperationNotSupported("bitwise or")), // MIR pre-processed
