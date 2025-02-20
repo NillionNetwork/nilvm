@@ -30,7 +30,7 @@ use std::{
     net::TcpStream,
     path::{Path, PathBuf},
     process::{Child, Command},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
     thread::{self, sleep},
     time::{Duration, Instant},
 };
@@ -39,7 +39,7 @@ use tokio::runtime::Runtime;
 use tracing_fixture::{tracing, Tracing};
 use xshell::{cmd, Shell};
 
-const PAYER_FUND_CHUNK: usize = 20;
+pub const MAX_PAYERS_NUM: usize = 2;
 const SIGNING_KEY_PREFIX: &str = "signinig-key-";
 const TOTAL_PREFUNDED_KEYS: u64 = 1024;
 const PREFUND_AMOUNT: TokenAmount = TokenAmount::Nil(100_000);
@@ -208,6 +208,7 @@ pub struct Nodes {
     next_payment_key_id: AtomicU64,
     next_signing_key_id: AtomicU64,
     funded_payers: tokio::sync::Mutex<Vec<NillionChainClientPayer>>,
+    funded_payers_cursor: AtomicUsize,
     bootnode_party_id: Option<PartyId>,
     payments_seed: String,
 }
@@ -284,9 +285,7 @@ impl Nodes {
             MembershipClient::new(self.bootnode_channel_config().build().expect("failed to create config"));
         let cluster = loop {
             match membership_client.cluster().await {
-                Ok(cluster) => {
-                    break cluster;
-                }
+                Ok(cluster) => break cluster,
                 Err(e) => {
                     warn!("Bootnode is not up yet, retrying: {e}")
                 }
@@ -321,37 +320,42 @@ impl Nodes {
     }
 
     pub async fn allocate_payer(&self) -> NillionChainClientPayer {
-        // enter the payments runtime so all payers share the same reqwest client pool
-        let _guard = PAYMENTS_RUNTIME.enter();
-        let mut funded_payers = self.funded_payers.lock().await;
-
-        if funded_payers.is_empty() {
-            // Otherwise fund a chunk of payers at once if we don't have any
-            let mut addresses = Vec::new();
-            let mut keys = Vec::new();
-            for _ in 0..PAYER_FUND_CHUNK {
-                let payment_key_id = self.next_payment_key_id.fetch_add(1, Ordering::AcqRel);
-                let payments_seed = format!("{}-{payment_key_id}", self.payments_seed);
-                let key = NillionChainPrivateKey::from_seed(&payments_seed).expect("private key creation failed");
-                let address = key.address.clone();
-                keys.push(key);
-                addresses.push(address);
-            }
-            self.top_up_balances(addresses, TokenAmount::Nil(1)).await;
-
-            // Create all the clients in bulk as this performs a lookup on the chain.
-            let mut futs = Vec::new();
-            for key in keys {
-                let payments_rpc_endpoint = self.nillion_chain_rpc_endpoint();
-                futs.push(NillionChainClient::new(payments_rpc_endpoint, key));
-            }
-            for result in future::join_all(futs).await {
-                let client = result.expect("failed to look up client");
-                let payer = NillionChainClientPayer::new(client);
-                funded_payers.push(payer);
-            }
+        let mut pool_guard = self.funded_payers.lock().await;
+        if pool_guard.is_empty() {
+            let payers = self.fund_payers(MAX_PAYERS_NUM).await;
+            pool_guard.extend(payers);
         }
-        funded_payers.pop().expect("should not be empty")
+        let pool_size = pool_guard.len();
+        let index = self.funded_payers_cursor.fetch_add(1, Ordering::Relaxed) % pool_size;
+
+        pool_guard[index].clone()
+    }
+
+    pub(crate) async fn fund_payers(&self, count: usize) -> Vec<NillionChainClientPayer> {
+        let _guard = PAYMENTS_RUNTIME.enter();
+        let mut addresses = Vec::with_capacity(count);
+        let mut keys = Vec::with_capacity(count);
+        for _ in 0..count {
+            let payment_key_id = self.next_payment_key_id.fetch_add(1, Ordering::AcqRel);
+            let payments_seed = format!("{}-{payment_key_id}", self.payments_seed);
+
+            let key = NillionChainPrivateKey::from_seed(&payments_seed).expect("private key creation failed");
+            let address = key.address.clone();
+            keys.push(key);
+            addresses.push(address);
+        }
+        self.top_up_balances(addresses, TokenAmount::Unil(1_500_000)).await;
+        let mut futs = Vec::with_capacity(count);
+        for key in keys {
+            let payments_rpc_endpoint = self.nillion_chain_rpc_endpoint();
+            futs.push(NillionChainClient::new(payments_rpc_endpoint, key));
+        }
+        let mut payers = Vec::with_capacity(count);
+        for result in future::join_all(futs).await {
+            let client = result.expect("failed to look up client");
+            payers.push(NillionChainClientPayer::new(client));
+        }
+        payers
     }
 }
 
@@ -479,6 +483,7 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         next_payment_key_id: Default::default(),
         next_signing_key_id: Default::default(),
         funded_payers: Default::default(),
+        funded_payers_cursor: AtomicUsize::new(0),
         bootnode_party_id: None,
         payments_seed,
     };
