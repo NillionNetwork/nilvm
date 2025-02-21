@@ -352,11 +352,10 @@ impl NillionChainClient {
         };
 
         let mut gas_needed = gas_info.gas_used;
-        gas_needed = gas_needed.wrapping_mul(100u64 + GAS_ADJUSTMENT_PERCENT);
-        gas_needed /= 100;
+        gas_needed = gas_needed.saturating_mul(100 + GAS_ADJUSTMENT_PERCENT) / 100;
 
-        gas_amount.amount = (gas_needed as f64 * self.gas_price) as u128;
-        debug!("Need {gas_needed} gas, using {} total gas amount", gas_amount.amount);
+        gas_amount.amount = Self::calculate_gas_price(gas_needed, self.gas_price);
+        debug!("Need {gas_needed} gas; computed fee = {} unil", gas_amount.amount);
 
         let auth_info = SignerInfo::single_direct(Some(self.signing_key.public_key()), sequence_id)
             .auth_info(Fee::from_amount_and_gas(gas_amount, gas_needed));
@@ -368,6 +367,16 @@ impl NillionChainClient {
             .map_err(|e| anyhow!("signing: {e}"))?
             .to_bytes()
             .map_err(|e| anyhow!("signed tx to bytes: {e}"))
+    }
+
+    fn calculate_gas_price(gas_needed: u64, gas_price_in_unil: f64) -> u128 {
+        let precision = 1_000_000;
+        let scaled_gas_price = (gas_price_in_unil * precision as f64).round() as u128;
+
+        let fee = (gas_needed as u128).saturating_mul(scaled_gas_price).saturating_add(precision - 1); // ensures "round up" by 1 unil if remainder
+
+        // Convert back to unil
+        fee / precision
     }
 
     async fn simulate(&mut self, tx: Vec<u8>) -> anyhow::Result<tx::v1beta1::SimulateResponse> {
@@ -436,5 +445,37 @@ impl NillionChainClient {
         V: Into<Vec<u8>> + Send + Clone + 'static,
     {
         client.abci_query(path, data, None, false).await.map_err(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::client::NillionChainClient;
+
+    #[test]
+    fn test_gas_price_with_exact_multiple() {
+        let price = NillionChainClient::calculate_gas_price(4000, 0.025);
+        assert_eq!(price, 100, "Exact multiple should not round up");
+    }
+
+    #[test]
+    fn test_gas_price_with_round_up() {
+        let price = NillionChainClient::calculate_gas_price(4001, 0.025);
+        assert_eq!(price, 101, "Remainder should cause rounding up");
+    }
+
+    #[test]
+    fn test_gas_price_with_large_numbers() {
+        let price = NillionChainClient::calculate_gas_price(1_000_000, 0.025);
+        assert_eq!(price, 25_000, "Large exact multiple should not round up");
+
+        let price = NillionChainClient::calculate_gas_price(1_000_001, 0.025);
+        assert_eq!(price, 25_001, "Large partial remainder should cause round up");
+    }
+
+    #[test]
+    fn test_gas_price() {
+        let price = NillionChainClient::calculate_gas_price(10, 0.000001);
+        assert_eq!(price, 1, "Tiny fraction should still round up to 1 unil");
     }
 }
