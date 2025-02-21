@@ -12,7 +12,7 @@ required-features = ["tool"]
 anyhow = "1"
 clap = { version = "4.5", features = ["derive"] }
 env_logger = "0.11"
-log = "0.4.22"
+log = "0.4.25"
 num-bigint = "0.4.6"
 thiserror = "1"
 
