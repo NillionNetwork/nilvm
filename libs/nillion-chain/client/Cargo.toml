@@ -19,3 +19,6 @@ uuid = "1"
 rand = "0.8.5"
 
 nillion-chain-transactions = { path = "../transactions" }
+
+[dev-dependencies]
+rstest = "0.21.0"
