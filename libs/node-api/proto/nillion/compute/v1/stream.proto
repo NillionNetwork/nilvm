@@ -17,12 +17,15 @@ message ComputeStreamMessage {
   ComputeType compute_type = 3;
 }
 
-// The type of compute performed. We currently support two types:
+// The type of compute performed. We currently support three types:
 // - GENERAL: A general compute that computes some Nada program.
 // - ECDSA_DKG: A specific compute operation for ECDSA distributed key generation.
+// - EDDSA_DKG: A specific compute operation for Eddsa distributed key generation.
 enum ComputeType {
   // A general compute.
   GENERAL = 0;
   // An ECDSA distributed key generation protocol.
   ECDSA_DKG = 1;
+  // An Eddsa distributed key generation protocol.
+  EDDSA_DKG = 2;
 }

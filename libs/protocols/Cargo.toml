@@ -25,6 +25,7 @@ state-machine-macros = { path = "../state-machine-macros" }
 
 threshold-keypair = { path = "../threshold-keypair" }
 cggmp21 = { version = "0.6.0", features = ["curve-secp256k1", "state-machine"] }
+generic-ec = { version = "0.4.2", features = ["alloc", "curve-secp256k1", "curve-ed25519"], default-features = false }
 gmp-mpfr-sys = { version = "1.6.4", features = ["force-cross"] }
 sha2 = "0.10"
 serde_json = "1"

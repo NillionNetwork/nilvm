@@ -26,7 +26,7 @@ use nillion_chain_client::{
 };
 use node_api::{
     auth::rust::UserId,
-    compute::TECDSA_DKG_PROGRAM_ID,
+    compute::{TECDSA_DKG_PROGRAM_ID, TEDDSA_DKG_PROGRAM_ID},
     payments::rust::{
         AddFundsPayload, AddFundsRequest, AuxiliaryMaterialRequirement, InvokeCompute, InvokeComputeMetadata,
         OperationMetadata, PreprocessingRequirement, PriceQuote, PriceQuoteRequest, QuoteFees, Receipt,
@@ -412,7 +412,7 @@ impl DefaultPaymentService {
             let program_id: ProgramId =
                 metadata.program_id.parse().map_err(|e: ParseProgramIdError| ProcessingProgram(e.to_string()))?;
             let program_id_str = program_id.to_string();
-            if program_id_str == TECDSA_DKG_PROGRAM_ID {
+            if program_id_str == TECDSA_DKG_PROGRAM_ID || program_id_str == TEDDSA_DKG_PROGRAM_ID {
                 return Ok((vec![], vec![]));
             }
             let program = self

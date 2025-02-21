@@ -20,6 +20,16 @@ pub const TECDSA_PUBLIC_KEY_PARTY: &str = "tecdsa_public_key_party";
 
 /// The hardcoded sign program id for the Eddsa signing protocol.
 pub const TEDDSA_SIGN_PROGRAM_ID: &str = "builtin/teddsa_sign";
+/// The hardcoded program id for the EdDSA distributed key generation protocol.
+pub const TEDDSA_DKG_PROGRAM_ID: &str = "builtin/teddsa_dkg";
+/// The hardcoded eddsa public key variable name for the EdDSA distributed key generation protocol.
+pub const TEDDSA_PUBLIC_KEY: &str = "teddsa_public_key";
+/// The hardcoded private key store id variable name for the EdDSA distributed key generation protocol.
+pub const TEDDSA_STORE_ID: &str = "teddsa_store_id";
+/// The hardcoded private key store id party name for the EdDSA distributed key generation protocol.
+pub const TEDDSA_PRIVATE_KEY_STORE_ID_PARTY: &str = "teddsa_private_key_store_id_party";
+/// The hardcoded public key party name for the EdDSA distributed key generation protocol.
+pub const TEDDSA_PUBLIC_KEY_PARTY: &str = "teddsa_public_key_party";
 
 /// Rust types that can be converted from/to their protobuf counterparts.
 #[cfg(feature = "rust-types")]
