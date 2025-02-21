@@ -28,6 +28,7 @@ members = [
     "libs/nillion-chain/client",
     "libs/nillion-chain/node",
     "libs/nillion-chain/transactions",
+    "libs/nucs",
     "nada-lang/compiler-backend",
     "nada-lang/compiler-backend-tests",
     "nada-lang/pynadac",
