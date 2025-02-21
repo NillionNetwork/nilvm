@@ -712,42 +712,22 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "cggmp21"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7371c7cb9c13f63c49d8637cdb47b22819e586ac2780f01151f2b8ea591ec7ce"
+checksum = "251e13fefa29935b4d502580e340b79fbdbe2fb3189e7b16054fe2252895a4e0"
 dependencies = [
- "cggmp21-keygen 0.4.0",
+ "cggmp21-keygen",
  "digest 0.10.7",
  "futures",
  "generic-ec",
  "generic-ec-zkp",
+ "hd-wallet",
  "hex",
- "key-share 0.5.2",
+ "key-share",
  "paillier-zk",
  "rand_core",
  "rand_hash",
- "round-based 0.3.2",
- "serde",
- "serde_with 2.3.3",
- "sha2 0.10.8",
- "thiserror 1.0.65",
- "udigest",
-]
-
-[[package]]
-name = "cggmp21-keygen"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "035c720da632d7303d2286f9ba4923dfba646f99465695ef21fc72b9e330476f"
-dependencies = [
- "digest 0.10.7",
- "displaydoc",
- "generic-ec",
- "generic-ec-zkp",
- "hex",
- "key-share 0.5.2",
- "rand_core",
- "round-based 0.3.2",
+ "round-based",
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
@@ -766,9 +746,9 @@ dependencies = [
  "generic-ec",
  "generic-ec-zkp",
  "hex",
- "key-share 0.6.0",
+ "key-share",
  "rand_core",
- "round-based 0.4.1",
+ "round-based",
  "serde",
  "serde_with 2.3.3",
  "sha2 0.10.8",
@@ -2192,13 +2172,14 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af482004b1f70b5b3b584c3fc3733dd24c71f8c0081a6087f49e09746746788a"
 dependencies = [
- "cggmp21-keygen 0.5.0",
+ "cggmp21-keygen",
  "digest 0.10.7",
  "generic-ec",
  "hd-wallet",
  "k256",
- "key-share 0.6.0",
+ "key-share",
  "rand_core",
+ "round-based",
  "serde",
  "sha2 0.10.8",
  "static_assertions",
@@ -3066,22 +3047,6 @@ dependencies = [
 
 [[package]]
 name = "key-share"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10fce16fa05b2c8e6e36096506ef4a98d410159991ccfeb38a7eeb5f296588f6"
-dependencies = [
- "displaydoc",
- "generic-ec",
- "generic-ec-zkp",
- "hex",
- "rand_core",
- "serde",
- "serde_with 2.3.3",
- "thiserror 1.0.65",
-]
-
-[[package]]
-name = "key-share"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ee8e510bb9f738ac400b7dedd98aeb23677c6b48cd3b1b682651ea5091f4282"
@@ -3502,7 +3467,7 @@ dependencies = [
  "generic-ec",
  "givre",
  "indexmap 2.6.0",
- "key-share 0.5.2",
+ "key-share",
  "math_lib",
  "nada-type",
  "node-api",
@@ -3632,7 +3597,7 @@ version = "0.1.0"
 dependencies = [
  "basic-types",
  "generic-ec",
- "key-share 0.5.2",
+ "key-share",
  "math_lib",
  "mpc-vm",
  "nada-value",
@@ -4677,16 +4642,17 @@ dependencies = [
  "basic-types",
  "cggmp21",
  "criterion",
+ "givre",
  "gmp-mpfr-sys",
  "itertools 0.13.0",
- "key-share 0.5.2",
+ "key-share",
  "math_lib",
  "num-bigint",
  "once_cell",
  "rand",
  "rand_chacha",
  "rayon",
- "round-based 0.3.2",
+ "round-based",
  "rstest",
  "serde",
  "serde_json",
@@ -5145,20 +5111,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "round-based"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81564866f5617d497753563151d8beb80d61e925e904d94b7e8a202b721e931e"
-dependencies = [
- "displaydoc",
- "futures-util",
- "phantom-type 0.3.1",
- "round-based-derive",
- "thiserror 1.0.65",
- "tracing",
 ]
 
 [[package]]
@@ -6607,7 +6559,7 @@ dependencies = [
  "cggmp21",
  "generic-ec",
  "givre",
- "key-share 0.5.2",
+ "key-share",
  "rand",
  "rstest",
  "serde",
