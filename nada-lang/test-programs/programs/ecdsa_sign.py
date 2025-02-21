@@ -1,9 +1,15 @@
 from nada_dsl import *
 
 def nada_main():
-    party1 = Party(name="Party1")
-    private_key = EcdsaPrivateKey(Input(name="private_key", party=party1))
-    digest = EcdsaDigestMessage(Input(name="digest", party=party1))
-    
-    new_int = private_key.ecdsa_sign(digest)
-    return [Output(new_int, "my_output", party1)]
+    tecdsa_key_party = Party(name="tecdsa_key_party")
+    tecdsa_digest_message_party = Party(name="tecdsa_digest_message_party")
+    tecdsa_output_party = Party(name="tecdsa_output_party")
+
+    key = EcdsaPrivateKey(Input(name="tecdsa_private_key", party=tecdsa_key_party))
+    digest = EcdsaDigestMessage(
+        Input(name="tecdsa_digest_message", party=tecdsa_digest_message_party)
+    )
+
+    signature = key.ecdsa_sign(digest)
+
+    return [Output(signature, "tecdsa_signature", tecdsa_output_party)]
