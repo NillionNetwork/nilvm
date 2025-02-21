@@ -3639,6 +3639,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nillion-nucs"
+version = "0.1.0"
+dependencies = [
+ "rstest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.3",
+]
+
+[[package]]
 name = "nilup"
 version = "0.1.0"
 dependencies = [
