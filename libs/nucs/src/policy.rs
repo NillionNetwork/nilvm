@@ -109,7 +109,7 @@ impl PolicyVisitor {
         let operator = match op.as_str() {
             "==" => Operator::Equals(value),
             "!=" => Operator::NotEquals(value),
-            _ => panic!("unsupported operator"),
+            _ => return Err(Error::custom("unhandled operator")),
         };
         Ok(OperatorPolicy { selector, operator })
     }
@@ -124,7 +124,7 @@ impl PolicyVisitor {
             .ok_or_else(|| Error::invalid_length(2, &"a list of values"))?;
         let operator = match op.as_str() {
             "anyOf" => Operator::AnyOf(values),
-            _ => panic!("unsupported operator"),
+            _ => return Err(Error::custom("unhandled operator")),
         };
         Ok(OperatorPolicy { selector, operator })
     }
@@ -136,7 +136,7 @@ impl PolicyVisitor {
         let policy = seq.next_element::<Box<Policy>>()?.ok_or_else(|| Error::invalid_length(1, &"a policy"))?;
         let connector = match connector.as_str() {
             "not" => ConnectorPolicy::Not(policy),
-            _ => panic!("unsupported operator"),
+            _ => return Err(Error::custom("unhandled operator")),
         };
         Ok(connector)
     }
@@ -153,7 +153,7 @@ impl PolicyVisitor {
         let connector = match connector.as_str() {
             "and" => ConnectorPolicy::And(policies),
             "or" => ConnectorPolicy::Or(policies),
-            _ => panic!("unsupported operator"),
+            _ => return Err(Error::custom("unhandled operator")),
         };
         Ok(connector)
     }
