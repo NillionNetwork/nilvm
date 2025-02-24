@@ -15,10 +15,10 @@ pub enum Policy {
 impl Policy {
     /// Evaluate a policy on a JSON value.
     #[must_use]
-    pub fn evaluate(&self, value: &serde_json::Value) -> bool {
+    pub fn evaluate(&self, nuc_root: &serde_json::Value) -> bool {
         match self {
-            Self::Operator(policy) => policy.evaluate(value),
-            Self::Connector(policy) => policy.evaluate(value),
+            Self::Operator(policy) => policy.evaluate(nuc_root),
+            Self::Connector(policy) => policy.evaluate(nuc_root),
         }
     }
 }
