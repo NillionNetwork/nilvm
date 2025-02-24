@@ -181,47 +181,46 @@ impl<'de> Visitor<'de> for PolicyVisitor {
 }
 
 #[cfg(test)]
+pub(crate) mod op {
+    use super::*;
+    use serde_json::Value;
+
+    pub(crate) fn eq(selector: &str, value: Value) -> Policy {
+        OperatorPolicy { selector: selector.parse().expect("invalid selector"), operator: Operator::Equals(value) }
+            .into()
+    }
+
+    pub(crate) fn ne(selector: &str, value: Value) -> Policy {
+        OperatorPolicy { selector: selector.parse().expect("invalid selector"), operator: Operator::NotEquals(value) }
+            .into()
+    }
+
+    pub(crate) fn any_of(selector: &str, values: &[Value]) -> Policy {
+        OperatorPolicy {
+            selector: selector.parse().expect("invalid selector"),
+            operator: Operator::AnyOf(values.to_vec()),
+        }
+        .into()
+    }
+
+    pub(crate) fn and(policies: &[Policy]) -> Policy {
+        ConnectorPolicy::And(policies.to_vec()).into()
+    }
+
+    pub(crate) fn or(policies: &[Policy]) -> Policy {
+        ConnectorPolicy::Or(policies.to_vec()).into()
+    }
+
+    pub(crate) fn not(policy: Policy) -> Policy {
+        ConnectorPolicy::Not(policy.into()).into()
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use rstest::rstest;
     use serde_json::{json, Value};
-
-    mod op {
-        use super::*;
-
-        pub(super) fn eq(selector: &str, value: Value) -> Policy {
-            OperatorPolicy { selector: selector.parse().expect("invalid selector"), operator: Operator::Equals(value) }
-                .into()
-        }
-
-        pub(super) fn ne(selector: &str, value: Value) -> Policy {
-            OperatorPolicy {
-                selector: selector.parse().expect("invalid selector"),
-                operator: Operator::NotEquals(value),
-            }
-            .into()
-        }
-
-        pub(super) fn any_of(selector: &str, values: &[Value]) -> Policy {
-            OperatorPolicy {
-                selector: selector.parse().expect("invalid selector"),
-                operator: Operator::AnyOf(values.to_vec()),
-            }
-            .into()
-        }
-
-        pub(super) fn and(policies: &[Policy]) -> Policy {
-            ConnectorPolicy::And(policies.to_vec()).into()
-        }
-
-        pub(super) fn or(policies: &[Policy]) -> Policy {
-            ConnectorPolicy::Or(policies.to_vec()).into()
-        }
-
-        pub(super) fn not(policy: Policy) -> Policy {
-            ConnectorPolicy::Not(policy.into()).into()
-        }
-    }
 
     #[rstest]
     #[case::eq(json!(["==", ".foo", {"bar": 42}]), op::eq(".foo", json!({"bar": 42})))]
