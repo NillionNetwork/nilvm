@@ -65,7 +65,9 @@ pub enum ConnectorPolicy {
 impl ConnectorPolicy {
     fn evaluate(&self, value: &serde_json::Value) -> bool {
         match self {
-            ConnectorPolicy::And(conditions) => conditions.iter().all(|condition| condition.evaluate(value)),
+            ConnectorPolicy::And(conditions) => {
+                !conditions.is_empty() && conditions.iter().all(|condition| condition.evaluate(value))
+            }
             ConnectorPolicy::Or(conditions) => conditions.iter().any(|condition| condition.evaluate(value)),
             ConnectorPolicy::Not(policy) => !policy.evaluate(value),
         }
@@ -147,9 +149,6 @@ impl PolicyVisitor {
     {
         let policies =
             seq.next_element::<Vec<Policy>>()?.ok_or_else(|| Error::invalid_length(1, &"a list of policies"))?;
-        if policies.is_empty() {
-            return Err(Error::custom("a non empty policy list"));
-        }
         let connector = match connector.as_str() {
             "and" => ConnectorPolicy::And(policies),
             "or" => ConnectorPolicy::Or(policies),
@@ -261,7 +260,6 @@ mod tests {
     #[case::and_no_vec(json!(["and"]))]
     #[case::or_no_vec(json!(["or"]))]
     #[case::not_no_policy(json!(["not"]))]
-    #[case::and_empty_vec(json!(["and", []]))]
     #[case::and_bogus_vec(json!(["and", ["hi"]]))]
     #[case::and_bogus_policy(json!(["and", [["hi"]]]))]
     #[case::not_bogus_policy(json!(["not", "hi"]))]
@@ -301,8 +299,10 @@ mod tests {
     #[case::any_of(op::any_of(".name.first", &[json!("john"), json!("jack")]))]
     #[case::and1(op::and(&[op::eq(".age", json!(150)), op::eq(".name.first", json!("bob"))]))]
     #[case::and2(op::and(&[op::eq(".age", json!(42)), op::eq(".name.first", json!("john"))]))]
+    #[case::empty_and(op::and(&[]))]
     #[case::or_short_circuit(op::or(&[op::eq(".age", json!(101)), op::eq(".age", json!(100))]))]
     #[case::or_long_circuit(op::or(&[op::eq(".age", json!(100)), op::eq(".age", json!(101))]))]
+    #[case::empty_or(op::or(&[]))]
     fn evaluation_does_not_match(#[case] policy: Policy) {
         let value = json!({
             "name": {
