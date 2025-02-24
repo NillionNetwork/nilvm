@@ -1,7 +1,7 @@
-use crate::selector::{Selector, SelectorParseError};
+use crate::selector::Selector;
 use serde::{
-    de::{Error, SeqAccess, Unexpected, Visitor},
-    Deserialize, Deserializer,
+    de::{Error, SeqAccess, Visitor},
+    Deserialize, Deserializer, Serialize,
 };
 use std::fmt;
 
@@ -89,74 +89,20 @@ impl<'de> Deserialize<'de> for Policy {
     }
 }
 
-struct PolicyVisitor;
-
-impl PolicyVisitor {
-    fn build_selector<'de, A>(&self, seq: &mut A, encountered: usize) -> Result<Selector, A::Error>
+impl Serialize for Policy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        A: SeqAccess<'de>,
+        S: serde::Serializer,
     {
-        let selector = seq
-            .next_element::<String>()?
-            .ok_or_else(|| Error::invalid_length(encountered, &"an attribute selector"))?;
-        selector.parse().map_err(|e: SelectorParseError| Error::invalid_value(Unexpected::Seq, &e.to_string().as_str()))
-    }
-
-    fn build_simple_operator<'de, A>(self, mut seq: A, op: String) -> Result<OperatorPolicy, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let selector = self.build_selector(&mut seq, 1)?;
-        let value = seq.next_element::<serde_json::Value>()?.ok_or_else(|| Error::invalid_length(2, &"a value"))?;
-        let operator = match op.as_str() {
-            "==" => Operator::Equals(value),
-            "!=" => Operator::NotEquals(value),
-            _ => return Err(Error::custom("unhandled operator")),
-        };
-        Ok(OperatorPolicy { selector, operator })
-    }
-
-    fn build_list_operator<'de, A>(self, mut seq: A, op: String) -> Result<OperatorPolicy, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let selector = self.build_selector(&mut seq, 1)?;
-        let values = seq
-            .next_element::<Vec<serde_json::Value>>()?
-            .ok_or_else(|| Error::invalid_length(2, &"a list of values"))?;
-        let operator = match op.as_str() {
-            "anyOf" => Operator::AnyOf(values),
-            _ => return Err(Error::custom("unhandled operator")),
-        };
-        Ok(OperatorPolicy { selector, operator })
-    }
-
-    fn build_simple_connector<'de, A>(self, mut seq: A, connector: String) -> Result<ConnectorPolicy, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let policy = seq.next_element::<Box<Policy>>()?.ok_or_else(|| Error::invalid_length(1, &"a policy"))?;
-        let connector = match connector.as_str() {
-            "not" => ConnectorPolicy::Not(policy),
-            _ => return Err(Error::custom("unhandled operator")),
-        };
-        Ok(connector)
-    }
-
-    fn build_list_connector<'de, A>(self, mut seq: A, connector: String) -> Result<ConnectorPolicy, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let policies =
-            seq.next_element::<Vec<Policy>>()?.ok_or_else(|| Error::invalid_length(1, &"a list of policies"))?;
-        let connector = match connector.as_str() {
-            "and" => ConnectorPolicy::And(policies),
-            "or" => ConnectorPolicy::Or(policies),
-            _ => return Err(Error::custom("unhandled operator")),
-        };
-        Ok(connector)
+        use serialize::*;
+        match &self {
+            Policy::Operator(operator) => serialize_operator_policy(operator, serializer),
+            Policy::Connector(connector) => serialize_connector_policy(connector, serializer),
+        }
     }
 }
+
+struct PolicyVisitor;
 
 impl<'de> Visitor<'de> for PolicyVisitor {
     type Value = Policy;
@@ -169,14 +115,140 @@ impl<'de> Visitor<'de> for PolicyVisitor {
     where
         A: SeqAccess<'de>,
     {
+        use deserialize::*;
         let s = seq.next_element::<String>()?.ok_or_else(|| Error::invalid_length(0, &self))?;
         match s.as_str() {
-            "==" | "!=" => self.build_simple_operator(seq, s).map(Into::into),
-            "anyOf" => self.build_list_operator(seq, s).map(Policy::Operator),
-            "and" | "or" => self.build_list_connector(seq, s).map(Into::into),
-            "not" => self.build_simple_connector(seq, s).map(Into::into),
+            "==" | "!=" => deserialize_simple_operator(seq, s).map(Into::into),
+            "anyOf" => deserialize_list_operator(seq, s).map(Policy::Operator),
+            "and" | "or" => deserialize_list_connector(seq, s).map(Into::into),
+            "not" => deserialize_simple_connector(seq, s).map(Into::into),
             _ => Err(Error::custom(format!("invalid policy operator '{s}'"))),
         }
+    }
+}
+
+mod serialize {
+    use super::{ConnectorPolicy, Operator, OperatorPolicy};
+    use crate::selector::Selector;
+    use serde::{ser::SerializeSeq, Serialize};
+
+    pub(super) fn serialize_operator_policy<S>(policy: &OperatorPolicy, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match &policy.operator {
+            Operator::Equals(value) => serialize_operator("==", &policy.selector, value, serializer),
+            Operator::NotEquals(value) => serialize_operator("!=", &policy.selector, value, serializer),
+            Operator::AnyOf(values) => serialize_operator("anyOf", &policy.selector, values, serializer),
+        }
+    }
+
+    pub(super) fn serialize_connector_policy<S>(policy: &ConnectorPolicy, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match policy {
+            ConnectorPolicy::And(policy) => serialize_connector("and", policy, serializer),
+            ConnectorPolicy::Or(policy) => serialize_connector("or", policy, serializer),
+            ConnectorPolicy::Not(policy) => serialize_connector("not", policy, serializer),
+        }
+    }
+
+    fn serialize_operator<T, S>(op: &str, selector: &Selector, value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        T: Serialize,
+    {
+        let mut seq = serializer.serialize_seq(Some(3))?;
+        seq.serialize_element(op)?;
+        seq.serialize_element(selector)?;
+        seq.serialize_element(value)?;
+        seq.end()
+    }
+
+    fn serialize_connector<T, S>(op: &str, value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+        T: Serialize,
+    {
+        let mut seq = serializer.serialize_seq(Some(2))?;
+        seq.serialize_element(op)?;
+        seq.serialize_element(value)?;
+        seq.end()
+    }
+}
+
+mod deserialize {
+    use super::{ConnectorPolicy, Operator, OperatorPolicy, Policy};
+    use crate::selector::{Selector, SelectorParseError};
+    use serde::de::{Error, SeqAccess, Unexpected};
+
+    pub(super) fn deserialize_simple_operator<'de, A>(mut seq: A, op: String) -> Result<OperatorPolicy, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let selector = deserialize_selector(&mut seq, 1)?;
+        let value = seq.next_element::<serde_json::Value>()?.ok_or_else(|| Error::invalid_length(2, &"a value"))?;
+        let operator = match op.as_str() {
+            "==" => Operator::Equals(value),
+            "!=" => Operator::NotEquals(value),
+            _ => return Err(Error::custom("unhandled operator")),
+        };
+        Ok(OperatorPolicy { selector, operator })
+    }
+
+    pub(super) fn deserialize_list_operator<'de, A>(mut seq: A, op: String) -> Result<OperatorPolicy, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let selector = deserialize_selector(&mut seq, 1)?;
+        let values = seq
+            .next_element::<Vec<serde_json::Value>>()?
+            .ok_or_else(|| Error::invalid_length(2, &"a list of values"))?;
+        let operator = match op.as_str() {
+            "anyOf" => Operator::AnyOf(values),
+            _ => return Err(Error::custom("unhandled operator")),
+        };
+        Ok(OperatorPolicy { selector, operator })
+    }
+
+    pub(super) fn deserialize_simple_connector<'de, A>(
+        mut seq: A,
+        connector: String,
+    ) -> Result<ConnectorPolicy, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let policy = seq.next_element::<Box<Policy>>()?.ok_or_else(|| Error::invalid_length(1, &"a policy"))?;
+        let connector = match connector.as_str() {
+            "not" => ConnectorPolicy::Not(policy),
+            _ => return Err(Error::custom("unhandled operator")),
+        };
+        Ok(connector)
+    }
+
+    pub(super) fn deserialize_list_connector<'de, A>(mut seq: A, connector: String) -> Result<ConnectorPolicy, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let policies =
+            seq.next_element::<Vec<Policy>>()?.ok_or_else(|| Error::invalid_length(1, &"a list of policies"))?;
+        let connector = match connector.as_str() {
+            "and" => ConnectorPolicy::And(policies),
+            "or" => ConnectorPolicy::Or(policies),
+            _ => return Err(Error::custom("unhandled operator")),
+        };
+        Ok(connector)
+    }
+
+    fn deserialize_selector<'de, A>(seq: &mut A, encountered: usize) -> Result<Selector, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let selector = seq
+            .next_element::<String>()?
+            .ok_or_else(|| Error::invalid_length(encountered, &"an attribute selector"))?;
+        selector.parse().map_err(|e: SelectorParseError| Error::invalid_value(Unexpected::Seq, &e.to_string().as_str()))
     }
 }
 
@@ -244,8 +316,11 @@ mod tests {
         op::or(&[op::eq(".foo", json!(42)), op::and(&[op::ne(".bar", json!(1337)), op::not(op::eq(".tar", json!(true)))])]))
     ]
     fn valid_policies(#[case] input: Value, #[case] expected: Policy) {
-        let policy: Policy = serde_json::from_value(input).expect("parse failed");
+        let policy: Policy = serde_json::from_value(input.clone()).expect("parse failed");
         assert_eq!(policy, expected);
+
+        let serialized = serde_json::to_value(&policy).expect("serialization failed");
+        assert_eq!(serialized, input);
     }
 
     #[rstest]

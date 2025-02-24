@@ -1,15 +1,15 @@
 use crate::policy::Policy;
 use chrono::{DateTime, Utc};
 use hex::FromHexError;
-use serde::Deserialize;
-use serde_with::DeserializeFromStr;
+use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::{fmt, str::FromStr};
 
 /// A JSON object.
 pub type JsonObject = serde_json::Map<String, serde_json::Value>;
 
 /// A Nillion NUC token.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NucToken {
     /// The token issuer.
     #[serde(rename = "iss")]
@@ -49,13 +49,21 @@ pub struct NucToken {
 }
 
 /// A decentralized ID.
-#[derive(Clone, Debug, PartialEq, DeserializeFromStr)]
+#[derive(Clone, Debug, PartialEq, SerializeDisplay, DeserializeFromStr)]
 pub struct Did {
     /// The method.
     pub method: String,
 
     /// The public key.
     pub public_key: [u8; 33],
+}
+
+impl fmt::Display for Did {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { method, public_key } = self;
+        let public_key = hex::encode(public_key);
+        write!(f, "did:{method}:{public_key}")
+    }
 }
 
 impl FromStr for Did {
@@ -84,8 +92,15 @@ pub enum ParseDidError {
 }
 
 /// The hash of a proof.
-#[derive(Clone, Debug, PartialEq, DeserializeFromStr)]
+#[derive(Clone, Debug, SerializeDisplay, DeserializeFromStr, PartialEq)]
 pub struct ProofHash([u8; 32]);
+
+impl fmt::Display for ProofHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let hash = hex::encode(self.0);
+        write!(f, "{hash}")
+    }
+}
 
 impl FromStr for ProofHash {
     type Err = FromHexError;
@@ -98,7 +113,7 @@ impl FromStr for ProofHash {
 }
 
 /// A command.
-#[derive(Clone, Debug, DeserializeFromStr, PartialEq)]
+#[derive(Clone, Debug, SerializeDisplay, DeserializeFromStr, PartialEq)]
 pub struct Command(Vec<String>);
 
 impl FromStr for Command {
@@ -136,7 +151,7 @@ impl fmt::Display for Command {
 }
 
 /// The body of a token
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum TokenBody {
     #[serde(rename = "pol")]
     Delegation(Vec<Policy>),
@@ -157,9 +172,8 @@ pub enum MalformedCommandError {
 
 #[cfg(test)]
 mod tests {
-    use crate::policy;
-
     use super::*;
+    use crate::policy;
     use rstest::rstest;
     use serde_json::json;
 
@@ -184,21 +198,22 @@ mod tests {
 
     #[test]
     fn parse_valid_proof_hash() {
-        let hash: ProofHash =
-            "f4f04af6a832bcd8a6855df5d0242c9a71e9da17faeb2d33b30c8903f1b5a944".parse().expect("parse failed");
+        let input = "f4f04af6a832bcd8a6855df5d0242c9a71e9da17faeb2d33b30c8903f1b5a944";
+        let hash: ProofHash = input.parse().expect("parse failed");
         assert_eq!(
             &hash.0,
             b"\xf4\xf0J\xf6\xa82\xbc\xd8\xa6\x85]\xf5\xd0$,\x9aq\xe9\xda\x17\xfa\xeb-3\xb3\x0c\x89\x03\xf1\xb5\xa9D"
         );
+        assert_eq!(hash.to_string(), input);
     }
 
     #[test]
     fn parse_valid_did() {
-        let did: Did = "did:test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            .parse()
-            .expect("parse failed");
+        let input = "did:test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let did: Did = input.parse().expect("parse failed");
         assert_eq!(did.method, "test");
         assert_eq!(&did.public_key, b"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa");
+        assert_eq!(did.to_string(), input);
     }
 
     #[rstest]
@@ -256,6 +271,11 @@ mod tests {
             meta: Some(json!({ "name": "bob" }).as_object().cloned().unwrap()),
         };
         assert_eq!(token, expected);
+
+        // Ensure `token -> string -> token` gives us back the original token
+        let serialized = serde_json::to_string(&token).expect("serialize failed");
+        let deserialized: NucToken = serde_json::from_str(&serialized).expect("deserialize failed");
+        assert_eq!(deserialized, token);
     }
 
     #[test]
@@ -304,5 +324,10 @@ mod tests {
             meta: Some(json!({ "name": "bob" }).as_object().cloned().unwrap()),
         };
         assert_eq!(token, expected);
+
+        // Ensure `token -> string -> token` gives us back the original token
+        let serialized = serde_json::to_string(&token).expect("serialize failed");
+        let deserialized: NucToken = serde_json::from_str(&serialized).expect("deserialize failed");
+        assert_eq!(deserialized, token);
     }
 }
