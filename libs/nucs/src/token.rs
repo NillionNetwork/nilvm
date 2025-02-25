@@ -43,6 +43,10 @@ pub struct NucToken {
     #[serde(default)]
     pub meta: Option<JsonObject>,
 
+    /// The token nonce.
+    #[serde(serialize_with = "hex::serde::serialize", deserialize_with = "hex::serde::deserialize")]
+    pub nonce: Vec<u8>,
+
     /// The hash of the proofs in this token.
     #[serde(rename = "prf", default)]
     pub proofs: Vec<ProofHash>,
@@ -235,7 +239,8 @@ mod tests {
   "cmd": "/nil/db/read",
   "pol": [
     ["==", ".foo", 42]
-  ]
+  ],
+  "nonce": "beef"
 }"#;
         serde_json::from_str::<NucToken>(input).expect("parsing failed");
     }
@@ -256,6 +261,7 @@ mod tests {
   "meta": {
     "name": "bob"
   },
+  "nonce": "beef",
   "prf": ["f4f04af6a832bcd8a6855df5d0242c9a71e9da17faeb2d33b30c8903f1b5a944"]
 }"#;
         let token: NucToken = serde_json::from_str(input).expect("parsing failed");
@@ -268,6 +274,7 @@ mod tests {
             command: Command(vec!["nil".into(), "db".into(), "read".into()]),
             body: TokenBody::Delegation(vec![policy::op::eq(".foo", json!(42))]),
             proofs: vec![ProofHash(*b"\xf4\xf0J\xf6\xa82\xbc\xd8\xa6\x85]\xf5\xd0$,\x9aq\xe9\xda\x17\xfa\xeb-3\xb3\x0c\x89\x03\xf1\xb5\xa9D")],
+            nonce: b"\xbe\xef".to_vec(),
             meta: Some(json!({ "name": "bob" }).as_object().cloned().unwrap()),
         };
         assert_eq!(token, expected);
@@ -288,7 +295,8 @@ mod tests {
   "cmd": "/nil/db/read",
   "args": {
     "bar": 42
-  }
+  },
+  "nonce": "beef"
 }"#;
         serde_json::from_str::<NucToken>(input).expect("parsing failed");
     }
@@ -309,6 +317,7 @@ mod tests {
   "meta": {
     "name": "bob"
   },
+  "nonce": "beef",
   "prf": ["f4f04af6a832bcd8a6855df5d0242c9a71e9da17faeb2d33b30c8903f1b5a944"]
 }"#;
         let token: NucToken = serde_json::from_str(input).expect("parsing failed");
@@ -321,6 +330,7 @@ mod tests {
             command: Command(vec!["nil".into(), "db".into(), "read".into()]),
             body: TokenBody::Invocation(json!({ "foo": 42 }).as_object().cloned().unwrap()),
             proofs: vec![ProofHash(*b"\xf4\xf0J\xf6\xa82\xbc\xd8\xa6\x85]\xf5\xd0$,\x9aq\xe9\xda\x17\xfa\xeb-3\xb3\x0c\x89\x03\xf1\xb5\xa9D")],
+            nonce: b"\xbe\xef".to_vec(),
             meta: Some(json!({ "name": "bob" }).as_object().cloned().unwrap()),
         };
         assert_eq!(token, expected);
