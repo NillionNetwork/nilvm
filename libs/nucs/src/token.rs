@@ -25,11 +25,11 @@ pub struct NucToken {
     pub subject: Did,
 
     /// The first timestamp at which this token is valid.
-    #[serde(rename = "nbf", default)]
+    #[serde(rename = "nbf", default, with = "chrono::serde::ts_seconds_option")]
     pub not_before: Option<DateTime<Utc>>,
 
     /// The timestamp at which this token becomes invalid.
-    #[serde(rename = "exp", default)]
+    #[serde(rename = "exp", default, with = "chrono::serde::ts_seconds_option")]
     pub expires_at: Option<DateTime<Utc>>,
 
     /// The command that is being invoked or the authority is being delegated for.
@@ -45,7 +45,7 @@ pub struct NucToken {
     pub meta: Option<JsonObject>,
 
     /// The token nonce.
-    #[serde(serialize_with = "hex::serde::serialize", deserialize_with = "hex::serde::deserialize")]
+    #[serde(with = "hex::serde")]
     pub nonce: Vec<u8>,
 
     /// The hash of the proofs in this token.
@@ -255,8 +255,8 @@ mod tests {
   "aud": "did:nil:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "sub": "did:nil:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "cmd": "/nil/db/read",
-  "nbf": "2025-02-24T10:39:12.282054Z",
-  "exp": "2025-02-24T12:39:12.282054Z",
+  "nbf": 1740494955,
+  "exp": 1740495955,
   "pol": [
     ["==", ".foo", 42]
   ],
@@ -271,8 +271,8 @@ mod tests {
             issuer: Did { method: "nil".into(), public_key: *b"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa" },
             audience: Did { method: "nil".into(), public_key: *b"\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb" },
             subject: Did { method: "nil".into(), public_key: *b"\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc" },
-            not_before: Some("2025-02-24T10:39:12.282054Z".parse().expect("invalid date")),
-            expires_at: Some("2025-02-24T12:39:12.282054Z".parse().expect("invalid date")),
+            not_before: Some(DateTime::from_timestamp(1740494955, 0).unwrap()),
+            expires_at: Some(DateTime::from_timestamp(1740495955, 0).unwrap()),
             command: Command(vec!["nil".into(), "db".into(), "read".into()]),
             body: TokenBody::Delegation(vec![policy::op::eq(".foo", json!(42))]),
             proofs: vec![ProofHash(*b"\xf4\xf0J\xf6\xa82\xbc\xd8\xa6\x85]\xf5\xd0$,\x9aq\xe9\xda\x17\xfa\xeb-3\xb3\x0c\x89\x03\xf1\xb5\xa9D")],
@@ -311,8 +311,8 @@ mod tests {
   "aud": "did:nil:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "sub": "did:nil:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "cmd": "/nil/db/read",
-  "nbf": "2025-02-24T10:39:12.282054Z",
-  "exp": "2025-02-24T12:39:12.282054Z",
+  "nbf": 1740494955,
+  "exp": 1740495955,
   "args": {
     "foo": 42
   },
@@ -327,8 +327,8 @@ mod tests {
             issuer: Did { method: "nil".into(), public_key: *b"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa" },
             audience: Did { method: "nil".into(), public_key: *b"\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb" },
             subject: Did { method: "nil".into(), public_key: *b"\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc" },
-            not_before: Some("2025-02-24T10:39:12.282054Z".parse().expect("invalid date")),
-            expires_at: Some("2025-02-24T12:39:12.282054Z".parse().expect("invalid date")),
+            not_before: Some(DateTime::from_timestamp(1740494955, 0).unwrap()),
+            expires_at: Some(DateTime::from_timestamp(1740495955, 0).unwrap()),
             command: Command(vec!["nil".into(), "db".into(), "read".into()]),
             body: TokenBody::Invocation(json!({ "foo": 42 }).as_object().cloned().unwrap()),
             proofs: vec![ProofHash(*b"\xf4\xf0J\xf6\xa82\xbc\xd8\xa6\x85]\xf5\xd0$,\x9aq\xe9\xda\x17\xfa\xeb-3\xb3\x0c\x89\x03\xf1\xb5\xa9D")],
