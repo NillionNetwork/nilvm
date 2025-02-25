@@ -10,6 +10,7 @@ pub type JsonObject = serde_json::Map<String, serde_json::Value>;
 
 /// A Nillion NUC token.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct NucToken {
     /// The token issuer.
     #[serde(rename = "iss")]
@@ -156,6 +157,7 @@ impl fmt::Display for Command {
 
 /// The body of a token
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub enum TokenBody {
     #[serde(rename = "pol")]
     Delegation(Vec<Policy>),
@@ -339,5 +341,25 @@ mod tests {
         let serialized = serde_json::to_string(&token).expect("serialize failed");
         let deserialized: NucToken = serde_json::from_str(&serialized).expect("deserialize failed");
         assert_eq!(deserialized, token);
+    }
+
+    #[test]
+    fn parse_mixed_delegation_invocation() {
+        // This has both `args` and `poll`.
+        let input = r#"
+{
+  "iss": "did:nil:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "aud": "did:nil:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "sub": "did:nil:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "cmd": "/nil/db/read",
+  "args": {
+    "bar": 42
+  },
+  "pol": [
+    ["==", ".foo", 42]
+  ],
+  "nonce": "beef"
+}"#;
+        serde_json::from_str::<NucToken>(input).expect_err("parsing succeeded");
     }
 }
