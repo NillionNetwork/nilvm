@@ -19,6 +19,10 @@ fn check_encrypted_type(expected: &NadaType, found: &NadaType) -> Result<(), Enc
             | (NadaType::EcdsaDigestMessage, NadaType::EcdsaDigestMessage)
             | (NadaType::EcdsaSignature, NadaType::EcdsaSignature)
             | (NadaType::EcdsaPublicKey, NadaType::EcdsaPublicKey)
+            | (NadaType::EddsaPrivateKey, NadaType::EddsaPrivateKey)
+            | (NadaType::EddsaMessage, NadaType::EddsaMessage)
+            | (NadaType::EddsaSignature, NadaType::EddsaSignature)
+            | (NadaType::EddsaPublicKey, NadaType::EddsaPublicKey)
             | (NadaType::StoreId, NadaType::StoreId) => {}
             (
                 NadaType::Array { inner_type: expected_inner_type, .. },

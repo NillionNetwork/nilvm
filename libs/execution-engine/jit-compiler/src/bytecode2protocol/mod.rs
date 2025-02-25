@@ -160,7 +160,7 @@ impl<'b, P: Protocol, F: ProtocolFactory<P>> Bytecode2ProtocolContext<'b, P, F> 
         if transformed_protocols.contains_key(ty) {
             return Err(Bytecode2ProtocolError::DuplicateTransformation);
         }
-        if ty.is_public() && !ty.is_ecdsa_digest_message() {
+        if ty.is_public() && !ty.is_ecdsa_digest_message() && !ty.is_eddsa_message() && !ty.is_eddsa_signature() {
             transformed_protocols.insert(ty.as_shamir_share()?, address);
         }
         transformed_protocols.insert(ty.clone(), address);

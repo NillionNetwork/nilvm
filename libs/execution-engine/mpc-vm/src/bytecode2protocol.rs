@@ -173,12 +173,10 @@ impl ProtocolFactory<MPCProtocol> for MPCProtocolFactory {
 
     fn create_eddsa_sign(
         self,
-        _context: &mut Bytecode2ProtocolContext<MPCProtocol, Self>,
-        _o: &EddsaSign,
+        context: &mut Bytecode2ProtocolContext<MPCProtocol, Self>,
+        o: &EddsaSign,
     ) -> Result<MPCProtocol, Bytecode2ProtocolError> {
-        // crate::protocols::eddsa_sign::EddsaSign::transform(context, o)
-        // TODO(@manel1874): To be added after the implementation of the protocol
-        Err(Bytecode2ProtocolError::OperationNotSupported(String::from("eddsa_sign")))
+        crate::protocols::eddsa_sign::EddsaSign::transform(context, o)
     }
 
     fn create_random(
@@ -275,6 +273,7 @@ mod tests {
     #[case::equals_public("equals_public")]
     #[case::array_inner_product("array_inner_product")]
     #[case::ecdsa_sign("ecdsa_sign")]
+    #[case::eddsa_sign("eddsa_sign")]
     fn bytecode_to_protocol_compilation(#[case] test_id: &str) -> Result<(), Error> {
         compile_protocols(test_id)?;
         Ok(())

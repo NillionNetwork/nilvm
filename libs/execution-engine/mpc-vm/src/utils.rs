@@ -39,6 +39,7 @@ macro_rules! delegate_to_inner {
                             MPCProtocol::InnerProductSharePublic(p) => p.$method($($opt),*),
                             MPCProtocol::InnerProductShares(p) => p.$method($($opt),*),
                             MPCProtocol::EcdsaSign(p) => p.$method($($opt),*),
+                            MPCProtocol::EddsaSign(p) => p.$method($($opt),*),
                         }
     };
 }

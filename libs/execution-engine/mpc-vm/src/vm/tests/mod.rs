@@ -23,6 +23,7 @@ mod boolean;
 mod comparison;
 mod division;
 mod ecdsa_sign;
+mod eddsa_sign;
 mod if_else;
 mod map;
 mod modulo;

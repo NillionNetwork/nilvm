@@ -1,5 +1,6 @@
 use cggmp21::signing::{DataToSign, Signature};
 use client_fixture::compute::{ClientsMode, ComputeValidator};
+use ed25519_dalek::{Signature as eddsaDalekSignature, SigningKey as eddsaDalekSigningKey};
 use generic_ec::{
     curves::{Ed25519, Secp256k1},
     NonZero, Point, Scalar, SecretScalar,
@@ -23,7 +24,7 @@ use node_api::{
     compute::{
         proto::{compute_client::ComputeClient, stream::ComputeType},
         rust::ComputeStreamMessage,
-        TECDSA_DKG_PROGRAM_ID, TECDSA_PUBLIC_KEY, TECDSA_SIGN_PROGRAM_ID, TECDSA_STORE_ID,
+        TECDSA_DKG_PROGRAM_ID, TECDSA_PUBLIC_KEY, TECDSA_SIGN_PROGRAM_ID, TECDSA_STORE_ID, TEDDSA_SIGN_PROGRAM_ID,
     },
     preprocessing::{
         proto::preprocessing_client::PreprocessingClient,
@@ -717,6 +718,88 @@ async fn tecdsa_sign(nodes: &Nodes) {
     } else {
         panic!("Output should be a NadaValue::EcdsaSignature");
     }
+}
+
+#[rstest]
+#[tokio::test]
+async fn teddsa_sign(nodes: &Nodes) {
+    let program_id = TEDDSA_SIGN_PROGRAM_ID;
+
+    let message = b"This is my very short message to be signed";
+
+    // generate external library keys
+    let external_sk = eddsaDalekSigningKey::generate(&mut rand::thread_rng());
+    let external_scalar_sk = external_sk.to_scalar();
+    let external_scalar_sk_bytes: &[u8] = &external_scalar_sk.to_bytes();
+    let external_pk = external_sk.verifying_key();
+
+    // transform external library keys to threshold library keys
+    let threshold_sk: ThresholdPrivateKey<Ed25519> =
+        ThresholdPrivateKey::from_le_bytes(&external_scalar_sk_bytes).expect("eddsa private from bytes have failed");
+
+    // Signing invocation
+    let client = nodes.build_client().await;
+    let compute_id = client
+        .invoke_compute()
+        .program_id(program_id)
+        .add_value("teddsa_private_key", NadaValue::new_eddsa_private_key(threshold_sk.clone()))
+        .add_value("teddsa_message", NadaValue::new_eddsa_message(message))
+        .bind_input_party("teddsa_key_party", client.user_id())
+        .bind_input_party("teddsa_message_party", client.user_id())
+        .bind_output_party("teddsa_output_party", [client.user_id()])
+        .build()
+        .expect("build failure")
+        .invoke()
+        .await
+        .expect("fetching did not succeed");
+
+    // Collect outputs
+    let outputs = client
+        .retrieve_compute_results()
+        .compute_id(compute_id)
+        .build()
+        .expect("failed to build")
+        .invoke()
+        .await
+        .expect("failed to get the result")
+        .expect("error");
+
+    // Checks EddsaPublicKey
+    let output_pk = if let NadaValue::EddsaPublicKey(pk) = outputs.get("teddsa_public_key").unwrap() {
+        pk
+    } else {
+        panic!("Expected EddsaPublicKey");
+    };
+    // Check output public key == threshold public key
+    let threshold_pk = ThresholdPublicKey::from_private_key(&threshold_sk);
+    assert_eq!(threshold_pk.to_bytes(true), output_pk.to_vec());
+    // Check output public key == external public key
+    assert_eq!(&external_pk.to_bytes(), output_pk);
+
+    // Check EddsaMessage
+    let output_message = if let NadaValue::EddsaMessage(msg) = outputs.get("teddsa_message").unwrap() {
+        msg
+    } else {
+        panic!("Expected EddsaMessage");
+    };
+    assert_eq!(message.to_vec(), *output_message);
+
+    // Check EddsaSignature against external library
+    let otuput_signature = if let NadaValue::EddsaSignature(signature) =
+        outputs.get("teddsa_signature").expect("failed to get signature")
+    {
+        signature
+    } else {
+        panic!("Output should be a NadaValue::EddsaSignature");
+    };
+
+    let mut out = [0u8; 64];
+    otuput_signature.signature.write_to_slice(&mut out);
+    let signature = eddsaDalekSignature::from_bytes(&out);
+    let verifies = external_pk.verify_strict(message, &signature).is_ok();
+    assert!(verifies);
+    let verifies = external_pk.verify(message, &signature).is_ok();
+    assert!(verifies);
 }
 
 #[rstest]

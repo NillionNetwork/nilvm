@@ -31,6 +31,7 @@ cggmp21 = { version = "0.6.0", features = ["curve-secp256k1"] }
 givre = { version = "0.2.0", features = ["ciphersuite-ed25519"] }
 sha2 = "0.10.8"
 k256 = { version = "0.13", features = ["ecdsa"] }
+ed25519-dalek = { version = "2.1.1", features = ["digest", "std", "rand_core"] }
 
 [features]
 default = []
