@@ -1,10 +1,12 @@
-use std::{collections::HashSet, str::FromStr, sync::LazyLock};
+use std::{collections::HashSet, fmt, str::FromStr, sync::LazyLock};
+
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 
 static LABEL_ALPHABET: LazyLock<HashSet<char>> =
     LazyLock::new(|| ('a'..='z').chain('A'..='Z').chain('0'..='9').chain(['_', '-']).collect());
 
 /// A selector that can be applied to a NUC.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, SerializeDisplay, DeserializeFromStr)]
 pub struct Selector(Vec<String>);
 
 impl Selector {
@@ -44,6 +46,18 @@ impl FromStr for Selector {
     }
 }
 
+impl fmt::Display for Selector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_empty() {
+            return write!(f, ".");
+        }
+        for label in &self.0 {
+            write!(f, ".{label}")?;
+        }
+        Ok(())
+    }
+}
+
 /// An error encountered when parsing a selector.
 #[derive(Debug, thiserror::Error)]
 pub enum SelectorParseError {
@@ -71,6 +85,9 @@ mod tests {
     fn parse_valid_selectors(#[case] input: &str, #[case] path: &[&str]) {
         let parsed: Selector = input.parse().expect("parse failed");
         assert_eq!(parsed.0, path);
+
+        let output = parsed.to_string();
+        assert_eq!(output, input);
     }
 
     #[rstest]
