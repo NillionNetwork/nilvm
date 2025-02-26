@@ -1938,6 +1938,7 @@ version = "0.1.0"
 dependencies = [
  "cggmp21",
  "client-fixture",
+ "curve25519-dalek",
  "ed25519-dalek",
  "generic-ec",
  "givre",
@@ -4657,6 +4658,7 @@ dependencies = [
  "basic-types",
  "cggmp21",
  "criterion",
+ "generic-ec",
  "givre",
  "gmp-mpfr-sys",
  "itertools 0.13.0",

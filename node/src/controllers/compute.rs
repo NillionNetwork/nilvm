@@ -14,7 +14,10 @@ use crate::{
     stateful::{
         builder::{BuildExecutionVmError, ExecutionVm, PrimeBuilder},
         compute::{ExecutionVmIo, StateMetadata},
-        distributed_key_generation::{create_user_outputs, EcdsaDistributedKeyGenerationIo},
+        distributed_key_generation::{
+            create_user_ecdsa_sign_outputs, create_user_eddsa_sign_outputs, EcdsaDistributedKeyGenerationIo,
+            EddsaDistributedKeyGenerationIo,
+        },
         sm::{
             InitMessage, StandardStateMachine, StateMachine, StateMachineArgs, StateMachineHandle, StateMachineRunner,
         },
@@ -46,7 +49,7 @@ use node_api::{
             InputPartyBinding, InvokeComputeRequest, InvokeComputeResponse, OutputPartyBinding, RetrieveResultsRequest,
             RetrieveResultsResponse,
         },
-        TECDSA_DKG_PROGRAM_ID,
+        TECDSA_DKG_PROGRAM_ID, TEDDSA_DKG_PROGRAM_ID,
     },
     membership::rust::Prime,
     payments::rust::{
@@ -56,7 +59,10 @@ use node_api::{
     values::rust::NamedValue,
     ConvertProto, TryIntoRust,
 };
-use protocols::distributed_key_generation::dkg::{EcdsaKeyGenOutput, EcdsaKeyGenState, EcdsaKeyGenStateMessage};
+use protocols::distributed_key_generation::dkg::{
+    EcdsaKeyGenOutput, EcdsaKeyGenState, EcdsaKeyGenStateMessage, EddsaKeyGenOutput, EddsaKeyGenState,
+    EddsaKeyGenStateMessage,
+};
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     marker::PhantomData,
@@ -86,6 +92,7 @@ type RetrieveResultsStream = ReceiverStream<tonic::Result<proto::retrieve::Retri
 
 pub(crate) type ComputeHandles = Arc<Mutex<HashMap<Uuid, StateMachineHandle<ExecutionVmIo>>>>;
 pub(crate) type EcdsaDkgComputeHandles = Arc<Mutex<HashMap<Uuid, StateMachineHandle<EcdsaDistributedKeyGenerationIo>>>>;
+pub(crate) type EddsaDkgComputeHandles = Arc<Mutex<HashMap<Uuid, StateMachineHandle<EddsaDistributedKeyGenerationIo>>>>;
 pub(crate) struct ComputeApiServices {
     pub(crate) receipts: Arc<dyn ReceiptsService>,
     pub(crate) programs: Arc<dyn ProgramService>,
@@ -94,23 +101,29 @@ pub(crate) struct ComputeApiServices {
     pub(crate) runtime_elements: Arc<dyn RuntimeElementsService>,
 }
 
+#[derive(Default, Clone)]
+pub(crate) struct ComputeApiHandles {
+    pub(crate) general_compute: ComputeHandles,
+    pub(crate) ecdsa_dkg: EcdsaDkgComputeHandles,
+    pub(crate) eddsa_dkg: EddsaDkgComputeHandles,
+}
+
 pub(crate) struct ComputeApi {
     our_party_id: PartyId,
     channels: Arc<dyn ClusterChannels>,
     prime_builder: Arc<dyn PrimeBuilder>,
-    compute_handles: ComputeHandles,
-    ecdsa_dkg_compute_handles: EcdsaDkgComputeHandles,
+    compute_api_handles: ComputeApiHandles,
     services: ComputeApiServices,
     modulo: EncodedModulo,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl ComputeApi {
     pub(crate) fn new(
         our_party_id: PartyId,
         channels: Arc<dyn ClusterChannels>,
         prime_builder: Arc<dyn PrimeBuilder>,
-        compute_handles: ComputeHandles,
-        ecdsa_dkg_compute_handles: EcdsaDkgComputeHandles,
+        compute_api_handles: ComputeApiHandles,
         services: ComputeApiServices,
         prime: Prime,
     ) -> Self {
@@ -119,7 +132,7 @@ impl ComputeApi {
             Prime::Safe128Bits => EncodedModulo::U128SafePrime,
             Prime::Safe256Bits => EncodedModulo::U256SafePrime,
         };
-        Self { our_party_id, channels, prime_builder, compute_handles, ecdsa_dkg_compute_handles, services, modulo }
+        Self { our_party_id, channels, prime_builder, compute_api_handles, services, modulo }
     }
 
     fn transform_stream<T>(peer: UserId, mut stream: Streaming<proto::stream::ComputeStreamMessage>) -> Receiver<T>
@@ -127,9 +140,12 @@ impl ComputeApi {
         T: serde::de::DeserializeOwned + Send + 'static,
     {
         let (tx, rx) = channel(STREAM_CHANNEL_SIZE);
-        // Used to costomize the stream type in the logs below
-        let stream_type =
-            if std::any::type_name::<T>().contains("EcdsaKeyGenStateMessage") { "DKG" } else { "Compute" };
+        // Used to customize the stream type in the logs below
+        let stream_type = match std::any::type_name::<T>() {
+            t if t.contains("EcdsaKeyGenStateMessage") => "EcdsaDKG",
+            t if t.contains("EddsaKeyGenStateMessage") => "EddsaDKG",
+            _ => "Compute",
+        };
 
         tokio::spawn(async move {
             while let Some(msg) = stream.next().await {
@@ -288,7 +304,7 @@ impl ComputeApi {
             timeout: COMPUTE_REQUEST_TIMEOUT,
             name: STATE_MACHINE_NAME,
             io,
-            handles: self.compute_handles.clone(),
+            handles: self.compute_api_handles.general_compute.clone(),
             // We don't want to cancel active compute operations
             cancel_token: Default::default(),
         }
@@ -308,7 +324,27 @@ impl ComputeApi {
             timeout: COMPUTE_REQUEST_TIMEOUT,
             name: "ECDSA_DKG",
             io,
-            handles: self.ecdsa_dkg_compute_handles.clone(),
+            handles: self.compute_api_handles.ecdsa_dkg.clone(),
+            // We don't want to cancel active compute operations
+            cancel_token: Default::default(),
+        }
+    }
+
+    fn eddsa_dkg_compute_args(&self, compute_id: Uuid) -> StateMachineArgs<EddsaDistributedKeyGenerationIo> {
+        let io = EddsaDistributedKeyGenerationIo {
+            compute_id,
+            results_service: self.services.results.clone(),
+            user_values_service: self.services.user_values.clone(),
+            _unused: PhantomData,
+        };
+        StateMachineArgs {
+            id: compute_id,
+            our_party_id: self.our_party_id.clone(),
+            channels: self.channels.clone(),
+            timeout: COMPUTE_REQUEST_TIMEOUT,
+            name: "EDDSA_DKG",
+            io,
+            handles: self.compute_api_handles.eddsa_dkg.clone(),
             // We don't want to cancel active compute operations
             cancel_token: Default::default(),
         }
@@ -365,7 +401,7 @@ impl ComputeApi {
         output_bindings: Vec<OutputPartyBinding>,
     ) -> tonic::Result<Response<proto::invoke::InvokeComputeResponse>> {
         let compute_id = Uuid::from_slice(&identifier).map_err(|_| Status::internal("invalid uuid"))?;
-        let user_outputs = create_user_outputs(&output_bindings)?;
+        let user_outputs = create_user_ecdsa_sign_outputs(&output_bindings)?;
 
         // Create a new state machine for DKG
         let eid = compute_id.to_string().as_bytes().to_vec();
@@ -382,12 +418,55 @@ impl ComputeApi {
         self.services.results.register_execution(compute_id).await;
 
         // Insert state machine handle
-        let mut handles = self.ecdsa_dkg_compute_handles.lock().await;
+        let mut handles = self.compute_api_handles.ecdsa_dkg.lock().await;
         handles
             .entry(compute_id)
             .or_insert_with(|| {
                 info!("Initializing DKG compute id {compute_id}");
                 let args = self.ecdsa_dkg_compute_args(compute_id);
+                StateMachineRunner::start(args)
+            })
+            .send(InitMessage::InitStateMachine { state_machine: vm, metadata: StateMetadata { user_outputs } })
+            .await
+            .map_err(|e| {
+                error!("State machine handle dropped: {e}");
+                Status::internal("internal error")
+            })?;
+        drop(handles);
+
+        let response = InvokeComputeResponse { compute_id: compute_id.into() }.into_proto();
+        Ok(Response::new(response))
+    }
+
+    async fn handle_eddsa_dkg_compute(
+        &self,
+        identifier: Vec<u8>,
+        output_bindings: Vec<OutputPartyBinding>,
+    ) -> tonic::Result<Response<proto::invoke::InvokeComputeResponse>> {
+        let compute_id = Uuid::from_slice(&identifier).map_err(|_| Status::internal("invalid uuid"))?;
+        let user_outputs = create_user_eddsa_sign_outputs(&output_bindings)?;
+
+        // Create a new state machine for DKG
+        let eid = compute_id.to_string().as_bytes().to_vec();
+        let parties = self.channels.all_parties().iter().map(|p| p.party_id.clone()).collect();
+        let (state, initial_messages) = EddsaKeyGenState::new(eid, parties, self.our_party_id.clone())
+            .map_err(|e| Status::internal(format!("Failed to create DKG state machine: {e}")))?;
+        let sm = state_machine::StateMachine::new(state);
+        let sm = StandardStateMachine::<EddsaKeyGenState, EddsaKeyGenStateMessage>::new(sm, initial_messages);
+        let vm: Box<
+            dyn StateMachine<Message = EddsaKeyGenStateMessage, Result = anyhow::Result<Vec<EddsaKeyGenOutput>>>,
+        > = Box::new(sm);
+
+        // Register execution in results service
+        self.services.results.register_execution(compute_id).await;
+
+        // Insert state machine handle
+        let mut handles = self.compute_api_handles.eddsa_dkg.lock().await;
+        handles
+            .entry(compute_id)
+            .or_insert_with(|| {
+                info!("Initializing DKG compute id {compute_id}");
+                let args = self.eddsa_dkg_compute_args(compute_id);
                 StateMachineRunner::start(args)
             })
             .send(InitMessage::InitStateMachine { state_machine: vm, metadata: StateMetadata { user_outputs } })
@@ -439,7 +518,7 @@ impl ComputeApi {
         self.services.results.register_execution(compute_id).await;
 
         // Insert an entry for this compute id if it doesn't exist yet
-        let mut handles = self.compute_handles.lock().await;
+        let mut handles = self.compute_api_handles.general_compute.lock().await;
         handles
             .entry(compute_id)
             .or_insert_with(|| {
@@ -492,9 +571,13 @@ impl proto::compute_server::Compute for ComputeApi {
             return Err(InvalidReceiptType("invoke compute").into());
         };
 
-        // Check for special DKG program
+        // Check for special Ecdsa DKG program
         if quote.program_id == TECDSA_DKG_PROGRAM_ID {
             return self.handle_ecdsa_dkg_compute(identifier, output_bindings.clone()).await;
+        }
+        // Check for special Eddsa DKG program
+        if quote.program_id == TEDDSA_DKG_PROGRAM_ID {
+            return self.handle_eddsa_dkg_compute(identifier, output_bindings.clone()).await;
         }
         // Handle general compute case
         self.handle_general_compute(
@@ -536,7 +619,7 @@ impl proto::compute_server::Compute for ComputeApi {
                 let stream = Self::transform_stream::<EcdsaKeyGenStateMessage>(user_id, stream);
                 // Insert an entry for this compute if it's not present. We could receive this call before
                 // the client gets to talk to us so this can happen under normal circumstances.
-                let mut handles = self.ecdsa_dkg_compute_handles.lock().await;
+                let mut handles = self.compute_api_handles.ecdsa_dkg.lock().await;
                 handles
                     .entry(compute_id)
                     .or_insert_with(|| {
@@ -547,7 +630,26 @@ impl proto::compute_server::Compute for ComputeApi {
                     .send(InitMessage::InitParty { user_id, stream })
                     .await
                     .map_err(|e| {
-                        error!("Dkg state machine handle dropped: {e}");
+                        error!("Ecdsa DKG state machine handle dropped: {e}");
+                        Status::internal("internal error")
+                    })?;
+            }
+            ComputeType::EddsaDkg => {
+                let stream = Self::transform_stream::<EddsaKeyGenStateMessage>(user_id, stream);
+                // Insert an entry for this compute if it's not present. We could receive this call before
+                // the client gets to talk to us so this can happen under normal circumstances.
+                let mut handles = self.compute_api_handles.eddsa_dkg.lock().await;
+                handles
+                    .entry(compute_id)
+                    .or_insert_with(|| {
+                        info!("Initializing compute id {compute_id}");
+                        let args = self.eddsa_dkg_compute_args(compute_id);
+                        StateMachineRunner::start(args)
+                    })
+                    .send(InitMessage::InitParty { user_id, stream })
+                    .await
+                    .map_err(|e| {
+                        error!("Eddsa DKG state machine handle dropped: {e}");
                         Status::internal("internal error")
                     })?;
             }
@@ -555,7 +657,7 @@ impl proto::compute_server::Compute for ComputeApi {
                 let stream = Self::transform_stream::<MPCExecutionVmMessage>(user_id, stream);
                 // Insert an entry for this compute if it's not present. We could receive this call before
                 // the client gets to talk to us so this can happen under normal circumstances.
-                let mut handles = self.compute_handles.lock().await;
+                let mut handles = self.compute_api_handles.general_compute.lock().await;
                 handles
                     .entry(compute_id)
                     .or_insert_with(|| {
@@ -674,7 +776,6 @@ mod tests {
                 our_party_id,
                 channels,
                 prime_builder,
-                Default::default(),
                 Default::default(),
                 ComputeApiServices {
                     programs: Arc::new(self.programs),

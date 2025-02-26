@@ -1,6 +1,9 @@
 use cggmp21::signing::{DataToSign, Signature};
 use client_fixture::compute::{ClientsMode, ComputeValidator};
-use ed25519_dalek::{Signature as eddsaDalekSignature, SigningKey as eddsaDalekSigningKey};
+use curve25519_dalek::{edwards::EdwardsPoint, scalar::Scalar as dalekScalar};
+use ed25519_dalek::{
+    Signature as eddsaDalekSignature, SigningKey as eddsaDalekSigningKey, VerifyingKey as eddsaDalekVerifyingKey,
+};
 use generic_ec::{
     curves::{Ed25519, Secp256k1},
     NonZero, Point, Scalar, SecretScalar,
@@ -24,7 +27,8 @@ use node_api::{
     compute::{
         proto::{compute_client::ComputeClient, stream::ComputeType},
         rust::ComputeStreamMessage,
-        TECDSA_DKG_PROGRAM_ID, TECDSA_PUBLIC_KEY, TECDSA_SIGN_PROGRAM_ID, TECDSA_STORE_ID, TEDDSA_SIGN_PROGRAM_ID,
+        TECDSA_DKG_PROGRAM_ID, TECDSA_PUBLIC_KEY, TECDSA_SIGN_PROGRAM_ID, TECDSA_STORE_ID, TEDDSA_DKG_PROGRAM_ID,
+        TEDDSA_PUBLIC_KEY, TEDDSA_SIGN_PROGRAM_ID, TEDDSA_STORE_ID,
     },
     preprocessing::{
         proto::preprocessing_client::PreprocessingClient,
@@ -785,7 +789,7 @@ async fn teddsa_sign(nodes: &Nodes) {
     assert_eq!(message.to_vec(), *output_message);
 
     // Check EddsaSignature against external library
-    let otuput_signature = if let NadaValue::EddsaSignature(signature) =
+    let output_signature = if let NadaValue::EddsaSignature(signature) =
         outputs.get("teddsa_signature").expect("failed to get signature")
     {
         signature
@@ -794,7 +798,7 @@ async fn teddsa_sign(nodes: &Nodes) {
     };
 
     let mut out = [0u8; 64];
-    otuput_signature.signature.write_to_slice(&mut out);
+    output_signature.signature.write_to_slice(&mut out);
     let signature = eddsaDalekSignature::from_bytes(&out);
     let verifies = external_pk.verify_strict(message, &signature).is_ok();
     assert!(verifies);
@@ -818,7 +822,7 @@ async fn dkg_no_parties_bound(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn dkg_and_retrieve_private_key(nodes: &Nodes) {
+async fn ecdsa_dkg_and_retrieve_private_key(nodes: &Nodes) {
     // Tests:
     // 1. Generate the public key and private key
     // 2. Retrieve the created private key
@@ -895,7 +899,86 @@ async fn dkg_and_retrieve_private_key(nodes: &Nodes) {
 
 #[rstest]
 #[tokio::test]
-async fn dkg_and_sign(nodes: &Nodes) {
+async fn eddsa_dkg_and_retrieve_private_key(nodes: &Nodes) {
+    // Tests:
+    // 1. Generate the public key and private key
+    // 2. Retrieve the created private key
+    // 3. Check public key provided by compute matches public key derived from private key
+    let program_id = TEDDSA_DKG_PROGRAM_ID;
+
+    // Generate the public key and private key
+    let client = nodes.build_client().await;
+    let compute_id = client
+        .invoke_compute()
+        .program_id(program_id)
+        .bind_output_party("teddsa_private_key_store_id_party", [client.user_id()])
+        .bind_output_party("teddsa_public_key_party", [client.user_id()])
+        .build()
+        .expect("build failure")
+        .invoke()
+        .await
+        .expect("fetching succeeded");
+
+    let outputs = client
+        .retrieve_compute_results()
+        .compute_id(compute_id)
+        .build()
+        .expect("failed to build")
+        .invoke()
+        .await
+        .expect("failed to get the result")
+        .expect("error");
+
+    // Get the store id and verify it's a NadaValue::StoreId
+    let store_id = outputs.get(TEDDSA_STORE_ID).unwrap();
+    let store_id = if let NadaValue::StoreId(store_id) = store_id {
+        let uuid = Uuid::from_bytes(*store_id);
+        uuid
+    } else {
+        panic!("Output should be a NadaValue::StoreId");
+    };
+    // Get the public key and verify it's a NadaValue::EddsaPublicKey
+    let teddsa_public_key = outputs.get(TEDDSA_PUBLIC_KEY).unwrap();
+    let public_key = if let NadaValue::EddsaPublicKey(public_key) = teddsa_public_key {
+        public_key
+    } else {
+        panic!("Output should be a NadaValue::EddsaPublicKey");
+    };
+
+    // Retrieve the created private key
+    let values = client
+        .retrieve_values()
+        .values_id(store_id)
+        .build()
+        .expect("failed to build")
+        .invoke()
+        .await
+        .expect("failed to get store");
+
+    // Verify private key is a NadaValue::EddsaPrivateKey
+    let private_key = values.get("teddsa_private_key").unwrap();
+    let private_key = if let NadaValue::EddsaPrivateKey(private_key) = private_key {
+        private_key
+    } else {
+        panic!("Store value should be a NadaValue::EddsaPrivateKey");
+    };
+
+    let threshold_private_key_bytes =
+        private_key.clone().to_le_bytes().as_slice().try_into().expect("Invalid private key length");
+
+    // Check public key provided by compute matches public key derived from private key
+    let external_pk = eddsaDalekVerifyingKey::from(EdwardsPoint::mul_base(&dalekScalar::from_bytes_mod_order(
+        threshold_private_key_bytes,
+    )));
+
+    let computed_pk =
+        eddsaDalekVerifyingKey::from_bytes(&public_key).expect("failed to convert public key to external type");
+    assert_eq!(external_pk, computed_pk, "Public key does not match private key");
+}
+
+#[rstest]
+#[tokio::test]
+async fn ecdsa_dkg_and_sign(nodes: &Nodes) {
     // Tests:
     // 1. Generate the public key and private key
     // 2. Sign a message and verify the signature with the public key
@@ -999,6 +1082,116 @@ async fn dkg_and_sign(nodes: &Nodes) {
     } else {
         panic!("Output should be a NadaValue::EcdsaSignature");
     }
+}
+
+#[rstest]
+#[tokio::test]
+async fn eddsa_dkg_and_sign(nodes: &Nodes) {
+    // Tests:
+    // 1. Generate the public key and private key
+    // 2. Sign a message and verify the signature with the public key
+    let dkg_program_id = TEDDSA_DKG_PROGRAM_ID;
+    let sign_program_id = TEDDSA_SIGN_PROGRAM_ID;
+    let message = b"This is my very short message to be signed";
+
+    // Generate the public key and private key
+    let client = nodes.build_client().await;
+    let compute_id = client
+        .invoke_compute()
+        .program_id(dkg_program_id)
+        .bind_output_party("teddsa_private_key_store_id_party", [client.user_id()])
+        .bind_output_party("teddsa_public_key_party", [client.user_id()])
+        .build()
+        .expect("build failure")
+        .invoke()
+        .await
+        .expect("fetching succeeded");
+
+    let outputs = client
+        .retrieve_compute_results()
+        .compute_id(compute_id)
+        .build()
+        .expect("failed to build")
+        .invoke()
+        .await
+        .expect("failed to get the result")
+        .expect("error");
+
+    // Get the store id and verify it's a NadaValue::StoreId
+    let store_id = outputs.get(TEDDSA_STORE_ID).unwrap();
+    let store_id = if let NadaValue::StoreId(store_id) = store_id {
+        let uuid = Uuid::from_bytes(*store_id);
+        uuid
+    } else {
+        panic!("Output should be a NadaValue::StoreId");
+    };
+    // Get the public key and verify it's a NadaValue::EcdsaPublicKey
+    let teddsa_public_key = outputs.get(TEDDSA_PUBLIC_KEY).unwrap();
+    let dkg_public_key = if let NadaValue::EddsaPublicKey(public_key) = teddsa_public_key {
+        public_key
+    } else {
+        panic!("Output should be a NadaValue::EddsaPublicKey");
+    };
+
+    // Signing invocation
+    let compute_id = client
+        .invoke_compute()
+        .program_id(sign_program_id)
+        .add_value_id(store_id)
+        .add_value("teddsa_message", NadaValue::new_eddsa_message(message))
+        .bind_input_party("teddsa_key_party", client.user_id())
+        .bind_input_party("teddsa_message_party", client.user_id())
+        .bind_output_party("teddsa_output_party", [client.user_id()])
+        .build()
+        .expect("build failure")
+        .invoke()
+        .await
+        .expect("fetching succeeded");
+
+    // Collects outputs
+    let outputs = client
+        .retrieve_compute_results()
+        .compute_id(compute_id)
+        .build()
+        .expect("failed to build")
+        .invoke()
+        .await
+        .expect("failed to get the result")
+        .expect("error");
+
+    // Checks EddsaPublicKey
+    let output_pk = if let NadaValue::EddsaPublicKey(pk) = outputs.get("teddsa_public_key").unwrap() {
+        pk
+    } else {
+        panic!("Expected EddsaPublicKey");
+    };
+    assert_eq!(dkg_public_key.to_vec(), output_pk.to_vec());
+    let external_pk =
+        eddsaDalekVerifyingKey::from_bytes(&output_pk).expect("failed to convert public key to external type");
+
+    // Check EddsaMessage
+    let output_message = if let NadaValue::EddsaMessage(msg) = outputs.get("teddsa_message").unwrap() {
+        msg
+    } else {
+        panic!("Expected EddsaMessage");
+    };
+    assert_eq!(message.to_vec(), *output_message);
+
+    // Check EddsaSignature against external library
+    let output_signature = if let NadaValue::EddsaSignature(signature) =
+        outputs.get("teddsa_signature").expect("failed to get signature")
+    {
+        signature
+    } else {
+        panic!("Output should be a NadaValue::EddsaSignature");
+    };
+    let mut out = [0u8; 64];
+    output_signature.signature.write_to_slice(&mut out);
+    let signature = eddsaDalekSignature::from_bytes(&out);
+    let verifies = external_pk.verify_strict(message, &signature).is_ok();
+    assert!(verifies);
+    let verifies = external_pk.verify(message, &signature).is_ok();
+    assert!(verifies);
 }
 
 #[rstest]

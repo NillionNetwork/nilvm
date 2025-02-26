@@ -4,7 +4,7 @@ use crate::{
     channels::{ClusterChannels, DefaultClusterChannels},
     config::ObjectStorageConfig,
     controllers::{
-        compute::{ComputeApi, ComputeApiServices, ComputeHandles, EcdsaDkgComputeHandles},
+        compute::{ComputeApi, ComputeApiHandles, ComputeApiServices},
         leader_queries::{LeaderQueriesApi, LeaderQueriesApiServices},
         membership::MembershipApi,
         payments::{PaymentsApi, PaymentsApiServices},
@@ -171,8 +171,7 @@ struct Dependencies {
     leader: Option<LeaderDependencies>,
     sqlite: SqliteDb,
     sqlite_repositories: Vec<MetricsExporterRepository>,
-    compute_handles: ComputeHandles,
-    dkg_compute_handles: EcdsaDkgComputeHandles,
+    compute_api_handles: ComputeApiHandles,
     channels: Arc<dyn ClusterChannels>,
     cluster: Cluster,
     cancel_token: CancellationToken,
@@ -350,8 +349,7 @@ impl NodeBuilder {
             sqlite,
             leader: None,
             sqlite_repositories,
-            compute_handles: Default::default(),
-            dkg_compute_handles: Default::default(),
+            compute_api_handles: ComputeApiHandles::default(),
             channels,
             cluster,
             cancel_token: Default::default(),
@@ -488,8 +486,7 @@ impl NodeBuilder {
                     party_id.clone(),
                     dependencies.channels.clone(),
                     prime_builder.clone(),
-                    dependencies.compute_handles.clone(),
-                    dependencies.dkg_compute_handles.clone(),
+                    dependencies.compute_api_handles.clone(),
                     ComputeApiServices {
                         receipts: dependencies.receipts.clone(),
                         programs: dependencies.programs.clone(),
@@ -519,7 +516,7 @@ impl NodeBuilder {
             server = server
                 .add_service(
                     PaymentsServer::new(PaymentsApi::new(
-                        dependencies.compute_handles.clone(),
+                        dependencies.compute_api_handles.general_compute.clone(),
                         config.runtime.max_concurrent_actions,
                         PaymentsApiServices { payments: leader_dependencies.payments.clone() },
                         Days::new(config.payments.account_balance_expiration_days as u64),

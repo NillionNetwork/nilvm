@@ -1,33 +1,36 @@
 #![allow(clippy::arithmetic_side_effects, clippy::panic, clippy::indexing_slicing)]
 
-use super::{output::KeyGenOutput, Secp256k1Protocol};
+use super::{output::KeyGenOutput, CurveProtocol, Ed25519Protocol, Secp256k1Protocol};
 use crate::{
     distributed_key_generation::dkg::KeyGenState,
     simulator::symmetric::{InitializedProtocol, Protocol, SymmetricProtocolSimulator},
 };
 use anyhow::{Error, Result};
 use basic_types::PartyId;
-use rstest::rstest;
 use threshold_keypair::privatekey::ThresholdPrivateKeyShare;
 
-use cggmp21::generic_ec::{curves::Secp256k1, Point};
+use cggmp21::generic_ec::{
+    curves::{Ed25519, Secp256k1},
+    Curve, Point,
+};
 
-struct EcdsaKeyGenProtocol {
+struct KeyGenProtocol<C: CurveProtocol> {
     eid: Vec<u8>,
+    _phantom: std::marker::PhantomData<C>,
 }
 
-impl EcdsaKeyGenProtocol {
+impl<C: CurveProtocol> KeyGenProtocol<C> {
     fn new(eid: Vec<u8>) -> Self {
-        Self { eid }
+        Self { eid, _phantom: std::marker::PhantomData }
     }
 }
 
-impl Protocol for EcdsaKeyGenProtocol {
-    type State = KeyGenState<Secp256k1Protocol>;
-    type PrepareOutput = EcdsKeyGenConfig;
+impl<C: CurveProtocol> Protocol for KeyGenProtocol<C> {
+    type State = KeyGenState<C>;
+    type PrepareOutput = KeyGenConfig;
 
     fn prepare(&self, parties: &[PartyId]) -> Result<Self::PrepareOutput, Error> {
-        Ok(EcdsKeyGenConfig { eid: self.eid.clone(), parties: parties.to_vec() })
+        Ok(KeyGenConfig { eid: self.eid.clone(), parties: parties.to_vec() })
     }
 
     fn initialize(
@@ -41,8 +44,8 @@ impl Protocol for EcdsaKeyGenProtocol {
     }
 }
 
-/// The internal configuration of a EcdsKeyGenConfig protocol.
-struct EcdsKeyGenConfig {
+/// The internal configuration of a KeyGen protocol.
+struct KeyGenConfig {
     eid: Vec<u8>,
     parties: Vec<PartyId>,
 }
@@ -52,7 +55,7 @@ struct EcdsKeyGenConfig {
 /// - Each share has correct index and matching public info
 /// - Generator * private share equals corresponding public share
 /// - Reconstructed secret key matches the public key
-fn validate_key_shares(private_key_shares: &[ThresholdPrivateKeyShare<Secp256k1>]) {
+fn validate_key_shares<C: Curve>(private_key_shares: &[ThresholdPrivateKeyShare<C>]) {
     // Get the first key share to compare against
     let first_share = private_key_shares[0].as_inner();
     // Sort private_key_shares by the i component of the inner share
@@ -68,7 +71,7 @@ fn validate_key_shares(private_key_shares: &[ThresholdPrivateKeyShare<Secp256k1>
         assert_eq!(share.public_shares, first_share.public_shares);
 
         // Verify that generator * private share equals the corresponding public share
-        assert_eq!(Point::<Secp256k1>::generator() * &share.x, share.public_shares[usize::from(i)]);
+        assert_eq!(Point::<C>::generator() * &share.x, share.public_shares[usize::from(i)]);
     }
 
     // Reconstruct using all shares
@@ -76,18 +79,18 @@ fn validate_key_shares(private_key_shares: &[ThresholdPrivateKeyShare<Secp256k1>
 
     // Reconstruct secret key and verify it matches the public key
     let sk = key_share::reconstruct_secret_key(&all_shares).unwrap();
-    assert_eq!(Point::generator() * sk, first_share.shared_public_key);
+    assert_eq!(Point::<C>::generator() * sk, first_share.shared_public_key);
 }
 
-#[rstest]
-fn end_to_end() {
+#[test]
+fn end_to_end_ecdsa() {
     //0. Network configuration
     let max_rounds = 100;
     let network_size = 3;
     // 1. eid
     let eid = b"execution id, unique per protocol execution".to_vec();
     // 2. Run protocol
-    let protocol = EcdsaKeyGenProtocol::new(eid);
+    let protocol = KeyGenProtocol::<Secp256k1Protocol>::new(eid);
     let simulator = SymmetricProtocolSimulator::new(network_size, max_rounds);
     let outputs = simulator.run_protocol(&protocol).expect("protocol run failed");
     // 3. Collect shares
@@ -103,5 +106,32 @@ fn end_to_end() {
         }
     }
     // 4. Validate key shares
-    validate_key_shares(&private_key_shares);
+    validate_key_shares::<Secp256k1>(&private_key_shares);
+}
+
+#[test]
+fn end_to_end_eddsa() {
+    //0. Network configuration
+    let max_rounds = 100;
+    let network_size = 3;
+    // 1. eid
+    let eid = b"execution id, unique per protocol execution".to_vec();
+    // 2. Run protocol
+    let protocol = KeyGenProtocol::<Ed25519Protocol>::new(eid);
+    let simulator = SymmetricProtocolSimulator::new(network_size, max_rounds);
+    let outputs = simulator.run_protocol(&protocol).expect("protocol run failed");
+    // 3. Collect shares
+    let mut private_key_shares = Vec::new();
+    for output in outputs {
+        match output.output {
+            KeyGenOutput::Success { element: key_share } => {
+                private_key_shares.push(key_share);
+            }
+            KeyGenOutput::Abort { reason } => {
+                panic!("Aborted with reason: {:?}", reason);
+            }
+        }
+    }
+    // 4. Validate key shares
+    validate_key_shares::<Ed25519>(&private_key_shares);
 }

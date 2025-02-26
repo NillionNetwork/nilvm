@@ -5,7 +5,7 @@ use crate::{distributed_key_generation::dkg::output::KeyGenOutput, threshold_ecd
 use anyhow::anyhow;
 use basic_types::{PartyId, PartyMessage};
 use cggmp21::{
-    generic_ec::Curve,
+    generic_ec::{curves::Ed25519, Curve},
     keygen::{msg::non_threshold::Msg, GenericKeygenBuilder, NonThreshold},
     round_based::state_machine::{ProceedResult, StateMachine},
     security_level::SecurityLevel128,
@@ -51,6 +51,15 @@ pub type EcdsaKeyGenStateMessage = KeyGenStateMessage<Secp256k1>;
 
 /// The output of an ECDSA keygen state machine.
 pub type EcdsaKeyGenOutput = KeyGenOutput<ThresholdPrivateKeyShare<Secp256k1>>;
+
+/// The state for an EdDSA keygen state machine.
+pub type EddsaKeyGenState = KeyGenState<Ed25519Protocol>;
+
+/// A message for the EdDSA keygen state machine.
+pub type EddsaKeyGenStateMessage = KeyGenStateMessage<Ed25519>;
+
+/// The output of an EdDSA keygen state machine.
+pub type EddsaKeyGenOutput = KeyGenOutput<ThresholdPrivateKeyShare<Ed25519>>;
 
 /// Proxy for the message types in DKG state machine.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -353,6 +362,22 @@ pub struct Secp256k1Protocol;
 impl CurveProtocol for Secp256k1Protocol {
     type Curve = Secp256k1;
     type Output = ThresholdPrivateKeyShare<Secp256k1>;
+
+    fn keygen_builder(
+        eid: ExecutionId<'_>,
+        party_index: u16,
+        total_parties: u16,
+    ) -> GenericKeygenBuilder<'_, Self::Curve, NonThreshold, SecurityLevel128, Sha256> {
+        cggmp21::keygen(eid, party_index, total_parties)
+    }
+}
+
+/// An identifier for the Ed25519 protocol.
+pub struct Ed25519Protocol;
+
+impl CurveProtocol for Ed25519Protocol {
+    type Curve = Ed25519;
+    type Output = ThresholdPrivateKeyShare<Ed25519>;
 
     fn keygen_builder(
         eid: ExecutionId<'_>,

@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use basic_types::PartyId;
 use chrono::{Duration, Utc};
 use encoding::codec::MessageCodec;
-use generic_ec::curves::Secp256k1;
+use generic_ec::curves::{Ed25519, Secp256k1};
 use itertools::Itertools;
 use nada_value::{
     encrypted::{Encoded, Encrypted},
@@ -25,7 +25,8 @@ use node_api::{
         proto::stream::ComputeType,
         rust::{ComputeStreamMessage, OutputPartyBinding},
         TECDSA_PRIVATE_KEY_STORE_ID_PARTY, TECDSA_PUBLIC_KEY, TECDSA_PUBLIC_KEY_PARTY, TECDSA_SIGN_PROGRAM_ID,
-        TECDSA_STORE_ID,
+        TECDSA_STORE_ID, TEDDSA_PRIVATE_KEY_STORE_ID_PARTY, TEDDSA_PUBLIC_KEY, TEDDSA_PUBLIC_KEY_PARTY,
+        TEDDSA_SIGN_PROGRAM_ID, TEDDSA_STORE_ID,
     },
     membership::rust::Prime,
     permissions::rust::{ComputePermission, Permissions},
@@ -33,7 +34,7 @@ use node_api::{
 use protocols::distributed_key_generation::dkg::{
     output::{KeyGenOutput, ThresholdPrivateKeyShare},
     state::{KeyGenRoundStateMessage, KeyGenStateMessage, KeyGenStateMessageType},
-    Curve, CurveProtocol, Secp256k1Protocol,
+    Curve, CurveProtocol, Ed25519Protocol, Secp256k1Protocol,
 };
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
@@ -49,6 +50,7 @@ use uuid::Uuid;
 const TEN_YEARS_IN_DAYS: i64 = 365 * 10;
 
 pub(crate) type EcdsaDistributedKeyGenerationIo = DistributedKeyGenerationIo<Secp256k1Protocol>;
+pub(crate) type EddsaDistributedKeyGenerationIo = DistributedKeyGenerationIo<Ed25519Protocol>;
 
 type KeyGenResult<O> = (anyhow::Result<Vec<KeyGenOutput<O>>>, StateMetadata);
 
@@ -80,10 +82,10 @@ impl<C: CurveProtocolExt> StateMachineIo for DistributedKeyGenerationIo<C> {
     }
 
     async fn handle_final_result(&self, result: anyhow::Result<(Self::Result, Self::Metadata)>) {
-        // For ECDSA DKG, we store two outputs in the store_result service:
+        // For ECDSA/EdDSA DKG, we store two outputs in the store_result service:
         //  - the store_id
-        //  - the ecdsa_public_key.
-        // The ecdsa_private_key shares are stored separately in the user values service since they must remain on each node.
+        //  - the public_key.
+        // The private key shares are stored separately in the user values service since they must remain on each node.
 
         // Handle the result and store an error if it fails
         let (result, record) = match C::handle_final_result(self.compute_id, result) {
@@ -125,6 +127,7 @@ pub(crate) trait CurveProtocolExt: CurveProtocol + 'static {
     ) -> anyhow::Result<(ComputeResult, UserValuesRecord)>;
 }
 
+/// Implement CurveProtocolExt for Secp256k1Protocol for Ecdsa DKG
 impl CurveProtocolExt for Secp256k1Protocol {
     const COMPUTE_TYPE: ComputeType = ComputeType::EcdsaDkg;
 
@@ -143,7 +146,7 @@ impl CurveProtocolExt for Secp256k1Protocol {
         };
 
         // Create the ecdsa private key record
-        let record = match create_private_key_record(&metadata, element.clone()) {
+        let record = match create_ecdsa_private_key_record(&metadata, element.clone()) {
             Ok(result) => result,
             Err(e) => {
                 return Err(anyhow::anyhow!("Failed to create private key record: {e}"));
@@ -174,7 +177,7 @@ impl CurveProtocolExt for Secp256k1Protocol {
     }
 }
 
-fn create_private_key_record(
+fn create_ecdsa_private_key_record(
     metadata: &StateMetadata,
     element: ThresholdPrivateKeyShare<Secp256k1>,
 ) -> anyhow::Result<UserValuesRecord> {
@@ -217,6 +220,91 @@ impl<O: Send + Clone> EncodeableOutput for KeyGenOutput<O> {
     }
 }
 
+/// Implement CurveProtocolExt for Ed25519Protocol for Eddsa DKG
+impl CurveProtocolExt for Ed25519Protocol {
+    const COMPUTE_TYPE: ComputeType = ComputeType::EddsaDkg;
+
+    fn handle_final_result(
+        compute_id: Uuid,
+        result: anyhow::Result<KeyGenResult<Self::Output>>,
+    ) -> anyhow::Result<(ComputeResult, UserValuesRecord)> {
+        let (result, metadata) = match result {
+            Ok((Ok(mut key), metadata)) => (key.pop(), metadata),
+            Err(e) | Ok((Err(e), _)) => {
+                return Err(anyhow::anyhow!("Failed to handle result of EdDSA DKG compute: {e}"));
+            }
+        };
+        let Some(KeyGenOutput::Success { element }) = result else {
+            return Err(anyhow::anyhow!("Failed to get EdDSA key output"));
+        };
+
+        // Create the eddsa private key record
+        let record = match create_eddsa_private_key_record(&metadata, element.clone()) {
+            Ok(result) => result,
+            Err(e) => {
+                return Err(anyhow::anyhow!("Failed to create private key record: {e}"));
+            }
+        };
+
+        // Create store_id and extract eddsa_public_key
+        // The store_id value is defined as the compute_id because this needs to be identical between
+        // all nodes in the cluster and its generation must be deterministic. Since we are only running
+        // one eddsa dkg protocol per compute_id, this is sufficient.
+        let store_id_bytes: [u8; 16] = *compute_id.as_bytes();
+        let encoded_public_key = element.as_inner().shared_public_key.to_bytes(true);
+        let public_key_slice = encoded_public_key.as_bytes();
+        let public_key: [u8; 32] =
+            public_key_slice.try_into().map_err(|_| anyhow::anyhow!("Public key has incorrect length"))?;
+
+        let values = HashMap::from([
+            (TEDDSA_STORE_ID.to_string(), NadaValue::<Encrypted<Encoded>>::new_store_id(store_id_bytes)),
+            (TEDDSA_PUBLIC_KEY.to_string(), NadaValue::<Encrypted<Encoded>>::new_eddsa_public_key(public_key)),
+        ]);
+        // Convert the values HashMap to the expected type using split_outputs
+        let result = match metadata.clone().split_outputs(values) {
+            Ok(split_values) => ComputeResult::Success { values: split_values },
+            Err(e) => return Err(anyhow::anyhow!("Failed to split outputs: {e}")),
+        };
+
+        Ok((result, record))
+    }
+}
+
+fn create_eddsa_private_key_record(
+    metadata: &StateMetadata,
+    element: ThresholdPrivateKeyShare<Ed25519>,
+) -> anyhow::Result<UserValuesRecord> {
+    let user_id = metadata
+        .user_outputs
+        .first()
+        .map(|output| output.user)
+        .ok_or_else(|| anyhow::anyhow!("No user outputs found"))?;
+
+    let nada_values = HashMap::from([(
+        "teddsa_private_key".to_string(),
+        NadaValue::<Encrypted<Encoded>>::new_eddsa_private_key(element),
+    )]);
+
+    let values = nada_values_to_protobuf(nada_values).context("Failed to convert nada values to protobuf")?;
+
+    let permissions = Permissions {
+        owner: user_id,
+        retrieve: HashSet::from([user_id]),
+        update: HashSet::from([user_id]),
+        delete: HashSet::from([user_id]),
+        compute: HashMap::from([(
+            user_id,
+            ComputePermission { program_ids: HashSet::from([TEDDSA_SIGN_PROGRAM_ID.to_string()]) },
+        )]),
+    };
+
+    let expires_at = Utc::now()
+        .checked_add_signed(Duration::days(TEN_YEARS_IN_DAYS))
+        .context("Expiration date calculation overflowed")?;
+
+    Ok(UserValuesRecord { values, permissions, expires_at, prime: Prime::Safe64Bits })
+}
+
 impl<C: Curve> StateMachineMessage<ComputeStreamMessage> for KeyGenStateMessage<C> {
     fn try_encode(&self) -> anyhow::Result<Vec<u8>> {
         MessageCodec.encode(self).context("serializing message")
@@ -255,19 +343,33 @@ impl<C: Curve> StateMachineMessage<KeyGenStateMessage<C>> for KeyGenStateMessage
     }
 }
 
-pub(crate) fn create_user_outputs(output_bindings: &[OutputPartyBinding]) -> Result<Vec<UserOutputs>, Status> {
+pub(crate) fn create_user_sign_outputs(
+    output_bindings: &[OutputPartyBinding],
+    compute_type: ComputeType,
+) -> Result<Vec<UserOutputs>, Status> {
+    // Get the appropriate constants based on compute type
+    let (store_id_party, public_key_party, store_id, public_key) = match compute_type {
+        ComputeType::EcdsaDkg => {
+            (TECDSA_PRIVATE_KEY_STORE_ID_PARTY, TECDSA_PUBLIC_KEY_PARTY, TECDSA_STORE_ID, TECDSA_PUBLIC_KEY)
+        }
+        ComputeType::EddsaDkg => {
+            (TEDDSA_PRIVATE_KEY_STORE_ID_PARTY, TEDDSA_PUBLIC_KEY_PARTY, TEDDSA_STORE_ID, TEDDSA_PUBLIC_KEY)
+        }
+        _ => return Err(Status::invalid_argument("Invalid compute type for DKG protocol execution")),
+    };
+
     // HashMap to store outputs for each user
     let mut user_outputs = HashMap::new();
 
     // Validate that all parties are bound.
-    let mut missing_parties = BTreeSet::from([TECDSA_PRIVATE_KEY_STORE_ID_PARTY, TECDSA_PUBLIC_KEY_PARTY]);
+    let mut missing_parties = BTreeSet::from([store_id_party, public_key_party]);
 
     // Process each output binding
     for binding in output_bindings {
         // Determine outputs based on party name
         let outputs = match binding.party_name.as_str() {
-            TECDSA_PRIVATE_KEY_STORE_ID_PARTY => vec![TECDSA_STORE_ID.to_string()],
-            TECDSA_PUBLIC_KEY_PARTY => vec![TECDSA_PUBLIC_KEY.to_string()],
+            name if name == store_id_party => vec![store_id.to_string()],
+            name if name == public_key_party => vec![public_key.to_string()],
             _ => {
                 return Err(Status::invalid_argument(format!(
                     "invalid output party name binding for DKG protocol execution: {}",
@@ -294,6 +396,20 @@ pub(crate) fn create_user_outputs(output_bindings: &[OutputPartyBinding]) -> Res
         .map(|(user, outputs)| UserOutputs { user: *user, outputs: outputs.into_iter().collect() })
         .collect())
 }
+
+// Wrapper functions
+pub(crate) fn create_user_ecdsa_sign_outputs(
+    output_bindings: &[OutputPartyBinding],
+) -> Result<Vec<UserOutputs>, Status> {
+    create_user_sign_outputs(output_bindings, ComputeType::EcdsaDkg)
+}
+
+pub(crate) fn create_user_eddsa_sign_outputs(
+    output_bindings: &[OutputPartyBinding],
+) -> Result<Vec<UserOutputs>, Status> {
+    create_user_sign_outputs(output_bindings, ComputeType::EddsaDkg)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -318,7 +434,8 @@ mod tests {
     use nada_value::{encrypted::nada_values_encrypted_to_nada_values_clear, protobuf::nada_values_from_protobuf};
     use node_api::{auth::rust::UserId, compute::rust::OutputPartyBinding};
     use protocols::distributed_key_generation::dkg::{
-        EcdsaKeyGenOutput, EcdsaKeyGenState, EcdsaKeyGenStateMessage, KeyGenState,
+        EcdsaKeyGenOutput, EcdsaKeyGenState, EcdsaKeyGenStateMessage, EddsaKeyGenOutput, EddsaKeyGenState,
+        EddsaKeyGenStateMessage, KeyGenState,
     };
     use rstest::rstest;
     use shamir_sharing::secret_sharer::{PartyShares, SafePrimeSecretSharer, ShamirSecretSharer};
@@ -327,23 +444,34 @@ mod tests {
     use tokio_stream::{wrappers::ReceiverStream, StreamExt};
     use tracing_test::traced_test;
 
-    struct EcdsaDkgInitializer {
+    struct DkgInitializer<C: CurveProtocolExt> {
         user_outputs: Vec<UserOutputs>,
         results_services: HashMap<PartyId, Arc<dyn ResultsService>>,
         user_values_services: HashMap<PartyId, Arc<dyn UserValuesService>>,
+        _phantom: PhantomData<C>,
     }
 
-    impl EcdsaDkgInitializer {
+    impl<C: CurveProtocolExt> DkgInitializer<C> {
         fn new(output_user: UserId) -> Self {
-            let user_outputs = vec![UserOutputs {
-                user: output_user,
-                outputs: vec![TECDSA_STORE_ID.to_string(), TECDSA_PUBLIC_KEY.to_string()],
-            }];
-            Self { user_outputs, results_services: Default::default(), user_values_services: Default::default() }
+            let (store_id, public_key) = match C::COMPUTE_TYPE {
+                ComputeType::EcdsaDkg => (TECDSA_STORE_ID, TECDSA_PUBLIC_KEY),
+                ComputeType::EddsaDkg => (TEDDSA_STORE_ID, TEDDSA_PUBLIC_KEY),
+                _ => unreachable!("Only ECDSA and EdDSA DKG are supported"),
+            };
+
+            let user_outputs =
+                vec![UserOutputs { user: output_user, outputs: vec![store_id.to_string(), public_key.to_string()] }];
+
+            Self {
+                user_outputs,
+                results_services: Default::default(),
+                user_values_services: Default::default(),
+                _phantom: PhantomData,
+            }
         }
     }
 
-    impl<T> InitializeStateMachine<T, EcdsaDistributedKeyGenerationIo> for EcdsaDkgInitializer
+    impl<T> InitializeStateMachine<T, EcdsaDistributedKeyGenerationIo> for DkgInitializer<Secp256k1Protocol>
     where
         T: SafePrime,
         ShamirSecretSharer<T>: SafePrimeSecretSharer<T>,
@@ -431,13 +559,131 @@ mod tests {
         }
     }
 
+    impl<T> InitializeStateMachine<T, EddsaDistributedKeyGenerationIo> for DkgInitializer<Ed25519Protocol>
+    where
+        T: SafePrime,
+        ShamirSecretSharer<T>: SafePrimeSecretSharer<T>,
+    {
+        fn build_state_machines(
+            &self,
+            parties: Vec<Party>,
+            _sharers: &HashMap<PartyId, ShamirSecretSharer<T>>,
+        ) -> HashMap<PartyId, BoxStateMachine<EddsaDistributedKeyGenerationIo>> {
+            let parties: Vec<_> = parties.iter().map(|p| p.party_id.clone()).collect();
+            let mut vms = HashMap::new();
+            for party in &parties {
+                let eid = b"execution id, unique per protocol execution".to_vec();
+                let (state, initial_messages) =
+                    KeyGenState::new(eid, parties.clone(), party.clone()).expect("state creation failed");
+                let sm = state_machine::StateMachine::new(state);
+                let sm = StandardStateMachine::<EddsaKeyGenState, EddsaKeyGenStateMessage>::new(sm, initial_messages);
+                let vm: Box<
+                    dyn StateMachine<Message = EddsaKeyGenStateMessage, Result = anyhow::Result<Vec<EddsaKeyGenOutput>>>,
+                > = Box::new(sm);
+                vms.insert(party.clone(), vm);
+            }
+            vms
+        }
+
+        fn initialize_party(
+            &mut self,
+            compute_id: Uuid,
+            party: PartyId,
+            channels: Arc<dyn ClusterChannels>,
+            state_machine: BoxStateMachine<EddsaDistributedKeyGenerationIo>,
+        ) -> InitializedParty<EddsaDistributedKeyGenerationIo> {
+            let db = block_on(async { SqliteDb::new("sqlite::memory:").await.expect("repo creation failed") });
+            let expirations_repo = Arc::new(SqliteBlobExpirationsRepository::new(db));
+            // results service
+            let results_service: Arc<dyn ResultsService> = Arc::new(DefaultResultsService::new(
+                Box::new(DefaultBlobService::new_in_memory()),
+                expirations_repo.clone(),
+            ));
+            self.results_services.insert(party.clone(), results_service.clone());
+
+            // user values service
+            let user_values_service: Arc<dyn UserValuesService> = Arc::new(DefaultUserValuesService::new(
+                Box::new(DefaultBlobService::new_in_memory()),
+                expirations_repo,
+            ));
+            self.user_values_services.insert(party.clone(), user_values_service.clone());
+
+            let io = EddsaDistributedKeyGenerationIo {
+                compute_id,
+                results_service: results_service.clone(),
+                user_values_service: user_values_service.clone(),
+                _unused: PhantomData,
+            };
+            let args = StateMachineArgs {
+                id: compute_id,
+                our_party_id: party.clone(),
+                channels,
+                timeout: Duration::from_secs(1),
+                name: "EDDSA_DKG",
+                io,
+                handles: Default::default(),
+                cancel_token: Default::default(),
+            };
+            let handle = StateMachineRunner::start(args);
+            let metadata = StateMetadata { user_outputs: self.user_outputs.clone() };
+            InitializedParty { handle, state_machine, metadata }
+        }
+
+        fn transform_input_stream(&self, input: Receiver<Message>) -> Receiver<EddsaKeyGenStateMessage> {
+            let (tx, rx) = channel(STREAM_CHANNEL_SIZE);
+            let mut input = ReceiverStream::new(input);
+            tokio::spawn(async move {
+                while let Some(msg) = input.next().await {
+                    let Message::Compute(msg) = msg else { panic!("not a compute message") };
+                    // ignore the first signalling message
+                    if msg.bincode_message.is_empty() {
+                        continue;
+                    }
+                    let msg = MessageCodec.decode(&msg.bincode_message).expect("serde failed");
+                    tx.send(msg).await.expect("send failed");
+                }
+            });
+            rx
+        }
+    }
+
     #[tokio::test]
     #[traced_test]
-    async fn program_execution() {
+    async fn ecdsa_program_execution() {
         let user = UserId::from_bytes("bob");
-        let mut initializer = EcdsaDkgInitializer::new(user.clone());
+        let mut initializer = DkgInitializer::new(user.clone());
 
-        let runner = StateMachineSimulator::<U64SafePrime>::run(3, &mut initializer).await;
+        let runner =
+            StateMachineSimulator::<U64SafePrime>::run::<EcdsaDistributedKeyGenerationIo>(3, &mut initializer).await;
+        for (party, handle) in runner.join_handles {
+            println!("Waiting for {party} to finish execution");
+            handle.await.expect("join failed");
+        }
+        let mut results = PartyShares::default();
+        for (party, service) in initializer.results_services {
+            let outputs =
+                service.fetch_output_party_result(runner.identifier, &user).await.expect("failed to get output");
+            let outputs: HashMap<String, NadaValue<Encrypted<Encoded>>> = match outputs {
+                OutputPartyResult::Success { values } => {
+                    nada_values_from_protobuf(values, &EncodedModulo::U64SafePrime).expect("failed to decode")
+                }
+                OutputPartyResult::Failure { error } => panic!("execution failed: {error}"),
+            };
+            results.insert(party, outputs);
+        }
+        let results = PartyJar::new_with_elements(results).unwrap();
+        let _results =
+            nada_values_encrypted_to_nada_values_clear(results, &runner.secret_sharer).expect("reconstruction failed");
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn eddsa_program_execution() {
+        let user = UserId::from_bytes("bob");
+        let mut initializer = DkgInitializer::new(user.clone());
+
+        let runner =
+            StateMachineSimulator::<U64SafePrime>::run::<EddsaDistributedKeyGenerationIo>(3, &mut initializer).await;
         for (party, handle) in runner.join_handles {
             println!("Waiting for {party} to finish execution");
             handle.await.expect("join failed");
@@ -463,11 +709,23 @@ mod tests {
     #[case::all(&[])]
     #[case::store_id(&[TECDSA_PRIVATE_KEY_STORE_ID_PARTY])]
     #[case::public_key(&[TECDSA_PUBLIC_KEY_PARTY])]
-    fn missing_parties(#[case] parties: &[&str]) {
+    fn ecdsa_missing_parties(#[case] parties: &[&str]) {
         let bindings: Vec<_> = parties
             .iter()
             .map(|p| OutputPartyBinding { party_name: p.to_string(), users: vec![UserId::from_bytes(b"")] })
             .collect();
-        create_user_outputs(&bindings).expect_err("binding no parties succeeded");
+        create_user_ecdsa_sign_outputs(&bindings).expect_err("binding no parties succeeded");
+    }
+
+    #[rstest]
+    #[case::all(&[])]
+    #[case::store_id(&[TEDDSA_PRIVATE_KEY_STORE_ID_PARTY])]
+    #[case::public_key(&[TEDDSA_PUBLIC_KEY_PARTY])]
+    fn eddsa_missing_parties(#[case] parties: &[&str]) {
+        let bindings: Vec<_> = parties
+            .iter()
+            .map(|p| OutputPartyBinding { party_name: p.to_string(), users: vec![UserId::from_bytes(b"")] })
+            .collect();
+        create_user_eddsa_sign_outputs(&bindings).expect_err("binding no parties succeeded");
     }
 }
