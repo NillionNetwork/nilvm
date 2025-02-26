@@ -1938,6 +1938,7 @@ version = "0.1.0"
 dependencies = [
  "cggmp21",
  "client-fixture",
+ "ed25519-dalek",
  "generic-ec",
  "givre",
  "k256",
@@ -3339,6 +3340,7 @@ dependencies = [
  "cggmp21",
  "execution-engine-vm",
  "generic-ec",
+ "givre",
  "itertools 0.13.0",
  "jit-compiler",
  "math_lib",

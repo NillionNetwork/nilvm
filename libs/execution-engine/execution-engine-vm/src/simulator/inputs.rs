@@ -261,6 +261,15 @@ impl StaticInputGeneratorBuilder {
     {
         self.add(name, NadaValue::new_eddsa_private_key(value))
     }
+
+    /// Adds a new eddsa message.
+    pub fn add_eddsa_message<S>(self, name: S, value: Vec<u8>) -> Self
+    where
+        S: Into<String>,
+    {
+        self.add(name, NadaValue::new_eddsa_message(value))
+    }
+
     /// Adds an input.
     pub fn add<S>(mut self, name: S, input: NadaValue<Clear>) -> Self
     where

@@ -5,6 +5,8 @@
 use crate::{threshold_ecdsa::util::SortedParties, threshold_eddsa::output::EddsaSignatureOutput};
 use threshold_keypair::{privatekey::ThresholdPrivateKeyShare, signature::EddsaSignature};
 
+use std::fmt;
+
 use anyhow::{anyhow, Context};
 use basic_types::{jar::PartyJar, PartyMessage};
 use cggmp21::generic_ec::curves::Ed25519;
@@ -16,6 +18,7 @@ use givre::{
 use key_share::Validate;
 
 use rand::rngs::OsRng;
+use serde::{Deserialize, Serialize};
 use state_machine::{
     state::{Recipient, RecipientMessage, StateMachineMessage},
     StateMachineStateExt, StateMachineStateOutput, StateMachineStateResult,
@@ -35,6 +38,7 @@ pub mod states {
     use key_share::{CoreKeyShare, KeyInfo};
 
     use crate::threshold_ecdsa::util::SortedParties;
+
     /// The protocol is waiting for the pre processing phase to finish
     pub struct WaitingPublicCommits {
         /// Key Share
@@ -48,6 +52,7 @@ pub mod states {
         /// Sorted Parties
         pub(crate) sorted_parties: SortedParties,
     }
+
     /// The protocol is waiting for the signatures shares
     /// from each signer
     pub struct WaitingSigShares {
@@ -68,8 +73,8 @@ pub mod states {
 #[derive(StateMachineState)]
 #[state_machine(
     recipient_id = "PartyId",
-    input_message = "PartyMessage<Msg<Ed25519>>",
-    output_message = "Msg<Ed25519>",
+    input_message = "PartyMessage<EddsaSignStateMessage>",
+    output_message = "EddsaSignStateMessage",
     final_result = "EddsaSignatureOutput",
     handle_message_fn = "Self::handle_message"
 )]
@@ -109,7 +114,10 @@ impl EddsaSignState {
             sorted_parties: sorted_parties.clone(),
         };
 
-        let messages = vec![RecipientMessage::new(Recipient::Multiple(sorted_parties.parties()), Msg::Round1(commits))];
+        let messages = vec![RecipientMessage::new(
+            Recipient::Multiple(sorted_parties.parties()),
+            EddsaSignStateMessage::Message(Msg::Round1(commits)),
+        )];
         Ok((WaitingPublicCommits(next_state), messages))
     }
     #[allow(clippy::indexing_slicing)]
@@ -145,7 +153,10 @@ impl EddsaSignState {
             states::WaitingSigShares { key_info, pcommits: state.pcommits, sig_shares, msg: state.msg, sorted_parties };
 
         //Build Message
-        let message = RecipientMessage::new(Recipient::Multiple(state.sorted_parties.parties()), Msg::Round2(sigshare));
+        let message = RecipientMessage::new(
+            Recipient::Multiple(state.sorted_parties.parties()),
+            EddsaSignStateMessage::Message(Msg::Round2(sigshare)),
+        );
         let messages = vec![message];
         Ok(StateMachineStateOutput::Messages(WaitingSigShares(next_state), messages))
     }
@@ -177,10 +188,10 @@ impl EddsaSignState {
         Ok(StateMachineStateOutput::Final(EddsaSignatureOutput::Success { element: EddsaSignature { signature: sig } }))
     }
 
-    fn handle_message(mut state: Self, message: PartyMessage<Msg<Ed25519>>) -> StateMachineStateResult<Self> {
+    fn handle_message(mut state: Self, message: PartyMessage<EddsaSignStateMessage>) -> StateMachineStateResult<Self> {
         let (party_id, message) = message.into_parts();
         match (message, &mut state) {
-            (Msg::Round1(message), WaitingPublicCommits(inner)) => {
+            (EddsaSignStateMessage::Message(Msg::Round1(message)), WaitingPublicCommits(inner)) => {
                 inner
                     .pcommits
                     .add_element(party_id.clone(), message)
@@ -188,7 +199,7 @@ impl EddsaSignState {
                     .map_err(|e| anyhow!("Error in the adding public commits: {e}"))?;
                 state.advance_if_completed()
             }
-            (Msg::Round2(message), WaitingSigShares(inner)) => {
+            (EddsaSignStateMessage::Message(Msg::Round2(message)), WaitingSigShares(inner)) => {
                 inner
                     .sig_shares
                     .add_element(party_id, message)
@@ -198,6 +209,39 @@ impl EddsaSignState {
             }
             (message, _) => Ok(StateMachineStateOutput::OutOfOrder(state, PartyMessage::new(party_id, message))),
         }
+    }
+}
+
+/// A message for the EdDSA-SIGNING protocol.
+#[derive(Clone, Serialize, Deserialize)]
+#[repr(u8)]
+pub enum EddsaSignStateMessage {
+    /// A message for the EdDSA-SIGNING state machine.
+    Message(Msg<Ed25519>) = 0,
+}
+
+impl fmt::Debug for EddsaSignStateMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EddsaSignStateMessage::Message(msg) => {
+                write!(f, "EddsaSignStateMessage::Message(")?;
+                match msg {
+                    Msg::Round1(_) => write!(f, "round: Round1")?,
+                    Msg::Round2(_) => write!(f, "round: Round2")?,
+                }
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+impl PartialEq for EddsaSignStateMessage {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (EddsaSignStateMessage::Message(Msg::Round1(_)), EddsaSignStateMessage::Message(Msg::Round1(_)))
+                | (EddsaSignStateMessage::Message(Msg::Round2(_)), EddsaSignStateMessage::Message(Msg::Round2(_)))
+        )
     }
 }
 

@@ -3,6 +3,7 @@
 pub(crate) mod addition;
 pub(crate) mod division;
 pub(crate) mod ecdsa_sign;
+pub(crate) mod eddsa_sign;
 pub(crate) mod equals;
 pub(crate) mod if_else;
 pub(crate) mod inner_product;
@@ -30,6 +31,7 @@ use crate::{
         addition::Addition,
         division::{DivisionIntegerPublic, DivisionIntegerSecretDividendPublicDivisor, DivisionIntegerSecretDivisor},
         ecdsa_sign::EcdsaSign,
+        eddsa_sign::EddsaSign,
         equals::{EqualsPublic, EqualsSecret, PublicOutputEquality},
         if_else::{IfElse, IfElsePublicBranches, IfElsePublicCond},
         inner_product::{InnerProductPublic, InnerProductSharePublic, InnerProductShares},
@@ -138,6 +140,8 @@ pub enum MPCProtocol {
     EcdsaSign(EcdsaSign) = 46,
     /// Public key derive protocol
     PublicKeyDerive(PublicKeyDerive) = 47,
+    /// Eddsa sign protocol
+    EddsaSign(EddsaSign) = 48,
 }
 
 impl Display for MPCProtocol {
@@ -184,6 +188,7 @@ impl Display for MPCProtocol {
             InnerProductSharePublic(p) => write!(f, "{}", p),
             InnerProductPublic(p) => write!(f, "{}", p),
             EcdsaSign(p) => write!(f, "{}", p),
+            EddsaSign(p) => write!(f, "{}", p),
         }
     }
 }

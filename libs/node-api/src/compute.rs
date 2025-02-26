@@ -18,6 +18,9 @@ pub const TECDSA_PRIVATE_KEY_STORE_ID_PARTY: &str = "tecdsa_private_key_store_id
 /// The hardcoded public key party name for the ECDSA distributed key generation protocol.
 pub const TECDSA_PUBLIC_KEY_PARTY: &str = "tecdsa_public_key_party";
 
+/// The hardcoded sign program id for the Eddsa signing protocol.
+pub const TEDDSA_SIGN_PROGRAM_ID: &str = "builtin/teddsa_sign";
+
 /// Rust types that can be converted from/to their protobuf counterparts.
 #[cfg(feature = "rust-types")]
 pub mod rust {

@@ -12,7 +12,7 @@ rand = "0.8"
 rand_chacha = "0.3.1"
 rayon = { version = "1.10", optional = true }
 round-based = "0.4"
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"]}
 thiserror = "1"
 uuid = { version = "1.10", features = ["v4"], optional = true }
 

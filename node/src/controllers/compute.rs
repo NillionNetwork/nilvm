@@ -436,7 +436,6 @@ impl ComputeApi {
                 &auxiliary_materials,
             )
             .await?;
-
         self.services.results.register_execution(compute_id).await;
 
         // Insert an entry for this compute id if it doesn't exist yet

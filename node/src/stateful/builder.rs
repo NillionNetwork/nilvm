@@ -176,7 +176,6 @@ where
         let values = values.decode::<T>()?;
         let inputs = program.contract.inputs_iter().map(|input| (input.name.clone(), input.ty.clone())).collect();
         validate_encrypted_values(&values, &inputs)?;
-
         let vm = mpc_vm::vm::ExecutionVm::new(
             compute_id,
             &self.execution_vm_config,

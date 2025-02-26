@@ -32,6 +32,7 @@ serde = { version = "1", features = ["derive"] }
 test-programs = { path = "../../../nada-lang/test-programs" }
 mpc-vm = { path = ".", features = ["simulator"] }
 cggmp21 = { version = "0.6.0", features = ["curve-secp256k1"] }
+givre = { version = "0.2.0", features = ["ciphersuite-ed25519", "full-signing", "serde" ] }
 
 [features]
 default = []

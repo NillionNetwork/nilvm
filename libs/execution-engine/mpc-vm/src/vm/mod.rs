@@ -6,7 +6,7 @@ pub mod simulator;
 mod tests;
 
 use crate::{
-    protocols::{ecdsa_sign::EcdsaSign, MPCProtocol},
+    protocols::{ecdsa_sign::EcdsaSign, eddsa_sign::EddsaSign, MPCProtocol},
     vm::plan::MPCProtocolPreprocessingElements,
 };
 use anyhow::Error;
@@ -47,6 +47,7 @@ use protocols::{
     multiplication::multiplication_shares::{MultState, MultStateMessage},
     reveal::{RevealState, RevealStateMessage},
     threshold_ecdsa::signing::{EcdsaSignState, EcdsaSignStateMessage},
+    threshold_eddsa::{EddsaSignState, EddsaSignStateMessage},
 };
 use shamir_sharing::secret_sharer::{SafePrimeSecretSharer, ShamirSecretSharer};
 
@@ -108,6 +109,7 @@ where
             InnerProductPublic(p) => p.run(context, share_elements),
             InnerProductSharePublic(p) => p.run(context, share_elements),
             EcdsaSign(p) => p.run(context, share_elements),
+            EddsaSign(p) => p.run(context, share_elements),
         }
     }
 }
@@ -143,6 +145,8 @@ pub enum MPCMessages {
     EqualsIntegerSecret(PrivateOutputEqualityStateMessage),
     /// Message is sent to run an ecdsa sign protocol
     EcdsaSign(EcdsaSignStateMessage),
+    /// Message is sent to run an eddsa sign protocol
+    EddsaSign(EddsaSignStateMessage),
 }
 
 /// MPC Protocols state machine
@@ -177,6 +181,8 @@ where
     EqualsIntegerSecret(DefaultInstructionStateMachine<MPCMessages, PrivateOutputEqualityState<T>>),
     /// State machine for the protocol `EcdsaSign`
     EcdsaSign(DefaultInstructionStateMachine<MPCMessages, EcdsaSignState>),
+    /// State machine for the protocol `EddsaSign`
+    EddsaSign(DefaultInstructionStateMachine<MPCMessages, EddsaSignState>),
 }
 
 impl<T> InstructionStateMachine<T> for MPCInstructionRouter<T>
@@ -202,6 +208,7 @@ where
             MPCInstructionRouter::TruncPr(sm) => sm.is_finished(),
             MPCInstructionRouter::EqualsIntegerSecret(sm) => sm.is_finished(),
             MPCInstructionRouter::EcdsaSign(sm) => sm.sm.is_finished(),
+            MPCInstructionRouter::EddsaSign(sm) => sm.sm.is_finished(),
         }
     }
 
@@ -230,6 +237,7 @@ where
             MPCInstructionRouter::Multiplication(sm) => sm.handle_message(context, message),
             MPCInstructionRouter::EqualsIntegerSecret(sm) => sm.handle_message(context, message),
             MPCInstructionRouter::EcdsaSign(sm) => EcdsaSign::handle_message::<I, T>(sm, message),
+            MPCInstructionRouter::EddsaSign(sm) => EddsaSign::handle_message::<I, T>(sm, message),
         }
     }
 }
