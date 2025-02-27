@@ -9,7 +9,7 @@ use cosmrs::{
     },
     tendermint::{abci::Code, chain},
     tx::{Body, BodyBuilder, Fee, SignDoc, SignerInfo},
-    Any, Coin,
+    Any, Coin, Denom,
 };
 use futures::future;
 use nillion_chain_transactions::{PaymentTransactionMessage, TokenAmount};
@@ -22,7 +22,7 @@ use tracing::{debug, info, warn};
 
 // The default gas price in unils.
 const DEFAULT_GAS_PRICE: f64 = 0.025;
-const GAS_ADJUSTMENT_PERCENT: u64 = 3;
+const GAS_ADJUSTMENT_PERCENT: u8 = 3;
 const MAX_RETRIES: u32 = 150;
 const RETRY_INITIAL_DELAY: Duration = Duration::from_millis(100);
 const RETRY_TIMEOUT: Duration = Duration::from_secs(60);
@@ -335,12 +335,11 @@ impl NillionChainClient {
     async fn sign(&mut self, tx: &Body) -> anyhow::Result<Vec<u8>> {
         let sequence_id = self.sequence_id;
         debug!("Signing transaction using sequence {sequence_id}");
-        let mut gas_amount = Coin {
-            amount: 1,
-            denom: TokenAmount::lowest_denomination().parse().map_err(|e| anyhow!("parsing denomination: {e}"))?,
-        };
+        let lowest_denom: Denom =
+            TokenAmount::lowest_denomination().parse().map_err(|e| anyhow!("parsing denomination: {e}"))?;
+        let gas_price = Coin { amount: 1, denom: lowest_denom.clone() };
         let auth_info = SignerInfo::single_direct(Some(self.signing_key.public_key()), sequence_id)
-            .auth_info(Fee::from_amount_and_gas(gas_amount.clone(), 100u64));
+            .auth_info(Fee::from_amount_and_gas(gas_price.clone(), 100u64));
 
         let sign_doc = SignDoc::new(tx, &auth_info, &self.chain_id, self.account_number)
             .map_err(|e| anyhow!("signing doc: {e}"))?;
@@ -351,15 +350,9 @@ impl NillionChainClient {
             bail!("no gas info");
         };
 
-        let mut gas_needed = gas_info.gas_used;
-        gas_needed = gas_needed.wrapping_mul(100u64 + GAS_ADJUSTMENT_PERCENT);
-        gas_needed /= 100;
+        let tx_fee = Self::calculate_tx_fee(gas_info.gas_used, self.gas_price, GAS_ADJUSTMENT_PERCENT, lowest_denom);
 
-        gas_amount.amount = (gas_needed as f64 * self.gas_price) as u128;
-        debug!("Need {gas_needed} gas, using {} total gas amount", gas_amount.amount);
-
-        let auth_info = SignerInfo::single_direct(Some(self.signing_key.public_key()), sequence_id)
-            .auth_info(Fee::from_amount_and_gas(gas_amount, gas_needed));
+        let auth_info = SignerInfo::single_direct(Some(self.signing_key.public_key()), sequence_id).auth_info(tx_fee);
 
         let sign_doc = SignDoc::new(tx, &auth_info, &self.chain_id, self.account_number)
             .map_err(|e| anyhow!("signing doc: {e}"))?;
@@ -368,6 +361,17 @@ impl NillionChainClient {
             .map_err(|e| anyhow!("signing: {e}"))?
             .to_bytes()
             .map_err(|e| anyhow!("signed tx to bytes: {e}"))
+    }
+
+    fn calculate_tx_fee(gas_needed: u64, gas_price_in_unil: f64, adjustment_percent: u8, lowest_denom: Denom) -> Fee {
+        let gas_limit = gas_needed.saturating_mul((100 + adjustment_percent) as u64) / 100;
+        let gas_price = (gas_limit as f64 * gas_price_in_unil).ceil() as u128;
+        let gas_price = Coin { amount: gas_price, denom: lowest_denom.clone() };
+        debug!(
+            "Gas needed: {gas_needed}; Gas limit: {gas_limit} unil; Gas price (tx fee): {} {lowest_denom}",
+            gas_price.amount
+        );
+        Fee::from_amount_and_gas(gas_price, gas_limit)
     }
 
     async fn simulate(&mut self, tx: Vec<u8>) -> anyhow::Result<tx::v1beta1::SimulateResponse> {
@@ -436,5 +440,35 @@ impl NillionChainClient {
         V: Into<Vec<u8>> + Send + Clone + 'static,
     {
         client.abci_query(path, data, None, false).await.map_err(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::client::NillionChainClient;
+    use nillion_chain_transactions::TokenAmount;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case::exact(4000, 0.025, 0, 100, 4000)]
+    #[case::small_percentage_increase_rounding_up(4000, 0.025, 1, 101, 4040)]
+    #[case::remainder_rounding_up(4001, 0.025, 0, 101, 4001)]
+    #[case::small_percentage_increase_and_remainder_rounding_up(4001, 0.025, 1, 102, 4041)]
+    #[case::large_exact(1_000_000, 0.025, 0, 25_000, 1_000_000)]
+    #[case::large_with_small_percentage_increase_exact(1_000_000, 0.025, 1, 25250, 1_010_000)]
+    #[case::tiny_fraction_rounding(4000, 0.000_000_1, 0, 1, 4000)]
+    #[case::small_percentage_increase_and_tiny_fraction_remainder_rounding_up(4000, 0.000_000_1, 1, 1, 4040)]
+    fn test_calculate_tx_fee(
+        #[case] gas_needed: u64,
+        #[case] gas_price_unil: f64,
+        #[case] gas_percentage_adjustment: u8,
+        #[case] expected_fee: u128,
+        #[case] expected_gas_limit: u128,
+    ) {
+        let lowest_denom = TokenAmount::lowest_denomination().parse().expect("parsing denom");
+        let tx_fee =
+            NillionChainClient::calculate_tx_fee(gas_needed, gas_price_unil, gas_percentage_adjustment, lowest_denom);
+        assert_eq!(tx_fee.amount.get(0).expect("amount").amount, expected_fee);
+        assert_eq!(tx_fee.gas_limit as u128, expected_gas_limit);
     }
 }
