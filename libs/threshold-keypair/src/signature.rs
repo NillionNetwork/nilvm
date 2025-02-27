@@ -1,6 +1,6 @@
 //! The ecdsa signature implementation.
 
-use generic_ec::{curves::Secp256k1, NonZero, Scalar};
+use generic_ec::{curves::Secp256k1, NonZero, Point, Scalar};
 use givre::{ciphersuite, ciphersuite::Ciphersuite, signing::aggregate::Signature};
 use rand::rngs::OsRng;
 use std::{
@@ -26,6 +26,27 @@ impl EddsaSignature {
     /// Returns the serialized length of the Eddsa Signature
     pub fn serialized_len(&self) -> usize {
         ciphersuite::Ed25519::NORMALIZED_POINT_SIZE + ciphersuite::Ed25519::SCALAR_SIZE
+    }
+
+    /// Creates an EddsaSignature from its components
+    /// Note: z_bytes must be in little-endian byte order
+    pub fn from_components_bytes(r_bytes: &[u8], z_bytes: &[u8]) -> Result<Self, EddsaSignatureError> {
+        let z = Scalar::from_le_bytes(z_bytes).map_err(|e| {
+            EddsaSignatureError::InvalidComponentSignature(format!("invalid signature z component: {e}"))
+        })?;
+
+        let r_point = Point::from_bytes(r_bytes).map_err(|e| {
+            EddsaSignatureError::InvalidComponentSignature(format!(
+                "invalid byte reconstruction of signature point r: {e}"
+            ))
+        })?;
+        let r = ciphersuite::NormalizedPoint::try_normalize(r_point).map_err(|_| {
+            EddsaSignatureError::InvalidComponentSignature(
+                "invalid reconstruction of signature normalized point z".to_string(),
+            )
+        })?;
+
+        Ok(Self { signature: Signature { r, z } })
     }
 }
 
@@ -122,6 +143,14 @@ impl EcdsaSignatureShare {
     }
 }
 
+/// Enum representing errors that can occur when handling EdDSA signature.
+#[derive(Error, Debug)]
+pub enum EddsaSignatureError {
+    /// Error when a signature component is invalid
+    #[error("Invalid signature component: {0}")]
+    InvalidComponentSignature(String),
+}
+
 /// Enum representing errors that can occur when handling ECDSA signature.
 #[derive(Error, Debug)]
 pub enum EcdsaSignatureError {
@@ -134,8 +163,13 @@ pub enum EcdsaSignatureError {
 pub mod tests {
     use super::*;
     use crate::{privatekey::ThresholdPrivateKey, publickey::ThresholdPublicKey};
-    use cggmp21::signing::{DataToSign, Signature};
-    use generic_ec::{coords::AlwaysHasAffineX, curves::Secp256k1, NonZero, Point, SecretScalar};
+    use cggmp21::signing::{DataToSign, Signature as Cggmp21Signature};
+    use generic_ec::{
+        coords::AlwaysHasAffineX,
+        curves::{Ed25519, Secp256k1},
+        NonZero, Point, SecretScalar,
+    };
+    use givre::ciphersuite::{Ed25519 as Ed25519Ciphersuite, NormalizedPoint};
     use sha2::Sha256;
 
     fn generate_signature_and_shares_test(
@@ -172,7 +206,7 @@ pub mod tests {
 
     fn verify(pk: ThresholdPublicKey<Secp256k1>, signature: EcdsaSignature, message: &DataToSign<Secp256k1>) -> bool {
         let EcdsaSignature { r, s } = signature;
-        let cggmp_sig = Signature { r, s };
+        let cggmp_sig = Cggmp21Signature { r, s };
 
         let pk = pk.as_point();
         cggmp_sig.verify(pk, message).is_ok()
@@ -189,5 +223,26 @@ pub mod tests {
         let verifies = verify(pk, sig_reconstructed, &msg_dig);
 
         assert!(verifies)
+    }
+
+    #[test]
+    fn test_from_components_bytes() {
+        // Normalized r point and z scalar
+        let k = Scalar::<Ed25519>::random(&mut OsRng);
+        let r_point = Point::<Ed25519>::generator().to_point() * &k;
+        let r = NormalizedPoint::<Ed25519Ciphersuite, Point<Ed25519>>::try_normalize(r_point)
+            .expect("Failed to normalize point");
+        let z = Scalar::<Ed25519>::random(&mut OsRng);
+
+        // Convert to bytes
+        let r_bytes = r.to_bytes();
+        let z_bytes = z.to_le_bytes();
+
+        let signature = EddsaSignature::from_components_bytes(&r_bytes, &z_bytes.as_ref())
+            .expect("Failed to create signature from components");
+
+        // Verify signature components match the originals
+        assert_eq!(signature.signature.r.to_bytes(), r_bytes);
+        assert_eq!(signature.signature.z.to_le_bytes(), z_bytes);
     }
 }
