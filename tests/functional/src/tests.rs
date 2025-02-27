@@ -1216,9 +1216,12 @@ async fn pay_with_funds(nodes: &Nodes) {
     let balance = client.account_balance().await.expect("failed to look up").balance;
     assert_eq!(balance, 0);
 
+    let payments_config = client.payments_config().await.expect("failed to look up payments config");
+    let credits_per_nil = payments_config.credits_per_nil;
+
     // 1 nil = 100 credits at a $1 rate
     let added_nils = 1;
-    let added_credits = 100;
+    let added_credits = added_nils * credits_per_nil;
     client
         .add_funds()
         .amount(TokenAmount::Nil(added_nils))
