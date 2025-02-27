@@ -1221,7 +1221,7 @@ async fn pay_with_funds(nodes: &Nodes) {
 
     // 1 nil = 100 credits at a $1 rate
     let added_nils = 1;
-    let added_credits =added_nils * credits_per_nil;
+    let added_credits = added_nils * credits_per_nil;
     client
         .add_funds()
         .amount(TokenAmount::Nil(added_nils))
