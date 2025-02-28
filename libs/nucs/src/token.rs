@@ -114,7 +114,7 @@ pub enum ParseDidError {
 }
 
 /// The hash of a proof.
-#[derive(Clone, Copy, Debug, SerializeDisplay, DeserializeFromStr, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, SerializeDisplay, DeserializeFromStr, PartialEq)]
 pub struct ProofHash(pub [u8; 32]);
 
 impl fmt::Display for ProofHash {
@@ -137,6 +137,17 @@ impl FromStr for ProofHash {
 /// A command.
 #[derive(Clone, Debug, SerializeDisplay, DeserializeFromStr, PartialEq)]
 pub struct Command(pub Vec<String>);
+
+impl Command {
+    pub fn starts_with(&self, other: &Command) -> bool {
+        if self.0.len() > other.0.len() {
+            false
+        } else {
+            let prefix = other.0.iter().take(self.0.len());
+            self.0.iter().eq(prefix)
+        }
+    }
+}
 
 impl From<Vec<String>> for Command {
     fn from(command: Vec<String>) -> Self {
@@ -397,5 +408,19 @@ mod tests {
   "nonce": "beef"
 }"#;
         serde_json::from_str::<NucToken>(input).expect_err("parsing succeeded");
+    }
+
+    #[rstest]
+    #[case::empty_same(&[], &[], true)]
+    #[case::empty_different(&[], &["nil"], true)]
+    #[case::same(&["nil"], &["nil"], true)]
+    #[case::prefix_match(&["nil"], &["nil", "bar"], true)]
+    #[case::longer(&["nil", "bar"], &["nil"], false)]
+    #[case::different_prefix(&["nil", "bar"], &["nil", "foo"], false)]
+    #[case::different(&["nil"], &["bar"], false)]
+    fn command_starts_with(#[case] left: &[&str], #[case] right: &[&str], #[case] expected: bool) {
+        let left = Command::from(left);
+        let right = Command::from(right);
+        assert_eq!(left.starts_with(&right), expected);
     }
 }

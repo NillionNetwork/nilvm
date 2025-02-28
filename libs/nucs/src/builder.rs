@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use serde::Serialize;
 use signature::Signer;
+use std::ops::Deref;
 
 // Helper to simplify unwrapping options in the builder
 macro_rules! try_get {
@@ -17,6 +18,7 @@ macro_rules! try_get {
 }
 
 /// A NUC token builder.
+#[derive(Clone, Debug)]
 pub struct NucTokenBuilder {
     body: TokenBody,
     audience: Option<Did>,
@@ -46,8 +48,11 @@ impl NucTokenBuilder {
     }
 
     /// Make this a delegation token using the given policy.
-    pub fn delegation(policies: Vec<Policy>) -> Self {
-        Self::new(TokenBody::Delegation(policies))
+    pub fn delegation<I>(policies: I) -> Self
+    where
+        I: Into<Vec<Policy>>,
+    {
+        Self::new(TokenBody::Delegation(policies.into()))
     }
 
     /// Make this an invocation token using the given policy.
@@ -114,7 +119,7 @@ impl NucTokenBuilder {
 
         let public_key = VerifyingKey::from(issuer_key);
         let public_key =
-            public_key.to_encoded_point(true).as_bytes().try_into().map_err(|_| NucTokenBuildError::IssuerPublicKey)?;
+            public_key.to_sec1_bytes().deref().try_into().map_err(|_| NucTokenBuildError::IssuerPublicKey)?;
         let issuer = Did::nil(public_key);
         let mut token =
             NucToken { issuer, audience, subject, not_before, expires_at, command, body, meta, nonce, proofs: vec![] };

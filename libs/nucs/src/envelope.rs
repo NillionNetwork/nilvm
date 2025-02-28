@@ -34,6 +34,19 @@ impl NucTokenEnvelope<SignaturesUnvalidated> {
         Ok(Self { token, proofs, _unused: PhantomData })
     }
 
+    /// Encode this envelope.
+    pub fn encode(&self) -> String {
+        let tokens = iter::once(&self.token).chain(&self.proofs);
+        let mut output = String::new();
+        for (index, token) in tokens.enumerate() {
+            if index > 0 {
+                output.push('/');
+            }
+            output.push_str(&token.to_jwt());
+        }
+        output
+    }
+
     /// Validate the signature of this token and all of its proofs.
     pub fn validate_signatures(self) -> Result<NucTokenEnvelope<SignaturesValidated>, InvalidSignature> {
         let tokens = iter::once(&self.token).chain(self.proofs.iter());
