@@ -232,10 +232,11 @@ pub(crate) fn nada_value_from_protobuf(
             sigma: Scalar::from_le_bytes(&share.sigma)
                 .map_err(|_| ValueDecodeError::InvalidEcdsaSignatureScalar("sigma"))?,
         }),
-        Value::EddsaSignature(share) => NadaValue::new_eddsa_signature(EddsaSignature {
-            signature: Signature::<ciphersuite::Ed25519>::read_from_slice(&share.signature)
-                .ok_or(ValueDecodeError::InvalidEddsaSignature("Eddsa signature"))?,
-        }),
+        Value::EddsaSignature(share) => {
+            let signature = EddsaSignature::from_bytes(&share.signature)
+                .map_err(|_| ValueDecodeError::InvalidEddsaSignature("Eddsa signature"))?;
+            NadaValue::new_eddsa_signature(signature)
+        }
         Value::EcdsaMessageDigest(digest) => {
             let digest: [u8; 32] =
                 digest.digest.try_into().map_err(|_| ValueDecodeError::InvalidEcdsaMessageDigestLength)?;

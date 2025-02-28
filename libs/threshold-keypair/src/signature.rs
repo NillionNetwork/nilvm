@@ -48,6 +48,19 @@ impl EddsaSignature {
 
         Ok(Self { signature: Signature { r, z } })
     }
+
+    /// Creates an EddsaSignature from an array of bytes.
+    ///
+    /// Signature is expected to be serialized via [`Signature::write_to_slice()`].
+    /// Note: z_bytes must be in little-endian byte order
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, EddsaSignatureError> {
+        let signature = Signature::read_from_slice(bytes).ok_or_else(|| {
+            EddsaSignatureError::InvalidComponentSignature(
+                "byte array does not contain signature component".to_string(),
+            )
+        })?;
+        Ok(Self { signature })
+    }
 }
 
 impl fmt::Display for EddsaSignature {
