@@ -6,6 +6,8 @@ use sha2::{Digest, Sha256};
 use signature::Verifier;
 use std::{iter, marker::PhantomData};
 
+const DEFAULT_MAX_RAW_TOKEN_SIZE: usize = 1024 * 10;
+
 /// An envelope for a NUC token.
 ///
 /// This contains the NUC token itself along with all of its proofs.
@@ -21,17 +23,7 @@ impl NucTokenEnvelope<SignaturesUnvalidated> {
     ///
     /// This performs no integrity checks, and instead only ensures the token and its proofs are well formed.
     pub fn decode(s: &str) -> Result<Self, NucEnvelopeParseError> {
-        let mut jwts = s.split('/');
-
-        // The first element is the actual token, the rest of them are its proofs
-        let token_jwt = jwts.next().ok_or(NucEnvelopeParseError::NoInput)?;
-        let token = DecodedNucToken::from_jwt(token_jwt)?;
-        let mut proofs = Vec::new();
-        for jwt in jwts {
-            let proof = DecodedNucToken::from_jwt(jwt)?;
-            proofs.push(proof);
-        }
-        Ok(Self { token, proofs, _unused: PhantomData })
+        NucTokenEnvelopeDecoder::default().decode(s)
     }
 
     /// Encode this envelope.
@@ -74,6 +66,39 @@ impl<T> NucTokenEnvelope<T> {
     }
 }
 
+/// A NUC token envelope decoder.
+#[derive(Debug)]
+pub struct NucTokenEnvelopeDecoder {
+    /// The maximum raw token size, in bytes.
+    pub max_raw_token_size: usize,
+}
+
+impl Default for NucTokenEnvelopeDecoder {
+    fn default() -> Self {
+        Self { max_raw_token_size: DEFAULT_MAX_RAW_TOKEN_SIZE }
+    }
+}
+
+impl NucTokenEnvelopeDecoder {
+    /// Decode a NUC.
+    pub fn decode(&self, s: &str) -> Result<NucTokenEnvelope, NucEnvelopeParseError> {
+        if s.len() > self.max_raw_token_size {
+            return Err(NucEnvelopeParseError::NucTooLarge(self.max_raw_token_size));
+        }
+        let mut jwts = s.split('/');
+
+        // The first element is the actual token, the rest of them are its proofs
+        let token_jwt = jwts.next().ok_or(NucEnvelopeParseError::NoInput)?;
+        let token = DecodedNucToken::from_jwt(token_jwt)?;
+        let mut proofs = Vec::new();
+        for jwt in jwts {
+            let proof = DecodedNucToken::from_jwt(jwt)?;
+            proofs.push(proof);
+        }
+        Ok(NucTokenEnvelope { token, proofs, _unused: PhantomData })
+    }
+}
+
 /// A tag type to indicate an envelope has had its signatures validated.
 #[derive(Clone, Debug)]
 pub struct SignaturesValidated;
@@ -87,6 +112,9 @@ pub struct SignaturesUnvalidated;
 pub enum NucEnvelopeParseError {
     #[error("empty input")]
     NoInput,
+
+    #[error("NUC is larger than max allowed: {0} bytes")]
+    NucTooLarge(usize),
 
     #[error("invalid NUC JWT: {0}")]
     Jwt(#[from] NucJwtParseError),
@@ -319,5 +347,30 @@ mod tests {
             .expect("reconstruction failed")
             .validate_signatures()
             .expect("signature validation failed");
+    }
+
+    #[test]
+    fn deep_nesting() {
+        let key = SecretKey::random(&mut rand::thread_rng());
+        let mut policy = policy::op::eq(".foo", json!(42));
+        for _ in 0..128 {
+            policy = policy::op::not(policy);
+        }
+        let encoded = NucTokenBuilder::delegation(vec![policy])
+            .audience(Did::nil([0xbb; 33]))
+            .subject(Did::nil([0xcc; 33]))
+            .command(["nil", "db", "read"])
+            .nonce([1, 2, 3])
+            .build(&key.into())
+            .expect("build failed");
+        let err = NucTokenEnvelope::decode(&encoded).expect_err("decode succeeded");
+        assert!(matches!(err, NucEnvelopeParseError::Jwt(NucJwtParseError::Json(_, _))));
+    }
+
+    #[test]
+    fn too_large() {
+        let token = " ".repeat(DEFAULT_MAX_RAW_TOKEN_SIZE + 1);
+        let err = NucTokenEnvelope::decode(&token).expect_err("decode succeeded");
+        assert!(matches!(err, NucEnvelopeParseError::NucTooLarge(_)));
     }
 }

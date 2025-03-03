@@ -26,8 +26,11 @@ impl Policy {
 /// A policy that contains an operator.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OperatorPolicy {
-    selector: Selector,
-    operator: Operator,
+    /// The selector being used.
+    pub selector: Selector,
+
+    /// The operator to be applied to the selected value.
+    pub operator: Operator,
 }
 
 impl OperatorPolicy {
@@ -47,8 +50,9 @@ impl From<OperatorPolicy> for Policy {
     }
 }
 
+// An operator.
 #[derive(Clone, Debug, PartialEq)]
-enum Operator {
+pub enum Operator {
     Equals(serde_json::Value),
     NotEquals(serde_json::Value),
     AnyOf(Vec<serde_json::Value>),
@@ -275,12 +279,12 @@ pub(crate) mod op {
         .into()
     }
 
-    pub(crate) fn and(policies: &[Policy]) -> Policy {
-        ConnectorPolicy::And(policies.to_vec()).into()
+    pub(crate) fn and<I: Into<Vec<Policy>>>(policies: I) -> Policy {
+        ConnectorPolicy::And(policies.into()).into()
     }
 
-    pub(crate) fn or(policies: &[Policy]) -> Policy {
-        ConnectorPolicy::Or(policies.to_vec()).into()
+    pub(crate) fn or<I: Into<Vec<Policy>>>(policies: I) -> Policy {
+        ConnectorPolicy::Or(policies.into()).into()
     }
 
     pub(crate) fn not(policy: Policy) -> Policy {
