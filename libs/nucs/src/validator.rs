@@ -62,19 +62,15 @@ impl NucValidator {
         let token_chain = iter::once(token).chain(proofs.iter().copied()).rev();
         Self::validate_proofs(&proofs, parameters, &self.root_keys)?;
         Self::validate_token_chain(token_chain, parameters)?;
-        Self::validate_token(token, &proofs, parameters)?;
+        Self::validate_token(token, &proofs, parameters.require_invocation)?;
         Ok(())
     }
 
     // Validations applied only to the token itself
-    fn validate_token(
-        token: &NucToken,
-        proofs: &[&NucToken],
-        parameters: &ValidationParameters,
-    ) -> Result<(), ValidationError> {
+    fn validate_token(token: &NucToken, proofs: &[&NucToken], require_invocation: bool) -> Result<(), ValidationError> {
         match &token.body {
             TokenBody::Delegation(_) => {
-                if parameters.require_invocation {
+                if require_invocation {
                     return Err(ValidationError::Validation(ValidationKind::NeedInvocation));
                 }
             }
