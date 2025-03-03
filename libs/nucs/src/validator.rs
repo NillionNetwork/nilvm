@@ -47,7 +47,11 @@ impl NucValidator {
         envelope: NucTokenEnvelope,
         parameters: &ValidationParameters,
     ) -> Result<(), ValidationError> {
-        let envelope = envelope.validate_signatures()?;
+        // Perform this one check before validating signatures to avoid doing contly work
+        if envelope.proofs().len().saturating_add(1) > parameters.max_chain_length {
+            return Err(ValidationError::Validation(ValidationKind::ChainTooLong));
+        }
+
         let token = &envelope.token().token;
         let proofs = match token.proofs.as_slice() {
             [] if envelope.proofs().is_empty() => {
@@ -60,9 +64,10 @@ impl NucValidator {
 
         // Create a sequence [root, ..., token]
         let token_chain = iter::once(token).chain(proofs.iter().copied()).rev();
-        Self::validate_proofs(&proofs, parameters, &self.root_keys)?;
+        Self::validate_proofs(&proofs, &self.root_keys)?;
         Self::validate_token_chain(token_chain, parameters)?;
         Self::validate_token(token, &proofs, parameters.require_invocation)?;
+        envelope.validate_signatures()?;
         Ok(())
     }
 
@@ -85,11 +90,7 @@ impl NucValidator {
     }
 
     // Validations applied to proofs
-    fn validate_proofs(
-        proofs: &[&NucToken],
-        parameters: &ValidationParameters,
-        root_keys: &HashSet<Box<[u8]>>,
-    ) -> Result<(), ValidationError> {
+    fn validate_proofs(proofs: &[&NucToken], root_keys: &HashSet<Box<[u8]>>) -> Result<(), ValidationError> {
         match proofs.last() {
             Some(proof) => {
                 if !root_keys.contains(proof.issuer.public_key.as_slice()) {
@@ -98,10 +99,6 @@ impl NucValidator {
             }
             None => return Err(ValidationError::Validation(ValidationKind::NoProofs)),
         };
-
-        if proofs.len().saturating_add(1) > parameters.max_chain_length {
-            return Err(ValidationError::Validation(ValidationKind::ChainTooLong));
-        }
 
         for proof in proofs {
             match proof.body {
