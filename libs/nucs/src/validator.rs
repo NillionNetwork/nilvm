@@ -446,7 +446,10 @@ mod tests {
     #[test]
     fn different_subjects() {
         let key1 = secret_key();
-        let key2 = secret_key();
+        let mut key2_bytes = key1.to_bytes();
+        key2_bytes[0] ^= 1;
+        let key2 = SecretKey::from_bytes(&key2_bytes).unwrap();
+
         let root = delegation(&key1).command(["nil"]).issued_by_root();
         let last = delegation(&key2).command(["nil"]).issued_by(key2);
         let envelope = Chainer::default().chain([root, last]);
