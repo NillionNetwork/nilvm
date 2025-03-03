@@ -198,7 +198,7 @@ impl DecodedNucToken {
     }
 
     /// Compute this token's hash.
-    pub(crate) fn compute_hash(&self) -> ProofHash {
+    pub fn compute_hash(&self) -> ProofHash {
         let input = self.to_jwt();
         let hash = Sha256::digest(&input);
         ProofHash(hash.into())
@@ -222,6 +222,11 @@ impl DecodedNucToken {
     /// Get the NUC token.
     pub fn token(&self) -> &NucToken {
         &self.token
+    }
+
+    /// Consume and return the inner token.
+    pub fn into_token(self) -> NucToken {
+        self.token
     }
 }
 
