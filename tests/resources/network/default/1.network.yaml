@@ -103,16 +103,20 @@ program_auditor:
       Compare: 1000
       EqualsIntegerSecret: 1000
 
+dollar_token_conversion_enabled: false
+# 1 NIL token price in dollars
+dollar_token_conversion_fixed: 1.0
+
 payments:
   rpc_endpoint: http://localhost:26648
   pricing:
-    retrieve_permissions_price: 100
-    pool_status_price: 100
-    overwrite_permissions_price: 100
-    update_permissions_price: 100
-    retrieve_values_price: 100
-    store_program_price: 100
-    store_values_price: 100
+    retrieve_permissions_price: 10
+    pool_status_price: 10
+    overwrite_permissions_price: 10
+    update_permissions_price: 10
+    retrieve_values_price: 10
+    store_program_price: 10
+    store_values_price: 50
     invoke_compute_price: 100
   # 1 cent/credit
   minimum_add_funds_payment: 1

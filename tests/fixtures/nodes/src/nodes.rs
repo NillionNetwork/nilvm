@@ -39,10 +39,15 @@ use tokio::runtime::Runtime;
 use tracing_fixture::{tracing, Tracing};
 use xshell::{cmd, Shell};
 
-pub const MAX_PAYERS_NUM: usize = 2;
+// These can be overwritten by environment variables
+const MAX_PAYERS_NUM: usize = 20;
+// this is how much it costs to run this test suite with prices set in `tests/resources/network/default/1.network.yaml` when running with 1 payer
+const BALANCE_TOP_UP_AMOUNT_NIL: TokenAmount = TokenAmount::Nil(45);
+const PAYMENTS_SEED: &str = "payment-seed";
+
 const SIGNING_KEY_PREFIX: &str = "signinig-key-";
-const TOTAL_PREFUNDED_KEYS: u64 = 1024;
-const PREFUND_AMOUNT: TokenAmount = TokenAmount::Nil(100_000);
+const TOTAL_PREFUNDED_KEYS: u64 = 1024; // user balances in leader DB
+const PREFUND_AMOUNT: TokenAmount = TokenAmount::Nil(100_000); // user balance amount in leader DB
 
 static PAYMENTS_RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("failed to create runtime"));
 
@@ -211,6 +216,8 @@ pub struct Nodes {
     funded_payers_cursor: AtomicUsize,
     bootnode_party_id: Option<PartyId>,
     payments_seed: String,
+    max_payers_num: usize,
+    balance_top_up_amount: TokenAmount,
 }
 
 impl Nodes {
@@ -322,7 +329,7 @@ impl Nodes {
     pub async fn allocate_payer(&self) -> NillionChainClientPayer {
         let mut pool_guard = self.funded_payers.lock().await;
         if pool_guard.is_empty() {
-            let payers = self.fund_payers(MAX_PAYERS_NUM).await;
+            let payers = self.fund_payers(self.max_payers_num).await;
             pool_guard.extend(payers);
         }
         let pool_size = pool_guard.len();
@@ -344,7 +351,7 @@ impl Nodes {
             keys.push(key);
             addresses.push(address);
         }
-        self.top_up_balances(addresses, TokenAmount::Unil(1_500_000)).await;
+        self.top_up_balances(addresses, self.balance_top_up_amount).await;
         let mut futs = Vec::with_capacity(count);
         for key in keys {
             let payments_rpc_endpoint = self.nillion_chain_rpc_endpoint();
@@ -473,7 +480,12 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         cleanup::register_child_process(child_process);
     }
 
-    let payments_seed = env::var("TEST_PAYMENTS_SEED").unwrap_or_else(|_| "payment-seed".to_string());
+    let payments_seed = env::var("PAYMENTS_SEED").unwrap_or_else(|_| PAYMENTS_SEED.to_string());
+    let max_payers_num = env::var("MAX_PAYERS_NUM").ok().and_then(|val| val.parse().ok()).unwrap_or(MAX_PAYERS_NUM);
+    let balance_top_up_amount = env::var("BALANCE_TOP_UP_AMOUNT_NIL")
+        .ok()
+        .map(|val| TokenAmount::Nil(val.parse().unwrap()))
+        .unwrap_or(BALANCE_TOP_UP_AMOUNT_NIL);
 
     let mut nodes = Nodes {
         context,
@@ -486,6 +498,8 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         funded_payers_cursor: AtomicUsize::new(0),
         bootnode_party_id: None,
         payments_seed,
+        max_payers_num,
+        balance_top_up_amount,
     };
 
     // This is because this is a non async rstest fixture but it gets run within an async context
