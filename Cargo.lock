@@ -3527,6 +3527,7 @@ dependencies = [
  "nada-value",
  "nada-values-args",
  "nillion-client",
+ "nillion-nucs",
  "serde",
  "serde_json",
  "serde_with 3.12.0",

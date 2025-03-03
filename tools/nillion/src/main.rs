@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{error::ErrorKind, CommandFactory};
 use clap_utils::ParserExt;
 use nillion::{
-    args::{Cli, Command, ContextCommand, IdentitiesCommand, NetworksCommand, ShowContextArgs},
+    args::{Cli, Command, ContextCommand, IdentitiesCommand, NetworksCommand, NucCommand, ShowContextArgs},
     config::Config,
     context::ContextConfig,
     runner::Runner,
@@ -32,11 +32,19 @@ async fn run(cli: Cli) -> Result<Box<dyn SerializeAsAny>> {
                 NetworksCommand::Remove(args) => Runner::remove_network(args),
             };
         }
-        Command::Context(command) => match command {
-            ContextCommand::Use(args) => return Runner::use_context(args),
-            ContextCommand::Show(ShowContextArgs { verbose: true }) => return Runner::show_detailed_context(),
-            ContextCommand::Show(ShowContextArgs { verbose: false }) => return Runner::show_context(),
-        },
+        Command::Context(command) => {
+            return match command {
+                ContextCommand::Use(args) => Runner::use_context(args),
+                ContextCommand::Show(ShowContextArgs { verbose: true }) => Runner::show_detailed_context(),
+                ContextCommand::Show(ShowContextArgs { verbose: false }) => Runner::show_context(),
+            };
+        }
+        Command::Nuc(command) => {
+            return match command {
+                NucCommand::Inspect(args) => Runner::inspect_nuc(args),
+                NucCommand::Validate(args) => Runner::validate_nuc(args),
+            };
+        }
         _ => (),
     }
     let Cli { identity, network, command, .. } = cli;

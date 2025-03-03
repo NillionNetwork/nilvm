@@ -1,10 +1,10 @@
 use crate::{
     args::{
         AddFundsArgs, AddIdentityArgs, AddNetworkArgs, BalanceCommand, Cli, ClusterConfigArgs, Command, ComputeArgs,
-        ConfigCommand, DeleteValuesArgs, EditIdentityArgs, EditNetworkArgs, IdentityGenArgs, OverwritePermissionsArgs,
-        PreprocessingPoolStatusArgs, RemoveIdentityArgs, RemoveNetworkArgs, RetrievePermissionsArgs,
-        RetrieveValuesArgs, ShowIdentityArgs, ShowNetworkArgs, StoreProgramArgs, StoreValuesArgs,
-        UpdatePermissionsArgs, UseContextArgs,
+        ConfigCommand, DeleteValuesArgs, EditIdentityArgs, EditNetworkArgs, IdentityGenArgs, InspectNucArgs,
+        OverwritePermissionsArgs, PreprocessingPoolStatusArgs, RemoveIdentityArgs, RemoveNetworkArgs,
+        RetrievePermissionsArgs, RetrieveValuesArgs, ShowIdentityArgs, ShowNetworkArgs, StoreProgramArgs,
+        StoreValuesArgs, UpdatePermissionsArgs, UseContextArgs, ValidateNucArgs,
     },
     context::ContextConfig,
     parse_input_file,
@@ -22,6 +22,12 @@ use nillion_client::{
     payments::TxHash,
     vm::VmClient,
     Ed25519SigningKey, Secp256k1SigningKey, TokenAmount, UserId,
+};
+use nillion_nucs::{
+    envelope::{DecodedNucToken, NucTokenEnvelope},
+    k256,
+    token::{NucToken, ProofHash},
+    validator::NucValidator,
 };
 use serde::Serialize;
 use serde_with::{serde_as, DisplayFromStr};
@@ -64,13 +70,17 @@ impl Runner {
             Command::ShellCompletions(args) => self.handle_shell_completions(args),
             Command::StoreProgram(args) => self.store_program(args).await,
             Command::StoreValues(args) => self.store_values(args).await,
-            Command::IdentityGen(_) | Command::Identities(_) | Command::Networks(_) | Command::Context(_) => {
-                unreachable!("handled in main")
-            }
             Command::Balance(BalanceCommand::Show) => self.show_balance().await,
             Command::Balance(BalanceCommand::AddFunds(args)) => self.add_funds(args).await,
             Command::Config(ConfigCommand::Payments) => self.payments_config().await,
             Command::Config(ConfigCommand::Cluster(args)) => self.cluster_config(args).await,
+            Command::IdentityGen(_)
+            | Command::Identities(_)
+            | Command::Networks(_)
+            | Command::Context(_)
+            | Command::Nuc(_) => {
+                unreachable!("handled in main")
+            }
         }
     }
 
@@ -603,6 +613,65 @@ impl Runner {
         }
         let tx_hash = builder.build()?.invoke().await?;
         Ok(Box::new(Output { tx_hash }))
+    }
+
+    pub fn inspect_nuc(args: InspectNucArgs) -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct PrettyNuc {
+            token: WrappedNucToken,
+            proofs: Vec<WrappedNucToken>,
+        }
+
+        #[derive(Serialize)]
+        struct WrappedNucToken {
+            // Same s a NUC token but also contains its hash for easier correlation
+            hash: ProofHash,
+            #[serde(flatten)]
+            token: NucToken,
+        }
+
+        impl From<DecodedNucToken> for WrappedNucToken {
+            fn from(token: DecodedNucToken) -> Self {
+                let hash = token.compute_hash();
+                Self { hash, token: token.into_token() }
+            }
+        }
+
+        let InspectNucArgs { nuc } = args;
+        let envelope = NucTokenEnvelope::decode(&nuc)?;
+        let (token, proofs) = envelope.into_parts();
+        let token = token.into();
+        let proofs = proofs.into_iter().map(WrappedNucToken::from).collect();
+        Ok(Box::new(PrettyNuc { token, proofs }))
+    }
+
+    pub fn validate_nuc(args: ValidateNucArgs) -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct NucValidation {
+            success: bool,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            error: Option<String>,
+        }
+
+        let ValidateNucArgs { nuc, root_public_keys } = args;
+        let root_public_keys: Vec<_> = root_public_keys
+            .into_iter()
+            .map(|pk| k256::PublicKey::from_sec1_bytes(&pk.0))
+            .collect::<Result<_, _>>()
+            .context("invalid root public key")?;
+        let validator = NucValidator::new(&root_public_keys);
+        let envelope = match NucTokenEnvelope::decode(&nuc) {
+            Ok(envelope) => envelope,
+            Err(e) => {
+                return Ok(Box::new(NucValidation { success: false, error: Some(format!("invalid envelope: {e}")) }));
+            }
+        };
+        let result = validator.validate(envelope, &Default::default());
+        let output = match result {
+            Ok(()) => NucValidation { success: true, error: None },
+            Err(e) => NucValidation { success: false, error: Some(e.to_string()) },
+        };
+        Ok(Box::new(output))
     }
 
     async fn payments_config(&self) -> Result<Box<dyn SerializeAsAny>> {
