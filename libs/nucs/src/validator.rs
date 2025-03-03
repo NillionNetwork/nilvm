@@ -138,7 +138,10 @@ impl NucValidator {
     fn validate_relationship_properties(previous: &NucToken, current: &NucToken) -> Result<(), ValidationError> {
         Self::validate_condition(previous.audience == current.issuer, ValidationKind::IssuerAudienceMismatch)?;
         Self::validate_condition(previous.subject == current.subject, ValidationKind::DifferentSubjects)?;
-        Self::validate_condition(previous.command.starts_with(&current.command), ValidationKind::CommandNotAttenuated)?;
+        Self::validate_condition(
+            previous.command.starts_with(&current.command.0),
+            ValidationKind::CommandNotAttenuated,
+        )?;
         if let Some((previous_not_before, current_not_before)) = previous.not_before.zip(current.not_before) {
             Self::validate_condition(previous_not_before <= current_not_before, ValidationKind::NotBeforeBackwards)?;
         }

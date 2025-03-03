@@ -139,11 +139,14 @@ impl FromStr for ProofHash {
 pub struct Command(pub Vec<String>);
 
 impl Command {
-    pub fn starts_with(&self, other: &Command) -> bool {
-        if self.0.len() > other.0.len() {
+    pub fn starts_with<T>(&self, other: &[T]) -> bool
+    where
+        T: AsRef<str>,
+    {
+        if self.0.len() > other.len() {
             false
         } else {
-            let prefix = other.0.iter().take(self.0.len());
+            let prefix = other.iter().map(AsRef::as_ref).take(self.0.len());
             self.0.iter().eq(prefix)
         }
     }
@@ -417,10 +420,11 @@ mod tests {
     #[case::prefix_match(&["nil"], &["nil", "bar"], true)]
     #[case::longer(&["nil", "bar"], &["nil"], false)]
     #[case::different_prefix(&["nil", "bar"], &["nil", "foo"], false)]
+    #[case::different_longer_prefix(&["nil", "bar", "a"], &["nil", "bar", "b"], false)]
     #[case::different(&["nil"], &["bar"], false)]
     fn command_starts_with(#[case] left: &[&str], #[case] right: &[&str], #[case] expected: bool) {
         let left = Command::from(left);
         let right = Command::from(right);
-        assert_eq!(left.starts_with(&right), expected);
+        assert_eq!(left.starts_with(&right.0), expected);
     }
 }
