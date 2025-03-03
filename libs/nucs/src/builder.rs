@@ -60,6 +60,25 @@ impl NucTokenBuilder {
         Self::new(TokenBody::Invocation(args))
     }
 
+    /// Create a new builder using the given envelope as a base.
+    ///
+    /// This will pull as many parameters as it can from the given token, such as:
+    ///
+    /// * The subject.
+    /// * The command.
+    /// * Using it as a proof.
+    pub fn extending(envelope: NucTokenEnvelope<SignaturesValidated>) -> Result<Self, ExtendTokenError> {
+        let token = &envelope.token().token;
+        if let TokenBody::Invocation(_) = &token.body {
+            return Err(ExtendTokenError);
+        }
+        let output = Self::new(TokenBody::Delegation(vec![]))
+            .command(token.command.clone())
+            .subject(token.subject.clone())
+            .proof(envelope);
+        Ok(output)
+    }
+
     /// Set the audience for this token.
     pub fn audience(mut self, did: Did) -> Self {
         self.audience = Some(did);
@@ -102,8 +121,15 @@ impl NucTokenBuilder {
         self
     }
 
+    /// Use the given envelope as a proof to be chained into the built token.
     pub fn proof(mut self, envelope: NucTokenEnvelope<SignaturesValidated>) -> Self {
         self.proof = Some(envelope);
+        self
+    }
+
+    /// Set the body.
+    pub fn body(mut self, body: TokenBody) -> Self {
+        self.body = body;
         self
     }
 
@@ -113,9 +139,12 @@ impl NucTokenBuilder {
         let audience = try_get!(audience)?;
         let subject = try_get!(subject)?;
         let command = try_get!(command)?;
-        if nonce.is_empty() {
-            return Err(NucTokenBuildError::MissingField("nonce"));
-        }
+
+        // Default to a 16 byte nonce if none is set.
+        let nonce = match nonce.is_empty() {
+            true => rand::random::<[u8; 16]>().to_vec(),
+            false => nonce,
+        };
 
         let public_key = VerifyingKey::from(issuer_key);
         let public_key =
@@ -156,6 +185,11 @@ impl NucTokenBuilder {
         Ok(output)
     }
 }
+
+/// An error when exending a token from another.
+#[derive(Debug, thiserror::Error)]
+#[error("invocations cannot be extended")]
+pub struct ExtendTokenError;
 
 /// An error when constructing a token.
 #[derive(Debug, thiserror::Error)]
@@ -208,9 +242,32 @@ mod tests {
             .audience(Did::nil([0xbb; 33]))
             .subject(Did::nil([0xcc; 33]))
             .command(["nil", "db", "read"])
-            .nonce([1, 2, 3])
             .build(&key.into())
             .expect("build failed");
+    }
+
+    #[test]
+    fn extend_token() {
+        let key = SecretKey::random(&mut rand::thread_rng());
+        let base = NucTokenBuilder::delegation(vec![policy::op::eq(".foo", json!(42))])
+            .audience(Did::nil([0xbb; 33]))
+            .subject(Did::nil([0xcc; 33]))
+            .command(["nil", "db", "read"])
+            .build(&key.clone().into())
+            .expect("build failed");
+        let base = NucTokenEnvelope::decode(&base).expect("decode failed").validate_signatures().unwrap();
+        let next = NucTokenBuilder::extending(base.clone())
+            .expect("extending failed")
+            .audience(Did::nil([0xdd; 33]))
+            .build(&key.into())
+            .expect("build failed");
+        let next = NucTokenEnvelope::decode(&next).expect("decode failed").validate_signatures().unwrap();
+        let (token, proofs) = next.into_parts();
+        let token = token.token;
+        assert_eq!(token.command, base.token().token.command);
+        assert_eq!(token.subject, base.token().token.subject);
+        assert_eq!(proofs.len(), 1);
+        assert_eq!(proofs[0].token, base.token().token);
     }
 
     #[test]
@@ -260,7 +317,6 @@ mod tests {
             .audience(Did::nil([0xbb; 33]))
             .subject(Did::nil([0xcc; 33]))
             .command(["nil", "db", "read"])
-            .nonce([1, 2, 3])
             .build(&root_key.into())
             .expect("build failed");
         let root = NucTokenEnvelope::decode(&root)
@@ -274,7 +330,6 @@ mod tests {
             .audience(Did::nil([0xbb; 33]))
             .subject(Did::nil([0xcc; 33]))
             .command(["nil", "db", "read"])
-            .nonce([1, 2, 3])
             .proof(root.clone())
             .build(&other_key.into())
             .expect("build failed");
@@ -294,7 +349,6 @@ mod tests {
             .audience(Did::nil([0xbb; 33]))
             .subject(Did::nil([0xcc; 33]))
             .command(["nil", "db", "read"])
-            .nonce([1, 2, 3])
             .proof(delegation.clone())
             .build(&yet_another_key.into())
             .expect("build failed");
