@@ -12,12 +12,6 @@ use std::{
 
 const MAX_CHAIN_LENGTH: usize = 5;
 
-macro_rules! validate {
-    ($condition:expr, $err:expr) => {
-        if $condition { Ok(()) } else { Err(ValidationError::Validation($err)) }
-    };
-}
-
 /// Parameters to be used during validation.
 pub struct ValidationParameters {
     /// The timestamp to use for token temporal checks.
@@ -136,24 +130,24 @@ impl NucValidator {
             Self::validate_temporal_properties(token, &parameters.current_time)?;
         }
         if let Some(token) = tokens.nth(1) {
-            validate!(token.issuer == token.subject, ValidationKind::SubjectNotInChain)?;
+            Self::validate_condition(token.issuer == token.subject, ValidationKind::SubjectNotInChain)?;
         }
         Ok(())
     }
 
     fn validate_relationship_properties(previous: &NucToken, current: &NucToken) -> Result<(), ValidationError> {
-        validate!(previous.audience == current.issuer, ValidationKind::IssuerAudienceMismatch)?;
-        validate!(previous.subject == current.subject, ValidationKind::DifferentSubjects)?;
-        validate!(previous.command.starts_with(&current.command), ValidationKind::CommandNotAttenuated)?;
+        Self::validate_condition(previous.audience == current.issuer, ValidationKind::IssuerAudienceMismatch)?;
+        Self::validate_condition(previous.subject == current.subject, ValidationKind::DifferentSubjects)?;
+        Self::validate_condition(previous.command.starts_with(&current.command), ValidationKind::CommandNotAttenuated)?;
         if let Some((previous_not_before, current_not_before)) = previous.not_before.zip(current.not_before) {
-            validate!(previous_not_before <= current_not_before, ValidationKind::NotBeforeBackwards)?;
+            Self::validate_condition(previous_not_before <= current_not_before, ValidationKind::NotBeforeBackwards)?;
         }
         Ok(())
     }
 
     fn validate_temporal_properties(token: &NucToken, now: &DateTime<Utc>) -> Result<(), ValidationError> {
-        validate!(token.expires_at.map(|t| now < &t).unwrap_or(true), ValidationKind::TokenExpired)?;
-        validate!(token.not_before.map(|t| now >= &t).unwrap_or(true), ValidationKind::NotBeforeNotMet)?;
+        Self::validate_condition(token.expires_at.map(|t| now < &t).unwrap_or(true), ValidationKind::TokenExpired)?;
+        Self::validate_condition(token.not_before.map(|t| now >= &t).unwrap_or(true), ValidationKind::NotBeforeNotMet)?;
         Ok(())
     }
 
@@ -195,6 +189,10 @@ impl NucValidator {
         }
         // Make sure there's nothing left
         if indexed_proofs.is_empty() { Ok(chain) } else { Err(ValidationError::UnchainedProofs(indexed_proofs.len())) }
+    }
+
+    fn validate_condition(condition: bool, error_kind: ValidationKind) -> Result<(), ValidationError> {
+        if condition { Ok(()) } else { Err(ValidationError::Validation(error_kind)) }
     }
 }
 
