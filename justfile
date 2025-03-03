@@ -527,29 +527,5 @@ promote-release from_version to_version="":
     uv pip install -r ./scripts/release-manager/requirements.txt &>/dev/null
     ./scripts/release-manager/release-manager promote-release "{{from_version}}" "{{to_version}}"
 
-publish-nada-dsl sdk_path sdk_version no_publish="false":
-    ./scripts/publish-to-pypi.sh "{{sdk_path}}" "{{sdk_version}}" "nada_dsl" "nada-dsl" "{{no_publish}}"
-
-publish-nada-test sdk_path sdk_version no_publish="false":
-    ./scripts/publish-to-pypi.sh "{{sdk_path}}" "{{sdk_version}}" "nada_test" "nada-test" "{{no_publish}}"
-
-publish-python-client sdk_path sdk_version no_publish="false":
-    ./scripts/publish-to-pypi.sh "{{sdk_path}}" "{{sdk_version}}" "py_nillion_client" "py-nillion-client" "{{no_publish}}"
-
-publish-release-to-npm artifacts_path npm_pkg_name new_release access="restricted":
-    #!/usr/bin/env bash
-    mkdir "{{artifacts_path}}/npm_unpack"
-    tar xzvf "{{artifacts_path}}/npm-nillion-client-web.tgz" -C "{{artifacts_path}}/npm_unpack"
-    printf '//registry.npmjs.org/:_authToken=${NPM_TOKEN}\n' > "{{artifacts_path}}/npm_unpack/package/.npmrc"
-    cd "{{artifacts_path}}/npm_unpack/package"
-    npm version {{new_release}}
-    if npm view {{npm_pkg_name}}@{{new_release}} version &>/dev/null; then
-      echo "An npm release for $NODE_PKG_VERS has already been published" >&2
-      npm view {{npm_pkg_name}}@{{new_release}} >&2
-      exit 1
-    else
-      npm publish --access "{{access}}"
-    fi
-
 release-version-without-rc release_version:
     ./scripts/release-version-without-rc.sh "{{release_version}}"
