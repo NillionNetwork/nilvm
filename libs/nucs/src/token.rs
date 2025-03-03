@@ -25,11 +25,21 @@ pub struct NucToken {
     pub subject: Did,
 
     /// The first timestamp at which this token is valid.
-    #[serde(rename = "nbf", default, with = "chrono::serde::ts_seconds_option")]
+    #[serde(
+        rename = "nbf",
+        default,
+        with = "chrono::serde::ts_seconds_option",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub not_before: Option<DateTime<Utc>>,
 
     /// The timestamp at which this token becomes invalid.
-    #[serde(rename = "exp", default, with = "chrono::serde::ts_seconds_option")]
+    #[serde(
+        rename = "exp",
+        default,
+        with = "chrono::serde::ts_seconds_option",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub expires_at: Option<DateTime<Utc>>,
 
     /// The command that is being invoked or the authority is being delegated for.
@@ -41,7 +51,7 @@ pub struct NucToken {
     pub body: TokenBody,
 
     /// Metadata associated to this token.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub meta: Option<JsonObject>,
 
     /// The token nonce.
@@ -61,6 +71,13 @@ pub struct Did {
 
     /// The public key.
     pub public_key: [u8; 33],
+}
+
+impl Did {
+    /// Construct a new DID for the `nillion` method.
+    pub fn nil(public_key: [u8; 33]) -> Self {
+        Self { method: "nil".into(), public_key }
+    }
 }
 
 impl fmt::Display for Did {
@@ -97,8 +114,8 @@ pub enum ParseDidError {
 }
 
 /// The hash of a proof.
-#[derive(Clone, Debug, SerializeDisplay, DeserializeFromStr, PartialEq)]
-pub struct ProofHash([u8; 32]);
+#[derive(Clone, Copy, Debug, SerializeDisplay, DeserializeFromStr, PartialEq)]
+pub struct ProofHash(pub [u8; 32]);
 
 impl fmt::Display for ProofHash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -119,7 +136,26 @@ impl FromStr for ProofHash {
 
 /// A command.
 #[derive(Clone, Debug, SerializeDisplay, DeserializeFromStr, PartialEq)]
-pub struct Command(Vec<String>);
+pub struct Command(pub Vec<String>);
+
+impl From<Vec<String>> for Command {
+    fn from(command: Vec<String>) -> Self {
+        Self(command)
+    }
+}
+
+impl From<&[&str]> for Command {
+    fn from(command: &[&str]) -> Self {
+        let command = command.iter().map(ToString::to_string).collect();
+        Self(command)
+    }
+}
+
+impl<const N: usize> From<[&str; N]> for Command {
+    fn from(command: [&str; N]) -> Self {
+        Self::from(command.as_slice())
+    }
+}
 
 impl FromStr for Command {
     type Err = MalformedCommandError;
@@ -268,12 +304,12 @@ mod tests {
 }"#;
         let token: NucToken = serde_json::from_str(input).expect("parsing failed");
         let expected = NucToken {
-            issuer: Did { method: "nil".into(), public_key: *b"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa" },
-            audience: Did { method: "nil".into(), public_key: *b"\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb" },
-            subject: Did { method: "nil".into(), public_key: *b"\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc" },
+            issuer: Did::nil([0xaa; 33]),
+            audience: Did::nil([0xbb; 33]),
+            subject: Did::nil([0xcc; 33]),
             not_before: Some(DateTime::from_timestamp(1740494955, 0).unwrap()),
             expires_at: Some(DateTime::from_timestamp(1740495955, 0).unwrap()),
-            command: Command(vec!["nil".into(), "db".into(), "read".into()]),
+            command: ["nil", "db", "read"].into(),
             body: TokenBody::Delegation(vec![policy::op::eq(".foo", json!(42))]),
             proofs: vec![ProofHash(*b"\xf4\xf0J\xf6\xa82\xbc\xd8\xa6\x85]\xf5\xd0$,\x9aq\xe9\xda\x17\xfa\xeb-3\xb3\x0c\x89\x03\xf1\xb5\xa9D")],
             nonce: b"\xbe\xef".to_vec(),
@@ -324,12 +360,12 @@ mod tests {
 }"#;
         let token: NucToken = serde_json::from_str(input).expect("parsing failed");
         let expected = NucToken {
-            issuer: Did { method: "nil".into(), public_key: *b"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa" },
-            audience: Did { method: "nil".into(), public_key: *b"\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb\xbb" },
-            subject: Did { method: "nil".into(), public_key: *b"\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc\xcc" },
+            issuer: Did::nil([0xaa; 33]),
+            audience: Did::nil([0xbb; 33]),
+            subject: Did::nil([0xcc; 33]),
             not_before: Some(DateTime::from_timestamp(1740494955, 0).unwrap()),
             expires_at: Some(DateTime::from_timestamp(1740495955, 0).unwrap()),
-            command: Command(vec!["nil".into(), "db".into(), "read".into()]),
+            command: ["nil", "db", "read"].into(),
             body: TokenBody::Invocation(json!({ "foo": 42 }).as_object().cloned().unwrap()),
             proofs: vec![ProofHash(*b"\xf4\xf0J\xf6\xa82\xbc\xd8\xa6\x85]\xf5\xd0$,\x9aq\xe9\xda\x17\xfa\xeb-3\xb3\x0c\x89\x03\xf1\xb5\xa9D")],
             nonce: b"\xbe\xef".to_vec(),
