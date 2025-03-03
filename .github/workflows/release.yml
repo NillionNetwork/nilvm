@@ -18,7 +18,6 @@ env:
   # Update this value when you want to start producing release candidates for the next e.g. minor
   # version. Use the format -rc.0 so that the first/next release candidate is -rc.1.
   RELEASE_CANDIDATE_BASE_VERSION: v0.10.0-rc.0
-  DEVOPS_JUSTFILE: devops/release-management/justfile
   DOCKER_SERVER: 592920173613.dkr.ecr.eu-west-1.amazonaws.com
   SCCACHE_DISABLED: true
   MOLD_LINKER_VERSION: "2.35.0"
@@ -76,11 +75,11 @@ jobs:
           BUMP_TYPE: ${{ inputs.bump-type || 'prerelease' }}
           FROM_RELEASE_VERSION: ${{ inputs.from-release-version || '' }}
         run: |
-          LATEST_MAIN_TAG=$(just -f "$DEVOPS_JUSTFILE" get-git-tag main)
+          LATEST_MAIN_TAG=$(just get-git-tag main)
           echo "LATEST_MAIN_TAG: $LATEST_MAIN_TAG" >&2
 
           # Used as new release version when from-release-version is empty which is typically the case.
-          NEXT_VERSION=$(just -f "$DEVOPS_JUSTFILE" get-release-next-version \
+          NEXT_VERSION=$(just get-release-next-version \
             --release-candidate-base-version "$RELEASE_CANDIDATE_BASE_VERSION" \
             "$BUMP_TYPE" \
             "$LATEST_MAIN_TAG"
@@ -91,7 +90,7 @@ jobs:
           echo "NEW_RELEASE_VERSION: $NEW_RELEASE_VERSION" >&2
           echo "new_release_version=$NEW_RELEASE_VERSION" >> "$GITHUB_OUTPUT"
 
-          NEW_RELEASE_VERSION_WITHOUT_RC=$(just -f "$DEVOPS_JUSTFILE" release-version-without-rc "$NEW_RELEASE_VERSION")
+          NEW_RELEASE_VERSION_WITHOUT_RC=$(just release-version-without-rc "$NEW_RELEASE_VERSION")
           echo "NEW_RELEASE_VERSION_WITHOUT_RC: $NEW_RELEASE_VERSION_WITHOUT_RC" >&2
           echo "new_release_version_without_rc=$NEW_RELEASE_VERSION_WITHOUT_RC" >> "$GITHUB_OUTPUT"
 
@@ -511,7 +510,7 @@ jobs:
 
       - name: Tag nillion repo
         run: |
-          just -f "$DEVOPS_JUSTFILE" create-tag \
+          just create-tag \
             "$NEW_RELEASE_VERSION" \
             "$NILLION_REPO_COMMIT" \
             "github-actions@nillion.com" \
