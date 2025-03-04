@@ -274,7 +274,6 @@ mod tests {
             .audience(Did::nil([0xbb; 33]))
             .subject(Did::nil([0xcc; 33]))
             .command(["nil", "db", "read"])
-            .nonce([1, 2, 3])
             .build(&key.into())
             .expect("build failed");
         let envelope = NucTokenEnvelope::decode(&encoded).expect("decode failed");
@@ -288,7 +287,6 @@ mod tests {
             .audience(Did::nil([0xbb; 33]))
             .subject(Did::nil([0xcc; 33]))
             .command(["nil", "db", "read"])
-            .nonce([1, 2, 3])
             .build(&key.into())
             .expect("build failed");
         let (base, signature) = token.rsplit_once(".").unwrap();
@@ -360,7 +358,6 @@ mod tests {
             .audience(Did::nil([0xbb; 33]))
             .subject(Did::nil([0xcc; 33]))
             .command(["nil", "db", "read"])
-            .nonce([1, 2, 3])
             .build(&key.into())
             .expect("build failed");
         let err = NucTokenEnvelope::decode(&encoded).expect_err("decode succeeded");
