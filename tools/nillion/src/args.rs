@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Error, Result};
 use clap::{error::ErrorKind, Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_utils::shell_completions::ShellCompletionsArgs;
+use hex::FromHexError;
 use nada_values_args::NadaValueArgs;
 use nillion_client::{grpc::membership::NodeId, Clear, NadaValue, UserId, Uuid};
 use serde::Deserialize;
@@ -95,6 +96,10 @@ pub enum Command {
     /// Get configuration information.
     #[clap(subcommand)]
     Config(ConfigCommand),
+
+    /// Mint or inspect a NUC.
+    #[clap(subcommand)]
+    Nuc(NucCommand),
 }
 
 /// The output format for the command. Default is YAML.
@@ -539,6 +544,46 @@ pub struct ClusterConfigArgs {
     /// Make the request for the cluster configuration to this specific node.
     #[clap(long)]
     pub node_id: Option<NodeId>,
+}
+
+/// The NUC command.
+#[derive(Subcommand)]
+pub enum NucCommand {
+    /// Inspect a NUC.
+    Inspect(InspectNucArgs),
+
+    /// Validate a NUC.
+    Validate(ValidateNucArgs),
+}
+
+/// Inspect a NUC.
+#[derive(Args)]
+pub struct InspectNucArgs {
+    /// The NUC to be inspected.
+    pub nuc: String,
+}
+
+/// Validate a NUC.
+#[derive(Args)]
+pub struct ValidateNucArgs {
+    /// The NUC to be validated.
+    pub nuc: String,
+
+    /// The root public keys to use.
+    #[clap(short, long = "root-public-key")]
+    pub root_public_keys: Vec<HexBytes>,
+}
+
+/// A vec that can be parsed from hex.
+#[derive(Clone, Debug)]
+pub struct HexBytes(pub(crate) Vec<u8>);
+
+impl FromStr for HexBytes {
+    type Err = FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(hex::decode(s)?))
+    }
 }
 
 /// Helper function for CLI to Parse a tuple from a string
