@@ -477,3 +477,41 @@ deploy-nillion-network *args: setup-venv
     uv pip install -r scripts/deploy_nillion_network.txt
 
     python3 ./scripts/deploy_nillion_network.py {{args}}
+
+create-github-release tag_name release_name:
+    #!/usr/bin/env bash
+
+    set -o errexit
+
+    source "$(git rev-parse --show-toplevel || echo .)/scripts/activate_venv.sh" venv &>/dev/null
+    uv pip install -r ./scripts/release-manager/requirements.txt &>/dev/null
+
+    ./scripts/release-manager/release-manager create-github-release \
+        "{{tag_name}}" \
+        "{{release_name}}"
+
+    deactivate
+
+create-tag *args="":
+    ./scripts/create-tag.sh {{args}}
+
+devops-retag new_tag existing_tag force="false":
+    ./scripts/devops-retag.sh "{{new_tag}}" "{{existing_tag}}" "{{force}}"
+
+get-git-tag rev="master":
+    ./scripts/get-git-tag.sh "{{rev}}"
+
+get-release-next-version *args="":
+    #!/usr/bin/env bash
+    source "$(git rev-parse --show-toplevel || echo .)/scripts/activate_venv.sh" venv &>/dev/null
+    uv pip install -r ./scripts/release-manager/requirements.txt &>/dev/null
+    ./scripts/release-manager/release-manager get-release-next-version {{args}}
+
+promote-release from_version to_version="":
+    #!/usr/bin/env bash
+    source "$(git rev-parse --show-toplevel || echo .)/scripts/activate_venv.sh" venv &>/dev/null
+    uv pip install -r ./scripts/release-manager/requirements.txt &>/dev/null
+    ./scripts/release-manager/release-manager promote-release "{{from_version}}" "{{to_version}}"
+
+release-version-without-rc release_version:
+    ./scripts/release-version-without-rc.sh "{{release_version}}"

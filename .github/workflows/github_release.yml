@@ -9,9 +9,6 @@ defaults:
   run:
     shell: bash
 
-env:
-  DEVOPS_JUSTFILE: devops/release-management/justfile
-
 jobs:
   create-github-release:
     name: Create GitHub Release
@@ -44,7 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          LATEST_MAIN_TAG=$(just -f "$DEVOPS_JUSTFILE" get-git-tag main)
+          LATEST_MAIN_TAG=$(just get-git-tag main)
           echo "LATEST_MAIN_TAG: $LATEST_MAIN_TAG" >&2
 
-          just -f "$DEVOPS_JUSTFILE" create-github-release "$LATEST_MAIN_TAG" "$LATEST_MAIN_TAG"
+          just create-github-release "$LATEST_MAIN_TAG" "$LATEST_MAIN_TAG"
