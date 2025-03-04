@@ -1,7 +1,7 @@
 use crate::{
     envelope::{DecodedNucToken, InvalidSignature, NucTokenEnvelope},
     policy::{ConnectorPolicy, Operator, OperatorPolicy, Policy},
-    token::{NucToken, ProofHash, TokenBody},
+    token::{Did, NucToken, ProofHash, TokenBody},
 };
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
@@ -33,8 +33,8 @@ pub struct ValidationParameters {
     /// The maximum depth of a policy.
     pub max_policy_depth: usize,
 
-    /// Whether to require the last token in the chain to be an invocation.
-    pub require_invocation: bool,
+    /// The requirements for the token being validated.
+    pub token_requirements: TokenTypeRequirements,
 }
 
 impl Default for ValidationParameters {
@@ -44,9 +44,20 @@ impl Default for ValidationParameters {
             max_chain_length: MAX_CHAIN_LENGTH,
             max_policy_width: MAX_POLICY_WIDTH,
             max_policy_depth: MAX_POLICY_DEPTH,
-            require_invocation: true,
+            token_requirements: Default::default(),
         }
     }
+}
+
+/// The requirements for the token being validated.
+#[derive(Default)]
+pub enum TokenTypeRequirements {
+    /// Require an invocation for the given DID.
+    Invocation(Did),
+
+    /// Apply no token type requirements, meaning we're okay with any invocation and/or delegation.
+    #[default]
+    None,
 }
 
 pub struct NucValidator {
@@ -81,20 +92,27 @@ impl NucValidator {
         let token_chain = iter::once(token).chain(proofs.iter().copied()).rev();
         Self::validate_proofs(&proofs, &self.root_keys)?;
         Self::validate_token_chain(token_chain, parameters)?;
-        Self::validate_token(token, &proofs, parameters.require_invocation)?;
+        Self::validate_token(token, &proofs, &parameters.token_requirements)?;
         envelope.validate_signatures()?;
         Ok(())
     }
 
     // Validations applied only to the token itself
-    fn validate_token(token: &NucToken, proofs: &[&NucToken], require_invocation: bool) -> ValidationResult {
+    fn validate_token(
+        token: &NucToken,
+        proofs: &[&NucToken],
+        requirements: &TokenTypeRequirements,
+    ) -> ValidationResult {
         match &token.body {
             TokenBody::Delegation(_) => {
-                if require_invocation {
+                if let TokenTypeRequirements::Invocation(_) = requirements {
                     return Err(ValidationError::Validation(ValidationKind::NeedInvocation));
                 }
             }
             TokenBody::Invocation(_) => {
+                if let TokenTypeRequirements::Invocation(did) = requirements {
+                    Self::validate_condition(&token.audience == did, ValidationKind::InvalidAudience)?;
+                }
                 let token_json = serde_json::to_value(token).map_err(ValidationError::Serde)?;
                 for proof in proofs {
                     Self::validate_policy_matches(proof, &token_json)?;
@@ -304,6 +322,7 @@ pub enum ValidationKind {
     ChainTooLong,
     CommandNotAttenuated,
     DifferentSubjects,
+    InvalidAudience,
     IssuerAudienceMismatch,
     NeedInvocation,
     NoProofs,
@@ -325,6 +344,7 @@ impl fmt::Display for ValidationKind {
             ChainTooLong => "token chain is too long",
             CommandNotAttenuated => "command is not an attenuation",
             DifferentSubjects => "different subjects in chain",
+            InvalidAudience => "invalid audience",
             IssuerAudienceMismatch => "issuer/audience mismatch",
             NeedInvocation => "token must be an invocation",
             NoProofs => "need at least one proof",
@@ -436,7 +456,7 @@ mod tests {
 
     impl Default for Asserter {
         fn default() -> Self {
-            let parameters = ValidationParameters { require_invocation: false, ..Default::default() };
+            let parameters = ValidationParameters::default();
             Self { parameters }
         }
     }
@@ -486,6 +506,13 @@ mod tests {
     // with them in every single test.
     fn delegation(subject: &SecretKey) -> NucTokenBuilder {
         NucTokenBuilder::delegation([]).audience(Did::nil([0xde; 33])).subject(Did::from_secret_key(subject))
+    }
+
+    // Same as the above but for invocations
+    fn invocation(subject: &SecretKey) -> NucTokenBuilder {
+        NucTokenBuilder::invocation(Default::default())
+            .audience(Did::nil([0xde; 33]))
+            .subject(Did::from_secret_key(subject))
     }
 
     #[rstest]
@@ -576,13 +603,31 @@ mod tests {
     }
 
     #[test]
+    fn invalid_audience() {
+        let key = secret_key();
+        let expected_did = Did::nil([0xaa; 33]);
+        let actual_did = Did::nil([0xbb; 33]);
+        let root = delegation(&key).command(["nil"]).issued_by_root();
+        let last = invocation(&key).command(["nil"]).audience(actual_did).issued_by(key);
+        let envelope = Chainer::default().chain([root, last]);
+        let parameters = ValidationParameters {
+            token_requirements: TokenTypeRequirements::Invocation(expected_did),
+            ..Default::default()
+        };
+        Asserter::new(parameters).assert_failure(envelope, ValidationKind::InvalidAudience);
+    }
+
+    #[test]
     fn need_invocation() {
         let key = secret_key();
         let base = delegation(&key).command(["nil"]);
         let root = base.clone().issued_by_root();
         let last = base.issued_by(key);
         let envelope = Chainer::default().chain([root, last]);
-        let parameters = ValidationParameters { require_invocation: true, ..Default::default() };
+        let parameters = ValidationParameters {
+            token_requirements: TokenTypeRequirements::Invocation(Did::nil([0xaa; 33])),
+            ..Default::default()
+        };
         Asserter::new(parameters).assert_failure(envelope, ValidationKind::NeedInvocation);
     }
 
@@ -786,6 +831,7 @@ mod tests {
     fn valid_token() {
         let subject_key = SecretKey::random(&mut rand::thread_rng());
         let subject = Did::from_secret_key(&subject_key);
+        let rpc_did = Did::nil([0xaa; 33]);
         let root = NucTokenBuilder::delegation([policy::op::eq(".args.foo", json!(42))])
             .subject(subject.clone())
             .command(["nil"])
@@ -796,12 +842,15 @@ mod tests {
             .issued_by(subject_key);
         let invocation = NucTokenBuilder::invocation(json!({"foo": 42, "bar": 1337}).as_object().cloned().unwrap())
             .subject(subject)
-            .audience(Did::nil([0xaa; 33]))
+            .audience(rpc_did.clone())
             .command(["nil", "bar", "foo"])
             .issued_by(secret_key());
 
         let envelope = Chainer::default().chain([root, intermediate, invocation]);
-        let parameters = ValidationParameters { require_invocation: true, ..Default::default() };
+        let parameters = ValidationParameters {
+            token_requirements: TokenTypeRequirements::Invocation(rpc_did),
+            ..Default::default()
+        };
         Asserter::new(parameters).assert_success(envelope);
     }
 }
