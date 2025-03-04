@@ -495,9 +495,6 @@ create-github-release tag_name release_name:
 create-tag *args="":
     ./scripts/create-tag.sh {{args}}
 
-delete-release release_version force="false":
-    ./scripts/delete-release.sh "{{release_version}}" "{{force}}"
-
 devops-retag new_tag existing_tag force="false":
     ./scripts/devops-retag.sh "{{new_tag}}" "{{existing_tag}}" "{{force}}"
 
@@ -509,12 +506,6 @@ get-release-next-version *args="":
     source "$(git rev-parse --show-toplevel || echo .)/scripts/activate_venv.sh" venv &>/dev/null
     uv pip install -r ./scripts/release-manager/requirements.txt &>/dev/null
     ./scripts/release-manager/release-manager get-release-next-version {{args}}
-
-get-releases:
-    #!/usr/bin/env bash
-    source "$(git rev-parse --show-toplevel || echo .)/scripts/activate_venv.sh" venv &>/dev/null
-    uv pip install -r ./scripts/release-manager/requirements.txt &>/dev/null
-    ./scripts/release-manager/release-manager get-releases
 
 promote-release from_version to_version="":
     #!/usr/bin/env bash
