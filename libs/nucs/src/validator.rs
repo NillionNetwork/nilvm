@@ -80,9 +80,6 @@ impl NucValidator {
 
         let token = &envelope.token().token;
         let proofs = match token.proofs.as_slice() {
-            [] if envelope.proofs().is_empty() => {
-                return Err(ValidationError::Validation(ValidationKind::NoProofs));
-            }
             [] => Vec::new(),
             [hash] => Self::sort_proofs(*hash, envelope.proofs())?,
             _ => return Err(ValidationError::TooManyProofs),
@@ -124,14 +121,11 @@ impl NucValidator {
 
     // Validations applied to proofs
     fn validate_proofs(proofs: &[&NucToken], root_keys: &HashSet<Box<[u8]>>) -> ValidationResult {
-        match proofs.last() {
-            Some(proof) => {
-                if !root_keys.contains(proof.issuer.public_key.as_slice()) {
-                    return Err(ValidationError::Validation(ValidationKind::RootKeySignatureMissing));
-                }
+        if let Some(proof) = proofs.last() {
+            if !root_keys.contains(proof.issuer.public_key.as_slice()) {
+                return Err(ValidationError::Validation(ValidationKind::RootKeySignatureMissing));
             }
-            None => return Err(ValidationError::Validation(ValidationKind::NoProofs)),
-        };
+        }
 
         for proof in proofs {
             match proof.body {
@@ -325,7 +319,6 @@ pub enum ValidationKind {
     InvalidAudience,
     IssuerAudienceMismatch,
     NeedInvocation,
-    NoProofs,
     NotBeforeBackwards,
     NotBeforeNotMet,
     PolicyNotMet,
@@ -347,7 +340,6 @@ impl fmt::Display for ValidationKind {
             InvalidAudience => "invalid audience",
             IssuerAudienceMismatch => "issuer/audience mismatch",
             NeedInvocation => "token must be an invocation",
-            NoProofs => "need at least one proof",
             NotBeforeBackwards => "`not before` cannot move backwards",
             NotBeforeNotMet => "`not before` date not met",
             PolicyNotMet => "policy not met",
@@ -629,14 +621,6 @@ mod tests {
             ..Default::default()
         };
         Asserter::new(parameters).assert_failure(envelope, ValidationKind::NeedInvocation);
-    }
-
-    #[test]
-    fn no_proofs() {
-        let key = secret_key();
-        let token = delegation(&key).command(["nil"]).issued_by_root().build();
-        let envelope = NucTokenEnvelope::decode(&token).expect("invalid JWT");
-        Asserter::default().assert_failure(envelope, ValidationKind::NoProofs);
     }
 
     #[test]
