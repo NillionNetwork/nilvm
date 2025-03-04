@@ -30,7 +30,7 @@ use std::{
     net::TcpStream,
     path::{Path, PathBuf},
     process::{Child, Command},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
     thread::{self, sleep},
     time::{Duration, Instant},
 };
@@ -39,10 +39,15 @@ use tokio::runtime::Runtime;
 use tracing_fixture::{tracing, Tracing};
 use xshell::{cmd, Shell};
 
-const PAYER_FUND_CHUNK: usize = 20;
+// These can be overwritten by environment variables
+const MAX_PAYERS_NUM: usize = 20;
+// this is how much it costs to run this test suite with prices set in `tests/resources/network/default/1.network.yaml` when running with 1 payer
+const BALANCE_TOP_UP_AMOUNT_NIL: TokenAmount = TokenAmount::Nil(45);
+const PAYMENTS_SEED: &str = "payment-seed";
+
 const SIGNING_KEY_PREFIX: &str = "signinig-key-";
-const TOTAL_PREFUNDED_KEYS: u64 = 1024;
-const PREFUND_AMOUNT: TokenAmount = TokenAmount::Nil(100_000);
+const TOTAL_PREFUNDED_KEYS: u64 = 1024; // user balances in leader DB
+const PREFUND_AMOUNT: TokenAmount = TokenAmount::Nil(100_000); // user balance amount in leader DB
 
 static PAYMENTS_RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().expect("failed to create runtime"));
 
@@ -208,8 +213,11 @@ pub struct Nodes {
     next_payment_key_id: AtomicU64,
     next_signing_key_id: AtomicU64,
     funded_payers: tokio::sync::Mutex<Vec<NillionChainClientPayer>>,
+    funded_payers_cursor: AtomicUsize,
     bootnode_party_id: Option<PartyId>,
     payments_seed: String,
+    max_payers_num: usize,
+    balance_top_up_amount: TokenAmount,
 }
 
 impl Nodes {
@@ -284,9 +292,7 @@ impl Nodes {
             MembershipClient::new(self.bootnode_channel_config().build().expect("failed to create config"));
         let cluster = loop {
             match membership_client.cluster().await {
-                Ok(cluster) => {
-                    break cluster;
-                }
+                Ok(cluster) => break cluster,
                 Err(e) => {
                     warn!("Bootnode is not up yet, retrying: {e}")
                 }
@@ -321,37 +327,42 @@ impl Nodes {
     }
 
     pub async fn allocate_payer(&self) -> NillionChainClientPayer {
-        // enter the payments runtime so all payers share the same reqwest client pool
-        let _guard = PAYMENTS_RUNTIME.enter();
-        let mut funded_payers = self.funded_payers.lock().await;
-
-        if funded_payers.is_empty() {
-            // Otherwise fund a chunk of payers at once if we don't have any
-            let mut addresses = Vec::new();
-            let mut keys = Vec::new();
-            for _ in 0..PAYER_FUND_CHUNK {
-                let payment_key_id = self.next_payment_key_id.fetch_add(1, Ordering::AcqRel);
-                let payments_seed = format!("{}-{payment_key_id}", self.payments_seed);
-                let key = NillionChainPrivateKey::from_seed(&payments_seed).expect("private key creation failed");
-                let address = key.address.clone();
-                keys.push(key);
-                addresses.push(address);
-            }
-            self.top_up_balances(addresses, TokenAmount::Nil(1)).await;
-
-            // Create all the clients in bulk as this performs a lookup on the chain.
-            let mut futs = Vec::new();
-            for key in keys {
-                let payments_rpc_endpoint = self.nillion_chain_rpc_endpoint();
-                futs.push(NillionChainClient::new(payments_rpc_endpoint, key));
-            }
-            for result in future::join_all(futs).await {
-                let client = result.expect("failed to look up client");
-                let payer = NillionChainClientPayer::new(client);
-                funded_payers.push(payer);
-            }
+        let mut pool_guard = self.funded_payers.lock().await;
+        if pool_guard.is_empty() {
+            let payers = self.fund_payers(self.max_payers_num).await;
+            pool_guard.extend(payers);
         }
-        funded_payers.pop().expect("should not be empty")
+        let pool_size = pool_guard.len();
+        let index = self.funded_payers_cursor.fetch_add(1, Ordering::Relaxed) % pool_size;
+
+        pool_guard[index].clone()
+    }
+
+    pub(crate) async fn fund_payers(&self, count: usize) -> Vec<NillionChainClientPayer> {
+        let _guard = PAYMENTS_RUNTIME.enter();
+        let mut addresses = Vec::with_capacity(count);
+        let mut keys = Vec::with_capacity(count);
+        for _ in 0..count {
+            let payment_key_id = self.next_payment_key_id.fetch_add(1, Ordering::AcqRel);
+            let payments_seed = format!("{}-{payment_key_id}", self.payments_seed);
+
+            let key = NillionChainPrivateKey::from_seed(&payments_seed).expect("private key creation failed");
+            let address = key.address.clone();
+            keys.push(key);
+            addresses.push(address);
+        }
+        self.top_up_balances(addresses, self.balance_top_up_amount).await;
+        let mut futs = Vec::with_capacity(count);
+        for key in keys {
+            let payments_rpc_endpoint = self.nillion_chain_rpc_endpoint();
+            futs.push(NillionChainClient::new(payments_rpc_endpoint, key));
+        }
+        let mut payers = Vec::with_capacity(count);
+        for result in future::join_all(futs).await {
+            let client = result.expect("failed to look up client");
+            payers.push(NillionChainClientPayer::new(client));
+        }
+        payers
     }
 }
 
@@ -469,7 +480,12 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         cleanup::register_child_process(child_process);
     }
 
-    let payments_seed = env::var("TEST_PAYMENTS_SEED").unwrap_or_else(|_| "payment-seed".to_string());
+    let payments_seed = env::var("PAYMENTS_SEED").unwrap_or_else(|_| PAYMENTS_SEED.to_string());
+    let max_payers_num = env::var("MAX_PAYERS_NUM").ok().and_then(|val| val.parse().ok()).unwrap_or(MAX_PAYERS_NUM);
+    let balance_top_up_amount = env::var("BALANCE_TOP_UP_AMOUNT_NIL")
+        .ok()
+        .map(|val| TokenAmount::Nil(val.parse().unwrap()))
+        .unwrap_or(BALANCE_TOP_UP_AMOUNT_NIL);
 
     let mut nodes = Nodes {
         context,
@@ -479,8 +495,11 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
         next_payment_key_id: Default::default(),
         next_signing_key_id: Default::default(),
         funded_payers: Default::default(),
+        funded_payers_cursor: AtomicUsize::new(0),
         bootnode_party_id: None,
         payments_seed,
+        max_payers_num,
+        balance_top_up_amount,
     };
 
     // This is because this is a non async rstest fixture but it gets run within an async context
