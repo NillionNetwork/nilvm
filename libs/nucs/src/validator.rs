@@ -1,5 +1,6 @@
 use crate::{
     envelope::{DecodedNucToken, InvalidSignature, NucTokenEnvelope},
+    policy::{ConnectorPolicy, Operator, OperatorPolicy, Policy},
     token::{NucToken, ProofHash, TokenBody},
 };
 use chrono::{DateTime, Utc};
@@ -8,9 +9,15 @@ use k256::PublicKey;
 use std::{
     collections::{HashMap, HashSet},
     fmt, iter,
+    ops::Deref,
 };
 
 const MAX_CHAIN_LENGTH: usize = 5;
+const MAX_POLICY_WIDTH: usize = 10;
+const MAX_POLICY_DEPTH: usize = 5;
+
+/// The result of validating a NUC token.
+pub type ValidationResult = Result<(), ValidationError>;
 
 /// Parameters to be used during validation.
 pub struct ValidationParameters {
@@ -20,13 +27,25 @@ pub struct ValidationParameters {
     /// The maximum allowed chain length.
     pub max_chain_length: usize,
 
+    /// The maximum width of a policy.
+    pub max_policy_width: usize,
+
+    /// The maximum depth of a policy.
+    pub max_policy_depth: usize,
+
     /// Whether to require the last token in the chain to be an invocation.
     pub require_invocation: bool,
 }
 
 impl Default for ValidationParameters {
     fn default() -> Self {
-        Self { current_time: Utc::now(), max_chain_length: MAX_CHAIN_LENGTH, require_invocation: true }
+        Self {
+            current_time: Utc::now(),
+            max_chain_length: MAX_CHAIN_LENGTH,
+            max_policy_width: MAX_POLICY_WIDTH,
+            max_policy_depth: MAX_POLICY_DEPTH,
+            require_invocation: true,
+        }
     }
 }
 
@@ -42,11 +61,7 @@ impl NucValidator {
     }
 
     /// Validate a NUC.
-    pub fn validate(
-        &self,
-        envelope: NucTokenEnvelope,
-        parameters: &ValidationParameters,
-    ) -> Result<(), ValidationError> {
+    pub fn validate(&self, envelope: NucTokenEnvelope, parameters: &ValidationParameters) -> ValidationResult {
         // Perform this one check before validating signatures to avoid doing contly work
         if envelope.proofs().len().saturating_add(1) > parameters.max_chain_length {
             return Err(ValidationError::Validation(ValidationKind::ChainTooLong));
@@ -72,7 +87,7 @@ impl NucValidator {
     }
 
     // Validations applied only to the token itself
-    fn validate_token(token: &NucToken, proofs: &[&NucToken], require_invocation: bool) -> Result<(), ValidationError> {
+    fn validate_token(token: &NucToken, proofs: &[&NucToken], require_invocation: bool) -> ValidationResult {
         match &token.body {
             TokenBody::Delegation(_) => {
                 if require_invocation {
@@ -90,7 +105,7 @@ impl NucValidator {
     }
 
     // Validations applied to proofs
-    fn validate_proofs(proofs: &[&NucToken], root_keys: &HashSet<Box<[u8]>>) -> Result<(), ValidationError> {
+    fn validate_proofs(proofs: &[&NucToken], root_keys: &HashSet<Box<[u8]>>) -> ValidationResult {
         match proofs.last() {
             Some(proof) => {
                 if !root_keys.contains(proof.issuer.public_key.as_slice()) {
@@ -122,13 +137,34 @@ impl NucValidator {
         for token in tokens.clone() {
             Self::validate_temporal_properties(token, &parameters.current_time)?;
         }
+        for token in tokens.clone() {
+            if let TokenBody::Delegation(policies) = &token.body {
+                Self::validate_policies_properties(policies, parameters)?;
+            }
+        }
         if let Some(token) = tokens.nth(1) {
             Self::validate_condition(token.issuer == token.subject, ValidationKind::SubjectNotInChain)?;
         }
         Ok(())
     }
 
-    fn validate_relationship_properties(previous: &NucToken, current: &NucToken) -> Result<(), ValidationError> {
+    fn validate_policies_properties(policies: &[Policy], parameters: &ValidationParameters) -> ValidationResult {
+        Self::validate_condition(policies.len() <= parameters.max_policy_width, ValidationKind::PolicyTooWide)?;
+        for policy in policies {
+            let properties = PolicyTreeProperties::from(policy);
+            Self::validate_condition(
+                properties.max_policy_width <= parameters.max_policy_width,
+                ValidationKind::PolicyTooWide,
+            )?;
+            Self::validate_condition(
+                properties.max_depth <= parameters.max_policy_depth,
+                ValidationKind::PolicyTooDeep,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn validate_relationship_properties(previous: &NucToken, current: &NucToken) -> ValidationResult {
         Self::validate_condition(previous.audience == current.issuer, ValidationKind::IssuerAudienceMismatch)?;
         Self::validate_condition(previous.subject == current.subject, ValidationKind::DifferentSubjects)?;
         Self::validate_condition(
@@ -141,13 +177,13 @@ impl NucValidator {
         Ok(())
     }
 
-    fn validate_temporal_properties(token: &NucToken, now: &DateTime<Utc>) -> Result<(), ValidationError> {
+    fn validate_temporal_properties(token: &NucToken, now: &DateTime<Utc>) -> ValidationResult {
         Self::validate_condition(token.expires_at.map(|t| now < &t).unwrap_or(true), ValidationKind::TokenExpired)?;
         Self::validate_condition(token.not_before.map(|t| now >= &t).unwrap_or(true), ValidationKind::NotBeforeNotMet)?;
         Ok(())
     }
 
-    fn validate_policy_matches(token: &NucToken, invocation: &serde_json::Value) -> Result<(), ValidationError> {
+    fn validate_policy_matches(token: &NucToken, invocation: &serde_json::Value) -> ValidationResult {
         match &token.body {
             TokenBody::Delegation(policies) => {
                 for policy in policies {
@@ -192,6 +228,51 @@ impl NucValidator {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct PolicyTreeProperties {
+    max_depth: usize,
+    max_policy_width: usize,
+}
+
+impl From<&Policy> for PolicyTreeProperties {
+    fn from(policy: &Policy) -> Self {
+        match policy {
+            Policy::Operator(policy) => Self::from(policy),
+            Policy::Connector(policy) => Self::from(policy),
+        }
+    }
+}
+
+impl From<&OperatorPolicy> for PolicyTreeProperties {
+    fn from(policy: &OperatorPolicy) -> Self {
+        use Operator::*;
+        match &policy.operator {
+            Equals(_) | NotEquals(_) => Self { max_depth: 1, max_policy_width: 1 },
+            AnyOf(values) => Self { max_depth: 1, max_policy_width: values.len() },
+        }
+    }
+}
+
+impl From<&ConnectorPolicy> for PolicyTreeProperties {
+    fn from(policy: &ConnectorPolicy) -> Self {
+        use ConnectorPolicy::*;
+        let mut output = match policy {
+            And(policies) | Or(policies) => {
+                let mut output = PolicyTreeProperties { max_depth: 0, max_policy_width: policies.len() };
+                for policy in policies {
+                    let properties = Self::from(policy);
+                    output.max_depth = output.max_depth.max(properties.max_depth);
+                    output.max_policy_width = output.max_policy_width.max(properties.max_policy_width);
+                }
+                output
+            }
+            Not(policy) => Self::from(policy.deref()),
+        };
+        output.max_depth += 1;
+        output
+    }
+}
+
 /// An error during the validation of a token.
 #[derive(Debug, thiserror::Error)]
 pub enum ValidationError {
@@ -229,6 +310,8 @@ pub enum ValidationKind {
     NotBeforeBackwards,
     NotBeforeNotMet,
     PolicyNotMet,
+    PolicyTooDeep,
+    PolicyTooWide,
     ProofsMustBeDelegations,
     RootKeySignatureMissing,
     SubjectNotInChain,
@@ -248,6 +331,8 @@ impl fmt::Display for ValidationKind {
             NotBeforeBackwards => "`not before` cannot move backwards",
             NotBeforeNotMet => "`not before` date not met",
             PolicyNotMet => "policy not met",
+            PolicyTooDeep => "policy is too deep",
+            PolicyTooWide => "policy is too wide",
             ProofsMustBeDelegations => "proofs must be delegations",
             RootKeySignatureMissing => "root NUC is not signed by root keypair",
             SubjectNotInChain => "subject not in chain",
@@ -266,6 +351,7 @@ mod tests {
         token::Did,
     };
     use k256::SecretKey;
+    use rstest::rstest;
     use serde_json::json;
     use std::{ops::Deref, sync::LazyLock};
 
@@ -400,6 +486,32 @@ mod tests {
     // with them in every single test.
     fn delegation(subject: &SecretKey) -> NucTokenBuilder {
         NucTokenBuilder::delegation([]).audience(Did::nil([0xde; 33])).subject(Did::from_secret_key(subject)).nonce([1])
+    }
+
+    #[rstest]
+    #[case::operator(policy::op::eq(".field", json!(42)), PolicyTreeProperties { max_depth: 1, max_policy_width: 1 })]
+    #[case::any_od(policy::op::any_of(".field", &[json!(42), json!(1337)]), PolicyTreeProperties { max_depth: 1, max_policy_width: 2 })]
+    #[case::not(policy::op::not(policy::op::eq(".field", json!(42))), PolicyTreeProperties { max_depth: 2, max_policy_width: 1 })]
+    #[case::and_single(policy::op::and(&[policy::op::eq(".field", json!(42))]), PolicyTreeProperties { max_depth: 2, max_policy_width: 1 })]
+    #[case::or_single(policy::op::or(&[policy::op::eq(".field", json!(42))]), PolicyTreeProperties { max_depth: 2, max_policy_width: 1 })]
+    #[case::and_multi(
+        policy::op::and(&[policy::op::eq(".field", json!(42)), policy::op::eq(".field", json!(42))]),
+        PolicyTreeProperties { max_depth: 2, max_policy_width: 2 }
+    )]
+    #[case::or_multi(
+        policy::op::or(&[policy::op::eq(".field", json!(42)), policy::op::eq(".field", json!(42))]),
+        PolicyTreeProperties { max_depth: 2, max_policy_width: 2 }
+    )]
+    #[case::nested(
+        policy::op::and(&[
+            policy::op::not(policy::op::eq(".field", json!(42))),
+            policy::op::any_of(".field", &[json!(42), json!(1337)])
+        ]),
+        PolicyTreeProperties { max_depth: 3, max_policy_width: 2 }
+    )]
+    fn policy_properties(#[case] policy: Policy, #[case] expected: PolicyTreeProperties) {
+        let properties = PolicyTreeProperties::from(&policy);
+        assert_eq!(properties, expected);
     }
 
     #[test]
@@ -565,6 +677,48 @@ mod tests {
 
         let envelope = Chainer::default().chain([root, intermediate, invocation]);
         Asserter::default().assert_failure(envelope, ValidationKind::PolicyNotMet);
+    }
+
+    #[test]
+    fn policy_too_deep() {
+        // Build a not(not(not...(op))) chain that's one too deep
+        let mut policy = policy::op::eq(".foo", json!(42));
+        for _ in 0..MAX_POLICY_DEPTH {
+            policy = policy::op::not(policy);
+        }
+        let key = SecretKey::random(&mut rand::thread_rng());
+        let subject = Did::from_secret_key(&key);
+        let root =
+            NucTokenBuilder::delegation([policy]).subject(subject.clone()).command(["nil"]).nonce([1]).issued_by_root();
+        let tail = delegation(&key).command(["nil"]).issued_by(key);
+
+        let envelope = Chainer::default().chain([root, tail]);
+        Asserter::default().assert_failure(envelope, ValidationKind::PolicyTooDeep);
+    }
+
+    #[test]
+    fn policy_array_too_wide() {
+        let policy = vec![policy::op::eq(".foo", json!(42)); MAX_POLICY_WIDTH + 1];
+        let key = SecretKey::random(&mut rand::thread_rng());
+        let subject = Did::from_secret_key(&key);
+        let root =
+            NucTokenBuilder::delegation(policy).subject(subject.clone()).command(["nil"]).nonce([1]).issued_by_root();
+        let tail = delegation(&key).command(["nil"]).issued_by(key);
+        let envelope = Chainer::default().chain([root, tail]);
+        Asserter::default().assert_failure(envelope, ValidationKind::PolicyTooWide);
+    }
+
+    #[test]
+    fn policy_too_wide() {
+        let policy = vec![policy::op::eq(".foo", json!(42)); MAX_POLICY_WIDTH + 1];
+        let policy = policy::op::and(policy);
+        let key = SecretKey::random(&mut rand::thread_rng());
+        let subject = Did::from_secret_key(&key);
+        let root =
+            NucTokenBuilder::delegation([policy]).subject(subject.clone()).command(["nil"]).nonce([1]).issued_by_root();
+        let tail = delegation(&key).command(["nil"]).issued_by(key);
+        let envelope = Chainer::default().chain([root, tail]);
+        Asserter::default().assert_failure(envelope, ValidationKind::PolicyTooWide);
     }
 
     #[test]
