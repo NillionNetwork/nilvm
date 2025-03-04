@@ -1,0 +1,110 @@
+identity:
+  private_key:
+    path: /nillion/node.key
+    kind: secp256k1
+cluster:
+  members:
+    - grpc_endpoint: https://node-1.nilvm-testnet-2.nillion-network.testnet.nillion.network:14311
+      public_keys:
+        authentication: 02a2b2c3d863d2f7f0e59a3f9c0635eeb145cee6ccbe3f7d27a32d7d21272384e3
+        kind: secp256k1
+    - grpc_endpoint: https://node-1-nilvm-testnet-2.imperator.co:14311
+      public_keys:
+        authentication: 03207eadc14aa3385f76213c4f735ffc69bcdfac38dedb6ac0e1e2996964352561
+        kind: secp256k1
+    - grpc_endpoint: https://nilvm-testnet-2.kjnodes.com:14311
+      public_keys:
+        authentication: 035a2539e52f8bec283676e9648304572c4d351a9e33681f9b564c0371303235c2
+        kind: secp256k1
+  leader:
+    grpc_endpoint: https://node-1.nilvm-testnet-2.nillion-network.testnet.nillion.network:14311
+    public_keys:
+      authentication: 02a2b2c3d863d2f7f0e59a3f9c0635eeb145cee6ccbe3f7d27a32d7d21272384e3
+      kind: secp256k1
+  prime: Safe256Bits
+  kappa: 0
+  polynomial_degree: 1
+network:
+  preprocessing:
+    compare:
+      batch_size: 16
+      generation_threshold: 10240
+      target_offset_jump: 1024
+    division_integer_secret:
+      batch_size: 2
+      generation_threshold: 1024
+      target_offset_jump: 128
+    modulo:
+      batch_size: 16
+      generation_threshold: 5120
+      target_offset_jump: 512
+    public_output_equality:
+      batch_size: 128
+      generation_threshold: 10240
+      target_offset_jump: 1024
+    equals_integer_secret:
+      batch_size: 16
+      generation_threshold: 5120
+      target_offset_jump: 512
+    truncpr:
+      batch_size: 32
+      generation_threshold: 10240
+      target_offset_jump: 1024
+    trunc:
+      batch_size: 32
+      generation_threshold: 10240
+      target_offset_jump: 1024
+    random_integer:
+      batch_size: 2048
+      generation_threshold: 10240
+      target_offset_jump: 1024
+    random_boolean:
+      batch_size: 2048
+      generation_threshold: 10240
+      target_offset_jump: 1024
+  auxiliary_material:
+    cggmp21_aux_info:
+      enabled: true
+runtime:
+  max_concurrent_actions: 1000
+  preprocessing_source: grpc
+  grpc:
+      bind_endpoint: 0.0.0.0:14311
+      tls:
+        cert: /nillion/certbot-data/keys/letsencrypt/combined_cert.pem
+        key: /nillion/certbot-data/keys/letsencrypt/privkey.pem
+metrics:
+  listen_address: 0.0.0.0:34111
+storage:
+  db_url: sqlite:///data/db.sqlite
+  object_storage:
+    aws_s3:
+      bucket_name: nilvm-testnet-2-storage
+payments:
+  rpc_endpoint: https://rpc.testnet.nilchain-rpc-proxy.nilogy.xyz
+  dollar_token_conversion_fixed: 0.0001
+  minimum_add_funds_payment: 100
+  pricing:
+    retrieve_permissions_price: 1
+    pool_status_price: 1
+    overwrite_permissions_price: 1
+    update_permissions_price: 1
+    retrieve_values_price: 1
+    store_program_price: 1
+    store_values_price: 5
+    invoke_compute_price: 10
+  prefunded_accounts: []
+program_auditor:
+  max_memory_size: 50000
+  max_instructions: 50000
+  max_preprocessing:
+    runtime_elements:
+      TruncPr: 1000
+      Trunc: 1000
+      Modulo: 1000
+      DivisionIntegerSecret: 1000
+      PublicOutputEquality: 1000
+      Compare: 1000
+      EqualsIntegerSecret: 1000
+      RandomInteger: 1000
+      RandomBoolean: 1000
