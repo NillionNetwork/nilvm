@@ -516,11 +516,6 @@ get-releases:
     uv pip install -r ./scripts/release-manager/requirements.txt &>/dev/null
     ./scripts/release-manager/release-manager get-releases
 
-# Forces installation of Python when invoked before any other activation.
-install-python-with-pyenv:
-    #!/usr/bin/env bash
-    source "$(git rev-parse --show-toplevel || echo .)/scripts/activate_venv.sh" venv
-
 promote-release from_version to_version="":
     #!/usr/bin/env bash
     source "$(git rev-parse --show-toplevel || echo .)/scripts/activate_venv.sh" venv &>/dev/null
