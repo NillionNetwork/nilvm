@@ -485,7 +485,7 @@ mod tests {
     // Create a delegation with the most common fields already set so we don't need to deal
     // with them in every single test.
     fn delegation(subject: &SecretKey) -> NucTokenBuilder {
-        NucTokenBuilder::delegation([]).audience(Did::nil([0xde; 33])).subject(Did::from_secret_key(subject)).nonce([1])
+        NucTokenBuilder::delegation([]).audience(Did::nil([0xde; 33])).subject(Did::from_secret_key(subject))
     }
 
     #[rstest]
@@ -644,13 +644,11 @@ mod tests {
         let root = NucTokenBuilder::delegation([policy::op::eq(".foo", json!(42))])
             .subject(subject.clone())
             .command(["nil"])
-            .nonce([1])
             .issued_by_root();
         let invocation = NucTokenBuilder::invocation(json!({"bar": 1337}).as_object().cloned().unwrap())
             .subject(subject)
             .audience(Did::nil([0xaa; 33]))
             .command(["nil"])
-            .nonce([1])
             .issued_by(key);
 
         let envelope = Chainer::default().chain([root, invocation]);
@@ -661,18 +659,15 @@ mod tests {
     fn last_policy_not_met() {
         let subject_key = SecretKey::random(&mut rand::thread_rng());
         let subject = Did::from_secret_key(&subject_key);
-        let root =
-            NucTokenBuilder::delegation([]).subject(subject.clone()).command(["nil"]).nonce([1]).issued_by_root();
+        let root = NucTokenBuilder::delegation([]).subject(subject.clone()).command(["nil"]).issued_by_root();
         let intermediate = NucTokenBuilder::delegation([policy::op::eq(".foo", json!(42))])
             .subject(subject.clone())
             .command(["nil"])
-            .nonce([1])
             .issued_by(subject_key);
         let invocation = NucTokenBuilder::invocation(json!({"bar": 1337}).as_object().cloned().unwrap())
             .subject(subject)
             .audience(Did::nil([0xaa; 33]))
             .command(["nil"])
-            .nonce([1])
             .issued_by(secret_key());
 
         let envelope = Chainer::default().chain([root, intermediate, invocation]);
@@ -688,8 +683,7 @@ mod tests {
         }
         let key = SecretKey::random(&mut rand::thread_rng());
         let subject = Did::from_secret_key(&key);
-        let root =
-            NucTokenBuilder::delegation([policy]).subject(subject.clone()).command(["nil"]).nonce([1]).issued_by_root();
+        let root = NucTokenBuilder::delegation([policy]).subject(subject.clone()).command(["nil"]).issued_by_root();
         let tail = delegation(&key).command(["nil"]).issued_by(key);
 
         let envelope = Chainer::default().chain([root, tail]);
@@ -701,8 +695,7 @@ mod tests {
         let policy = vec![policy::op::eq(".foo", json!(42)); MAX_POLICY_WIDTH + 1];
         let key = SecretKey::random(&mut rand::thread_rng());
         let subject = Did::from_secret_key(&key);
-        let root =
-            NucTokenBuilder::delegation(policy).subject(subject.clone()).command(["nil"]).nonce([1]).issued_by_root();
+        let root = NucTokenBuilder::delegation(policy).subject(subject.clone()).command(["nil"]).issued_by_root();
         let tail = delegation(&key).command(["nil"]).issued_by(key);
         let envelope = Chainer::default().chain([root, tail]);
         Asserter::default().assert_failure(envelope, ValidationKind::PolicyTooWide);
@@ -714,8 +707,7 @@ mod tests {
         let policy = policy::op::and(policy);
         let key = SecretKey::random(&mut rand::thread_rng());
         let subject = Did::from_secret_key(&key);
-        let root =
-            NucTokenBuilder::delegation([policy]).subject(subject.clone()).command(["nil"]).nonce([1]).issued_by_root();
+        let root = NucTokenBuilder::delegation([policy]).subject(subject.clone()).command(["nil"]).issued_by_root();
         let tail = delegation(&key).command(["nil"]).issued_by(key);
         let envelope = Chainer::default().chain([root, tail]);
         Asserter::default().assert_failure(envelope, ValidationKind::PolicyTooWide);
@@ -728,13 +720,11 @@ mod tests {
         let root = NucTokenBuilder::invocation(json!({"bar": 1337}).as_object().cloned().unwrap())
             .subject(subject.clone())
             .command(["nil"])
-            .nonce([1])
             .issued_by_root();
         let last = NucTokenBuilder::delegation([policy::op::eq(".foo", json!(42))])
             .subject(subject)
             .audience(Did::nil([0xaa; 33]))
             .command(["nil"])
-            .nonce([1])
             .issued_by(key);
 
         let envelope = Chainer::default().chain([root, last]);
@@ -799,18 +789,15 @@ mod tests {
         let root = NucTokenBuilder::delegation([policy::op::eq(".args.foo", json!(42))])
             .subject(subject.clone())
             .command(["nil"])
-            .nonce([1])
             .issued_by_root();
         let intermediate = NucTokenBuilder::delegation([policy::op::eq(".args.bar", json!(1337))])
             .subject(subject.clone())
             .command(["nil", "bar"])
-            .nonce([1])
             .issued_by(subject_key);
         let invocation = NucTokenBuilder::invocation(json!({"foo": 42, "bar": 1337}).as_object().cloned().unwrap())
             .subject(subject)
             .audience(Did::nil([0xaa; 33]))
             .command(["nil", "bar", "foo"])
-            .nonce([1])
             .issued_by(secret_key());
 
         let envelope = Chainer::default().chain([root, intermediate, invocation]);

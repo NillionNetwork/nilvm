@@ -21,6 +21,46 @@ impl Policy {
             Self::Connector(policy) => policy.evaluate(nuc_root),
         }
     }
+
+    /// Construct a policy that checks for equality.
+    pub fn equals(selector: Selector, value: serde_json::Value) -> Self {
+        OperatorPolicy { selector, operator: Operator::Equals(value) }.into()
+    }
+
+    /// Construct a policy that checks for inequality.
+    pub fn not_equals(selector: Selector, value: serde_json::Value) -> Self {
+        OperatorPolicy { selector, operator: Operator::NotEquals(value) }.into()
+    }
+
+    /// Construct a policy that checks that a field contains one of the given values.
+    pub fn any_of<I>(selector: Selector, values: I) -> Self
+    where
+        I: Into<Vec<serde_json::Value>>,
+    {
+        OperatorPolicy { selector, operator: Operator::AnyOf(values.into()) }.into()
+    }
+
+    /// Construct a policy that checks that all given policies are valid.
+    pub fn and<I>(policies: I) -> Self
+    where
+        I: Into<Vec<Policy>>,
+    {
+        ConnectorPolicy::And(policies.into()).into()
+    }
+
+    /// Construct a policy that checks that at least one of the given policies are valid.
+    pub fn or<I>(policies: I) -> Self
+    where
+        I: Into<Vec<Policy>>,
+    {
+        ConnectorPolicy::Or(policies.into()).into()
+    }
+
+    /// Construct a policy that checks that the given policy is not valid.
+    #[allow(clippy::should_implement_trait)]
+    pub fn not(policy: Policy) -> Self {
+        ConnectorPolicy::Not(policy.into()).into()
+    }
 }
 
 /// A policy that contains an operator.
@@ -262,33 +302,30 @@ pub(crate) mod op {
     use serde_json::Value;
 
     pub(crate) fn eq(selector: &str, value: Value) -> Policy {
-        OperatorPolicy { selector: selector.parse().expect("invalid selector"), operator: Operator::Equals(value) }
-            .into()
+        let selector = selector.parse().expect("invalid selector");
+        Policy::equals(selector, value)
     }
 
     pub(crate) fn ne(selector: &str, value: Value) -> Policy {
-        OperatorPolicy { selector: selector.parse().expect("invalid selector"), operator: Operator::NotEquals(value) }
-            .into()
+        let selector = selector.parse().expect("invalid selector");
+        Policy::not_equals(selector, value)
     }
 
     pub(crate) fn any_of(selector: &str, values: &[Value]) -> Policy {
-        OperatorPolicy {
-            selector: selector.parse().expect("invalid selector"),
-            operator: Operator::AnyOf(values.to_vec()),
-        }
-        .into()
+        let selector = selector.parse().expect("invalid selector");
+        Policy::any_of(selector, values)
     }
 
     pub(crate) fn and<I: Into<Vec<Policy>>>(policies: I) -> Policy {
-        ConnectorPolicy::And(policies.into()).into()
+        Policy::and(policies)
     }
 
     pub(crate) fn or<I: Into<Vec<Policy>>>(policies: I) -> Policy {
-        ConnectorPolicy::Or(policies.into()).into()
+        Policy::or(policies)
     }
 
     pub(crate) fn not(policy: Policy) -> Policy {
-        ConnectorPolicy::Not(policy.into()).into()
+        Policy::not(policy)
     }
 }
 
