@@ -55,6 +55,9 @@ pub enum TokenTypeRequirements {
     /// Require an invocation for the given DID.
     Invocation(Did),
 
+    /// Require a delegation for the given DID.
+    Delegation(Did),
+
     /// Apply no token type requirements, meaning we're okay with any invocation and/or delegation.
     #[default]
     None,
@@ -102,13 +105,25 @@ impl NucValidator {
     ) -> ValidationResult {
         match &token.body {
             TokenBody::Delegation(_) => {
-                if let TokenTypeRequirements::Invocation(_) = requirements {
-                    return Err(ValidationError::Validation(ValidationKind::NeedInvocation));
-                }
+                match requirements {
+                    TokenTypeRequirements::Invocation(_) => {
+                        return Err(ValidationError::Validation(ValidationKind::NeedInvocation));
+                    }
+                    TokenTypeRequirements::Delegation(did) => {
+                        Self::validate_condition(&token.audience == did, ValidationKind::InvalidAudience)?
+                    }
+                    TokenTypeRequirements::None => (),
+                };
             }
             TokenBody::Invocation(_) => {
-                if let TokenTypeRequirements::Invocation(did) = requirements {
-                    Self::validate_condition(&token.audience == did, ValidationKind::InvalidAudience)?;
+                match requirements {
+                    TokenTypeRequirements::Invocation(did) => {
+                        Self::validate_condition(&token.audience == did, ValidationKind::InvalidAudience)?;
+                    }
+                    TokenTypeRequirements::Delegation(_) => {
+                        return Err(ValidationError::Validation(ValidationKind::NeedDelegation));
+                    }
+                    TokenTypeRequirements::None => (),
                 }
                 let token_json = serde_json::to_value(token).map_err(ValidationError::Serde)?;
                 for proof in proofs {
@@ -318,6 +333,7 @@ pub enum ValidationKind {
     DifferentSubjects,
     InvalidAudience,
     IssuerAudienceMismatch,
+    NeedDelegation,
     NeedInvocation,
     NotBeforeBackwards,
     NotBeforeNotMet,
@@ -339,6 +355,7 @@ impl fmt::Display for ValidationKind {
             DifferentSubjects => "different subjects in chain",
             InvalidAudience => "invalid audience",
             IssuerAudienceMismatch => "issuer/audience mismatch",
+            NeedDelegation => "token must be a delegation",
             NeedInvocation => "token must be an invocation",
             NotBeforeBackwards => "`not before` cannot move backwards",
             NotBeforeNotMet => "`not before` date not met",
@@ -595,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_audience() {
+    fn invalid_audience_invocation() {
         let key = secret_key();
         let expected_did = Did::nil([0xaa; 33]);
         let actual_did = Did::nil([0xbb; 33]);
@@ -607,6 +624,34 @@ mod tests {
             ..Default::default()
         };
         Asserter::new(parameters).assert_failure(envelope, ValidationKind::InvalidAudience);
+    }
+
+    #[test]
+    fn invalid_audience_delegation() {
+        let key = secret_key();
+        let expected_did = Did::nil([0xaa; 33]);
+        let actual_did = Did::nil([0xbb; 33]);
+        let root = delegation(&key).command(["nil"]).issued_by_root();
+        let last = delegation(&key).command(["nil"]).audience(actual_did).issued_by(key);
+        let envelope = Chainer::default().chain([root, last]);
+        let parameters = ValidationParameters {
+            token_requirements: TokenTypeRequirements::Delegation(expected_did),
+            ..Default::default()
+        };
+        Asserter::new(parameters).assert_failure(envelope, ValidationKind::InvalidAudience);
+    }
+
+    #[test]
+    fn need_delegation() {
+        let key = secret_key();
+        let root = delegation(&key).command(["nil"]).issued_by_root();
+        let last = invocation(&key).command(["nil"]).issued_by(key);
+        let envelope = Chainer::default().chain([root, last]);
+        let parameters = ValidationParameters {
+            token_requirements: TokenTypeRequirements::Delegation(Did::nil([0xaa; 33])),
+            ..Default::default()
+        };
+        Asserter::new(parameters).assert_failure(envelope, ValidationKind::NeedDelegation);
     }
 
     #[test]
