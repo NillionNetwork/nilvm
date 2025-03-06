@@ -307,7 +307,7 @@ build-dmg target:
     DMG_OUTPUT="{{CARGO_TARGET_DIR}}/nillion-release/binaries/nillion-sdk-bins-{{target}}.dmg"
 
     echo "Calculating size of $TARGET_DIR..."
-    SIZE_MB=$(du -sm "$TARGET_DIR" | awk '{print $1}')
+    SIZE_MB=$(du -sm "{{CARGO_TARGET_DIR}}" | awk '{print $1}')
     echo "Target size: ${SIZE_MB}MB;"
 
     if command -v hdiutil > /dev/null;
