@@ -3,7 +3,7 @@
 This document describes how to onboard a nilVM node onto one of the networks listed below.
 
 > [!IMPORTANT]
-> Onboarding is currently invite-only and closed to new operators.
+> Onboarding for the below networks is invite-only and currently closed to new operators.
 
 ## Choose a Network
 
