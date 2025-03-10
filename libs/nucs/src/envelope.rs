@@ -210,7 +210,6 @@ impl DecodedNucToken {
         let payload = Base64Display::new(&self.raw.payload, &BASE64_URL_SAFE_NO_PAD);
         let input = format!("{header}.{payload}");
 
-        // SAFETY: we know there's at least 3 dots because we pulled a signed token successfully.
         let verifying_key = VerifyingKey::from_sec1_bytes(&self.token.issuer.public_key)
             .map_err(|_| InvalidSignature::IssuerPublicKey)?;
         let k256_signature =
