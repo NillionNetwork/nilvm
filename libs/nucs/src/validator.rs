@@ -89,7 +89,7 @@ impl NucValidator {
         let proofs = match token.proofs.as_slice() {
             [] => Vec::new(),
             [hash] => Self::sort_proofs(*hash, envelope.proofs())?,
-            _ => return Err(ValidationError::TooManyProofs),
+            _ => return Err(ValidationKind::TooManyProofs.into()),
         };
 
         // Create a sequence [root, ..., token]
@@ -254,11 +254,11 @@ impl NucValidator {
                 [] => break,
                 // Continue with this one
                 [hash] => next_hash = *hash,
-                _ => return Err(ValidationError::TooManyProofs),
+                _ => return Err(ValidationKind::TooManyProofs.into()),
             };
         }
         // Make sure there's nothing left
-        if indexed_proofs.is_empty() { Ok(chain) } else { Err(ValidationError::UnchainedProofs(indexed_proofs.len())) }
+        if indexed_proofs.is_empty() { Ok(chain) } else { Err(ValidationKind::UnchainedProofs.into()) }
     }
 
     fn validate_condition(condition: bool, error_kind: ValidationKind) -> Result<(), ValidationError> {
@@ -333,12 +333,6 @@ pub enum ValidationError {
     #[error(transparent)]
     Signature(#[from] InvalidSignature),
 
-    #[error("up to one `prf` in a token is allowed")]
-    TooManyProofs,
-
-    #[error("{0} proofs are not part of chain")]
-    UnchainedProofs(usize),
-
     #[error("validation failed: {0}")]
     Validation(ValidationKind),
 
@@ -372,6 +366,8 @@ pub enum ValidationKind {
     RootKeySignatureMissing,
     SubjectNotInChain,
     TokenExpired,
+    TooManyProofs,
+    UnchainedProofs,
 }
 
 impl fmt::Display for ValidationKind {
@@ -395,6 +391,8 @@ impl fmt::Display for ValidationKind {
             RootKeySignatureMissing => "root NUC is not signed by root keypair",
             SubjectNotInChain => "subject not in chain",
             TokenExpired => "token is expired",
+            TooManyProofs => "up to one `prf` in a token is allowed",
+            UnchainedProofs => "extra proofs not part of chain provided",
         };
         write!(f, "{text}")
     }
@@ -590,7 +588,7 @@ mod tests {
         let last = base.clone().issued_by_root().build();
         let token = format!("{envelope}/{last}");
         let envelope = NucTokenEnvelope::decode(&token).expect("decode failed");
-        Asserter::default().assert_failure(envelope, ValidationError::UnchainedProofs(1));
+        Asserter::default().assert_failure(envelope, ValidationKind::UnchainedProofs);
     }
 
     #[test]
