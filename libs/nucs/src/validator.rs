@@ -75,7 +75,11 @@ impl NucValidator {
     }
 
     /// Validate a NUC.
-    pub fn validate(&self, envelope: NucTokenEnvelope, parameters: &ValidationParameters) -> ValidationResult {
+    pub fn validate(
+        &self,
+        envelope: NucTokenEnvelope,
+        parameters: &ValidationParameters,
+    ) -> Result<ValidatedNucToken, ValidationError> {
         // Perform this one check before validating signatures to avoid doing contly work
         if envelope.proofs().len().saturating_add(1) > parameters.max_chain_length {
             return Err(ValidationError::Validation(ValidationKind::ChainTooLong));
@@ -93,8 +97,14 @@ impl NucValidator {
         Self::validate_proofs(&proofs, &self.root_keys)?;
         Self::validate_token_chain(token_chain, parameters)?;
         Self::validate_token(token, &proofs, &parameters.token_requirements)?;
-        envelope.validate_signatures()?;
-        Ok(())
+
+        // Signature validation is done at the end as it's arguably the most expensive part of the
+        // validation process.
+        let envelope = envelope.validate_signatures()?;
+        let (token, proofs) = envelope.into_parts();
+        let validated_token =
+            ValidatedNucToken { token: token.token, proofs: proofs.into_iter().map(|proof| proof.token).collect() };
+        Ok(validated_token)
     }
 
     // Validations applied only to the token itself
@@ -253,6 +263,22 @@ impl NucValidator {
     fn validate_condition(condition: bool, error_kind: ValidationKind) -> Result<(), ValidationError> {
         if condition { Ok(()) } else { Err(ValidationError::Validation(error_kind)) }
     }
+}
+
+/// A validated NUC token along with its proofs.
+#[derive(Debug)]
+pub struct ValidatedNucToken {
+    /// The token.
+    pub token: NucToken,
+
+    /// The proofs for the token.
+    ///
+    /// These are sorted in the way the chain was built, starting from `token`'s proof. That is:
+    ///
+    /// ```no_compile
+    /// token proof -> proofs[0] -> ... -> root_token.
+    /// ```
+    pub proofs: Vec<NucToken>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -451,15 +477,15 @@ mod tests {
 
             let expected_failure = expected_failure.into();
             match NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, &self.parameters) {
-                Ok(()) => panic!("validation succeeded"),
+                Ok(_) => panic!("validation succeeded"),
                 Err(e) if e.to_string() == expected_failure.to_string() => (),
                 Err(e) => panic!("unexpected type of failure: {e}"),
             };
         }
 
-        fn assert_success(&self, envelope: NucTokenEnvelope) {
+        fn assert_success(&self, envelope: NucTokenEnvelope) -> ValidatedNucToken {
             Self::log_tokens(&envelope);
-            NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, &self.parameters).expect("validation failed");
+            NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, &self.parameters).expect("validation failed")
         }
     }
 
@@ -869,17 +895,23 @@ mod tests {
             .subject(subject.clone())
             .command(["nil", "bar"])
             .issued_by(subject_key);
+        let invocation_key = secret_key();
         let invocation = NucTokenBuilder::invocation(json!({"foo": 42, "bar": 1337}).as_object().cloned().unwrap())
-            .subject(subject)
+            .subject(subject.clone())
             .audience(rpc_did.clone())
             .command(["nil", "bar", "foo"])
-            .issued_by(secret_key());
+            .issued_by(invocation_key.clone());
 
         let envelope = Chainer::default().chain([root, intermediate, invocation]);
         let parameters = ValidationParameters {
             token_requirements: TokenTypeRequirements::Invocation(rpc_did),
             ..Default::default()
         };
-        Asserter::new(parameters).assert_success(envelope);
+        let ValidatedNucToken { token, proofs } = Asserter::new(parameters).assert_success(envelope);
+        assert_eq!(token.issuer, Did::from_secret_key(&invocation_key));
+
+        // Ensure the order is right
+        assert_eq!(proofs[0].issuer, subject);
+        assert_eq!(proofs[1].issuer, Did::from_secret_key(&ROOT_SECRET_KEYS[0]));
     }
 }
