@@ -211,7 +211,7 @@ impl From<AddFundsError> for Status {
     fn from(e: AddFundsError) -> Self {
         use AddFundsError::*;
         match e {
-            InvalidPayload | HashMismatch | ReusedTransaction | PaymentTooSmall => {
+            InvalidPayload | HashMismatch | ReusedTransaction | PaymentTooSmall | InvalidLeaderPublicKey => {
                 Status::invalid_argument(e.to_string())
             }
             TransactionNotFound | TransactionNotCommitted => Status::unavailable(e.to_string()),

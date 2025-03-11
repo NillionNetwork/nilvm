@@ -4,6 +4,7 @@ package nillion.payments.v1.balance;
 
 import "google/protobuf/timestamp.proto";
 import "nillion/auth/v1/user.proto";
+import "nillion/auth/v1/public_key.proto";
 
 // A response to a request to get the user account's balance.
 message AccountBalanceResponse {
@@ -33,4 +34,7 @@ message AddFundsPayload {
 
   // A 32 byte nonce that is used to add entropy to the hash of this message and to prevent duplicate spending.
   bytes nonce = 2;
+
+  // The public key of the leader node that funds are being sent to.
+  nillion.auth.v1.public_key.PublicKey leader_public_key = 3;
 }

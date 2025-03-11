@@ -17,6 +17,7 @@ use crate::{
     },
     PreprocessingConfigExt,
 };
+use anyhow::anyhow;
 use axum::async_trait;
 use metrics::prelude::*;
 use mpc_vm::requirements::{MPCProgramRequirements, RuntimeRequirementType};
@@ -25,7 +26,7 @@ use nillion_chain_client::{
     tx::{PaymentTransactionRetriever, RetrieveError},
 };
 use node_api::{
-    auth::rust::UserId,
+    auth::rust::{PublicKey, UserId},
     compute::{TECDSA_DKG_PROGRAM_ID, TEDDSA_DKG_PROGRAM_ID},
     payments::rust::{
         AddFundsPayload, AddFundsRequest, AuxiliaryMaterialRequirement, InvokeCompute, InvokeComputeMetadata,
@@ -244,6 +245,9 @@ pub(crate) enum AddFundsError {
     #[error("token dollar conversion: {0}")]
     TokenDollarConversion(#[from] TokenDollarConversionError),
 
+    #[error("invalid leader public key")]
+    InvalidLeaderPublicKey,
+
     #[error("{0}")]
     Internal(String),
 }
@@ -299,6 +303,7 @@ pub(crate) struct PaymentsServiceConfig {
 
 pub(crate) struct DefaultPaymentService {
     signing_key: SigningKey,
+    public_key: PublicKey,
     dependencies: PaymentServiceDependencies,
     config: PaymentsServiceConfig,
 }
@@ -308,8 +313,14 @@ impl DefaultPaymentService {
         signing_key: SigningKey,
         dependencies: PaymentServiceDependencies,
         config: PaymentsServiceConfig,
-    ) -> Self {
-        Self { signing_key, dependencies, config }
+    ) -> anyhow::Result<Self> {
+        let public_key = match &signing_key {
+            SigningKey::Ed25519(key) => PublicKey::Ed25519(*key.public_key().as_bytes()),
+            SigningKey::Secp256k1(key) => PublicKey::Secp256k1(
+                key.public_key().as_bytes().try_into().map_err(|_| anyhow!("invalid length for public key"))?,
+            ),
+        };
+        Ok(Self { signing_key, public_key, dependencies, config })
     }
 
     fn calculate_cost(
@@ -691,6 +702,11 @@ impl PaymentService for DefaultPaymentService {
         let _timer = METRICS.operation_timer("add_funds");
         let AddFundsRequest { payload, tx_hash } = request;
         let decoded_payload = AddFundsPayload::try_decode(&payload).map_err(|_| AddFundsError::InvalidPayload)?;
+        if let Some(public_key) = &decoded_payload.leader_public_key {
+            if public_key != &self.public_key {
+                return Err(AddFundsError::InvalidLeaderPublicKey);
+            }
+        }
         let transaction = self.fetch_transaction(&tx_hash).await?;
         let payload_hash = Sha256::digest(&payload);
         if transaction.nonce.0 != payload_hash.as_slice() {
@@ -903,6 +919,7 @@ mod test {
                 },
                 self.config,
             )
+            .expect("failed to build service")
         }
     }
 
@@ -1212,14 +1229,22 @@ mod test {
     }
 
     #[tokio::test]
-    async fn add_funds() {
+    #[rstest]
+    async fn add_funds(#[values(true, false)] include_public_key: bool) {
         let recipient = UserId::from_bytes(b"mike");
         let amount = TokenAmount::Nil(42);
-        let payload = AddFundsPayload { recipient, nonce: random() };
+        let mut builder = ServiceBuilder::default();
+        let leader_public_key = match include_public_key {
+            true => {
+                let public_key = PublicKey::Secp256k1(builder.signing_key.public_key().as_bytes().try_into().unwrap());
+                Some(public_key)
+            }
+            false => None,
+        };
+        let payload = AddFundsPayload { recipient, nonce: random(), leader_public_key };
         let request = AddFundsRequest { payload: payload.into_proto().encode_to_vec(), tx_hash: "hash".into() };
         let hash = Sha256::digest(&request.payload).to_vec();
 
-        let mut builder = ServiceBuilder::default();
         builder.token_dollar_conversion_service.expect_token_dollar_price().returning(|| Ok(Decimal::from(1)));
         builder
             .tx_retriever
@@ -1239,7 +1264,8 @@ mod test {
 
     #[tokio::test]
     async fn add_funds_invalid_hash() {
-        let payload = AddFundsPayload { recipient: UserId::from_bytes(b"mike"), nonce: random() };
+        let payload =
+            AddFundsPayload { recipient: UserId::from_bytes(b"mike"), nonce: random(), leader_public_key: None };
         let request = AddFundsRequest { payload: payload.into_proto().encode_to_vec(), tx_hash: "hash".into() };
         let hash = b"nope".to_vec();
 
@@ -1252,8 +1278,22 @@ mod test {
     }
 
     #[tokio::test]
+    async fn add_funds_invalid_leader_public_key() {
+        let payload = AddFundsPayload {
+            recipient: UserId::from_bytes(b"mike"),
+            nonce: random(),
+            leader_public_key: Some(PublicKey::Secp256k1([0; 33])),
+        };
+        let request = AddFundsRequest { payload: payload.into_proto().encode_to_vec(), tx_hash: "hash".into() };
+        let builder = ServiceBuilder::default();
+        let err = builder.build().add_funds(request).await.expect_err("adding funds succeeded");
+        assert!(matches!(err, AddFundsError::InvalidLeaderPublicKey), "{err}");
+    }
+
+    #[tokio::test]
     async fn add_funds_small_payment() {
-        let payload = AddFundsPayload { recipient: UserId::from_bytes(b"mike"), nonce: random() };
+        let payload =
+            AddFundsPayload { recipient: UserId::from_bytes(b"mike"), nonce: random(), leader_public_key: None };
         let request = AddFundsRequest { payload: payload.into_proto().encode_to_vec(), tx_hash: "tx_hash".into() };
         let hash = Sha256::digest(&request.payload).to_vec();
 

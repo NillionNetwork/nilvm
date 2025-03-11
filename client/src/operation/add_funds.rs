@@ -102,7 +102,8 @@ impl<'a> AddFundsOperationBuilder<'a> {
         if amount.to_unil() == 0 {
             return Err(BuildError("amount must be > 0".into()));
         }
-        let payload = AddFundsPayload { recipient, nonce: random() }.into_proto().encode_to_vec();
+        let payload =
+            AddFundsPayload { recipient, nonce: random(), leader_public_key: None }.into_proto().encode_to_vec();
         Ok(AddFundsOperation { client, recipient, amount, payload, state: InitialState })
     }
 }

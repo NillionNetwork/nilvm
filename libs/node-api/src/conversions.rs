@@ -37,6 +37,18 @@ impl<T: ConvertProto> ConvertProto for Vec<T> {
     }
 }
 
+impl<T: ConvertProto> ConvertProto for Option<T> {
+    type ProtoType = Option<T::ProtoType>;
+
+    fn into_proto(self) -> Self::ProtoType {
+        self.map(T::into_proto)
+    }
+
+    fn try_from_proto(model: Self::ProtoType) -> Result<Self, ProtoError> {
+        model.map(T::try_from_proto).transpose()
+    }
+}
+
 impl<T> ConvertProto for HashSet<T>
 where
     T: Eq + Hash + PartialEq + ConvertProto,

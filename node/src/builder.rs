@@ -734,7 +734,7 @@ impl NodeBuilder {
                 token_dollar_conversion_service: dependencies.token_dollar_conversion_service.clone(),
             },
             payments_service_config,
-        ));
+        )?);
         dependencies.sqlite_repositories.push(offsets_repository.clone());
         dependencies.sqlite_repositories.push(balances_repository.clone());
         dependencies.sqlite_repositories.push(transfers_repository);
