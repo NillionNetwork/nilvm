@@ -276,8 +276,8 @@ mod tests {
     fn decoding() {
         let key = SecretKey::random(&mut rand::thread_rng());
         let encoded = NucTokenBuilder::delegation(vec![policy::op::eq(".foo", json!(42))])
-            .audience(Did::nil([0xbb; 33]))
-            .subject(Did::nil([0xcc; 33]))
+            .audience(Did::new([0xbb; 33]))
+            .subject(Did::new([0xcc; 33]))
             .command(["nil", "db", "read"])
             .build(&key.into())
             .expect("build failed");
@@ -289,8 +289,8 @@ mod tests {
     fn invalid_signature() {
         let key = SecretKey::random(&mut rand::thread_rng());
         let token = NucTokenBuilder::delegation(vec![policy::op::eq(".foo", json!(42))])
-            .audience(Did::nil([0xbb; 33]))
-            .subject(Did::nil([0xcc; 33]))
+            .audience(Did::new([0xbb; 33]))
+            .subject(Did::new([0xcc; 33]))
             .command(["nil", "db", "read"])
             .build(&key.into())
             .expect("build failed");
@@ -360,8 +360,8 @@ mod tests {
             policy = policy::op::not(policy);
         }
         let encoded = NucTokenBuilder::delegation(vec![policy])
-            .audience(Did::nil([0xbb; 33]))
-            .subject(Did::nil([0xcc; 33]))
+            .audience(Did::new([0xbb; 33]))
+            .subject(Did::new([0xcc; 33]))
             .command(["nil", "db", "read"])
             .build(&key.into())
             .expect("build failed");
