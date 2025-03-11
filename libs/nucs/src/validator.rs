@@ -246,7 +246,8 @@ impl NucValidator {
         // Now start from the head hash and walk backwards until we hit the root.
         let mut next_hash = head_hash;
         let mut chain = Vec::new();
-        while let Some(proof) = indexed_proofs.remove(&next_hash) {
+        loop {
+            let proof = indexed_proofs.remove(&next_hash).ok_or(ValidationKind::MissingProof)?;
             chain.push(proof);
             match proof.proofs.as_slice() {
                 // We hit the root NUC
@@ -359,6 +360,7 @@ pub enum ValidationKind {
     DifferentSubjects,
     InvalidAudience,
     IssuerAudienceMismatch,
+    MissingProof,
     NeedDelegation,
     NeedInvocation,
     NotBeforeBackwards,
@@ -381,6 +383,7 @@ impl fmt::Display for ValidationKind {
             DifferentSubjects => "different subjects in chain",
             InvalidAudience => "invalid audience",
             IssuerAudienceMismatch => "issuer/audience mismatch",
+            MissingProof => "proof is missing",
             NeedDelegation => "token must be a delegation",
             NeedInvocation => "token must be an invocation",
             NotBeforeBackwards => "`not before` cannot move backwards",
@@ -665,6 +668,17 @@ mod tests {
             ..Default::default()
         };
         Asserter::new(parameters).assert_failure(envelope, ValidationKind::InvalidAudience);
+    }
+
+    #[test]
+    fn missing_proof() {
+        let key = secret_key();
+        let base = delegation(&key).command(["nil"]);
+        let token = Chainer::default().chain([base.clone().issued_by_root(), base.clone().issued_by(key)]).encode();
+        // Keep the token without its proof
+        let token = token.split_once("/").unwrap().0;
+        let envelope = NucTokenEnvelope::decode(token).expect("invalid token");
+        Asserter::default().assert_failure(envelope, ValidationKind::MissingProof);
     }
 
     #[test]
