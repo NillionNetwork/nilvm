@@ -205,7 +205,7 @@ impl NucValidator {
         Self::validate_condition(previous.audience == current.issuer, ValidationKind::IssuerAudienceMismatch)?;
         Self::validate_condition(previous.subject == current.subject, ValidationKind::DifferentSubjects)?;
         Self::validate_condition(
-            previous.command.starts_with(&current.command.0),
+            current.command.is_attenuation_of(&previous.command),
             ValidationKind::CommandNotAttenuated,
         )?;
         if let Some((previous_not_before, current_not_before)) = previous.not_before.zip(current.not_before) {
