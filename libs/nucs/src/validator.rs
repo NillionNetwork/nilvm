@@ -1,5 +1,5 @@
 use crate::{
-    envelope::{DecodedNucToken, InvalidSignature, NucTokenEnvelope},
+    envelope::{DecodedNucToken, NucTokenEnvelope},
     policy::{ConnectorPolicy, Operator, OperatorPolicy, Policy},
     token::{Did, NucToken, ProofHash, TokenBody},
 };
@@ -100,7 +100,7 @@ impl NucValidator {
 
         // Signature validation is done at the end as it's arguably the most expensive part of the
         // validation process.
-        let envelope = envelope.validate_signatures()?;
+        let envelope = envelope.validate_signatures().map_err(|_| ValidationKind::InvalidSignatures)?;
         let (token, proofs) = envelope.into_parts();
         let validated_token =
             ValidatedNucToken { token: token.token, proofs: proofs.into_iter().map(|proof| proof.token).collect() };
@@ -330,9 +330,6 @@ impl From<&ConnectorPolicy> for PolicyTreeProperties {
 /// An error during the validation of a token.
 #[derive(Debug, thiserror::Error)]
 pub enum ValidationError {
-    #[error(transparent)]
-    Signature(#[from] InvalidSignature),
-
     #[error("validation failed: {0}")]
     Validation(ValidationKind),
 
@@ -353,6 +350,7 @@ pub enum ValidationKind {
     CommandNotAttenuated,
     DifferentSubjects,
     InvalidAudience,
+    InvalidSignatures,
     IssuerAudienceMismatch,
     MissingProof,
     NeedDelegation,
@@ -378,6 +376,7 @@ impl fmt::Display for ValidationKind {
             CommandNotAttenuated => "command is not an attenuation",
             DifferentSubjects => "different subjects in chain",
             InvalidAudience => "invalid audience",
+            InvalidSignatures => "invalid signature",
             IssuerAudienceMismatch => "issuer/audience mismatch",
             MissingProof => "proof is missing",
             NeedDelegation => "token must be a delegation",
@@ -402,7 +401,8 @@ impl fmt::Display for ValidationKind {
 mod tests {
     use super::*;
     use crate::{
-        builder::NucTokenBuilder,
+        builder::{to_base64, NucTokenBuilder},
+        envelope::from_base64,
         policy::{self},
         token::Did,
     };
@@ -651,6 +651,23 @@ mod tests {
             ..Default::default()
         };
         Asserter::new(parameters).assert_failure(envelope, ValidationKind::InvalidAudience);
+    }
+
+    #[test]
+    fn invalid_signature() {
+        let key = secret_key();
+        let root = delegation(&key).command(["nil"]).issued_by_root();
+        let token = Chainer::default().chain([root]).encode();
+        let (base, signature) = token.rsplit_once(".").unwrap();
+
+        // Change every byte in the signature and make sure validation fails every time.
+        let signature = from_base64(signature).unwrap();
+        let mut signature = signature.clone();
+        signature[0] ^= 1;
+        let signature = to_base64(&signature);
+        let token = format!("{base}.{signature}");
+        let envelope = NucTokenEnvelope::decode(&token).expect("decode failed");
+        Asserter::default().assert_failure(envelope, ValidationKind::InvalidSignatures);
     }
 
     #[test]
