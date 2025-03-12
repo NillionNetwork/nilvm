@@ -708,7 +708,7 @@ mod tests {
 
     #[test]
     fn not_before_backwards() {
-        let now = DateTime::from_timestamp(10, 0).unwrap();
+        let now = DateTime::from_timestamp(0, 0).unwrap();
         let root_not_before = DateTime::from_timestamp(5, 0).unwrap();
         let last_not_before = DateTime::from_timestamp(3, 0).unwrap();
 
@@ -751,7 +751,7 @@ mod tests {
 
     #[test]
     fn root_policy_not_met() {
-        let key = SecretKey::random(&mut rand::thread_rng());
+        let key = secret_key();
         let subject = Did::from_secret_key(&key);
         let root = NucTokenBuilder::delegation([policy::op::eq(".foo", json!(42))])
             .subject(subject.clone())
@@ -769,7 +769,7 @@ mod tests {
 
     #[test]
     fn last_policy_not_met() {
-        let subject_key = SecretKey::random(&mut rand::thread_rng());
+        let subject_key = secret_key();
         let subject = Did::from_secret_key(&subject_key);
         let root = NucTokenBuilder::delegation([]).subject(subject.clone()).command(["nil"]).issued_by_root();
         let intermediate = NucTokenBuilder::delegation([policy::op::eq(".foo", json!(42))])
@@ -848,7 +848,7 @@ mod tests {
         let key = secret_key();
         let base = delegation(&key).command(["nil"]);
         let root = base.clone().issued_by(key.clone());
-        let last = base.audience(Did::new([0xaa; 33])).issued_by(key);
+        let last = base.issued_by(key);
 
         let envelope = Chainer::default().chain([root, last]);
         Asserter::default().assert_failure(envelope, ValidationKind::RootKeySignatureMissing);
@@ -860,7 +860,7 @@ mod tests {
         let key = secret_key();
         let base = delegation(&subject_key).command(["nil"]);
         let root = base.clone().issued_by_root();
-        let last = base.audience(Did::new([0xaa; 33])).issued_by(key);
+        let last = base.issued_by(key);
 
         let envelope = Chainer::default().chain([root, last]);
         Asserter::default().assert_failure(envelope, ValidationKind::SubjectNotInChain);
