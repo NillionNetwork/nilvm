@@ -91,7 +91,7 @@ be supplied to the node container to ensure authentication against MinIO is poss
 ## Launch Your Node
 
 Pull the network-compatible version of the node Docker image from Nillion's AWS ECR
-[repository](public.ecr.aws/f8o3t8b6/vkv1h9vlo); remember to append `-amd64` to the version number
+[repository](public.ecr.aws/k5d9x2g2/nilvm); remember to append `-amd64` to the version number
 tag when pulling, e.g.:
 
 > [!IMPORTANT]
@@ -99,7 +99,7 @@ tag when pulling, e.g.:
 > the networks list above.
 
 ```bash
-docker pull public.ecr.aws/f8o3t8b6/vkv1h9vlo:${VERSION}-amd64
+docker pull public.ecr.aws/k5d9x2g2/nilvm:${VERSION}-amd64
 ```
 
 Then, launch the node on your infrastructure using the certificates, Docker image, node
@@ -110,7 +110,7 @@ _This command is not meant to be the exact Docker `run`  command to run on your 
 illustrative for the environment variable and ECR URL._
 
 ```bash
-docker run -e CONFIG_PATH=/etc/nillion/node.yaml public.ecr.aws/f8o3t8b6/vkv1h9vlo:${VERSION}-amd64
+docker run -e CONFIG_PATH=/etc/nillion/node.yaml public.ecr.aws/k5d9x2g2/nilvm:${VERSION}-amd64
 ```
 
 All nodes present in `cluster.members` must be available before network functions can be validated.
