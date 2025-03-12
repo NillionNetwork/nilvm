@@ -89,7 +89,7 @@ impl NucValidator {
         let proofs = match token.proofs.as_slice() {
             [] => Vec::new(),
             [hash] => Self::sort_proofs(*hash, envelope.proofs())?,
-            _ => return Err(ValidationError::TooManyProofs),
+            _ => return Err(ValidationKind::TooManyProofs.into()),
         };
 
         // Create a sequence [root, ..., token]
@@ -246,18 +246,19 @@ impl NucValidator {
         // Now start from the head hash and walk backwards until we hit the root.
         let mut next_hash = head_hash;
         let mut chain = Vec::new();
-        while let Some(proof) = indexed_proofs.remove(&next_hash) {
+        loop {
+            let proof = indexed_proofs.remove(&next_hash).ok_or(ValidationKind::MissingProof)?;
             chain.push(proof);
             match proof.proofs.as_slice() {
                 // We hit the root NUC
                 [] => break,
                 // Continue with this one
                 [hash] => next_hash = *hash,
-                _ => return Err(ValidationError::TooManyProofs),
+                _ => return Err(ValidationKind::TooManyProofs.into()),
             };
         }
         // Make sure there's nothing left
-        if indexed_proofs.is_empty() { Ok(chain) } else { Err(ValidationError::UnchainedProofs(indexed_proofs.len())) }
+        if indexed_proofs.is_empty() { Ok(chain) } else { Err(ValidationKind::UnchainedProofs.into()) }
     }
 
     fn validate_condition(condition: bool, error_kind: ValidationKind) -> Result<(), ValidationError> {
@@ -332,12 +333,6 @@ pub enum ValidationError {
     #[error(transparent)]
     Signature(#[from] InvalidSignature),
 
-    #[error("up to one `prf` in a token is allowed")]
-    TooManyProofs,
-
-    #[error("{0} proofs are not part of chain")]
-    UnchainedProofs(usize),
-
     #[error("validation failed: {0}")]
     Validation(ValidationKind),
 
@@ -359,6 +354,7 @@ pub enum ValidationKind {
     DifferentSubjects,
     InvalidAudience,
     IssuerAudienceMismatch,
+    MissingProof,
     NeedDelegation,
     NeedInvocation,
     NotBeforeBackwards,
@@ -370,6 +366,8 @@ pub enum ValidationKind {
     RootKeySignatureMissing,
     SubjectNotInChain,
     TokenExpired,
+    TooManyProofs,
+    UnchainedProofs,
 }
 
 impl fmt::Display for ValidationKind {
@@ -381,6 +379,7 @@ impl fmt::Display for ValidationKind {
             DifferentSubjects => "different subjects in chain",
             InvalidAudience => "invalid audience",
             IssuerAudienceMismatch => "issuer/audience mismatch",
+            MissingProof => "proof is missing",
             NeedDelegation => "token must be a delegation",
             NeedInvocation => "token must be an invocation",
             NotBeforeBackwards => "`not before` cannot move backwards",
@@ -392,6 +391,8 @@ impl fmt::Display for ValidationKind {
             RootKeySignatureMissing => "root NUC is not signed by root keypair",
             SubjectNotInChain => "subject not in chain",
             TokenExpired => "token is expired",
+            TooManyProofs => "up to one `prf` in a token is allowed",
+            UnchainedProofs => "extra proofs not part of chain provided",
         };
         write!(f, "{text}")
     }
@@ -587,7 +588,7 @@ mod tests {
         let last = base.clone().issued_by_root().build();
         let token = format!("{envelope}/{last}");
         let envelope = NucTokenEnvelope::decode(&token).expect("decode failed");
-        Asserter::default().assert_failure(envelope, ValidationError::UnchainedProofs(1));
+        Asserter::default().assert_failure(envelope, ValidationKind::UnchainedProofs);
     }
 
     #[test]
@@ -665,6 +666,17 @@ mod tests {
             ..Default::default()
         };
         Asserter::new(parameters).assert_failure(envelope, ValidationKind::InvalidAudience);
+    }
+
+    #[test]
+    fn missing_proof() {
+        let key = secret_key();
+        let base = delegation(&key).command(["nil"]);
+        let token = Chainer::default().chain([base.clone().issued_by_root(), base.clone().issued_by(key)]).encode();
+        // Keep the token without its proof
+        let token = token.split_once("/").unwrap().0;
+        let envelope = NucTokenEnvelope::decode(token).expect("invalid token");
+        Asserter::default().assert_failure(envelope, ValidationKind::MissingProof);
     }
 
     #[test]

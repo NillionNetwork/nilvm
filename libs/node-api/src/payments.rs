@@ -10,7 +10,7 @@ pub mod proto {
 pub mod rust {
     use super::proto;
     use crate::{
-        auth::rust::UserId,
+        auth::rust::{PublicKey, UserId},
         preprocessing::rust::{AuxiliaryMaterial, PreprocessingElement},
         ConvertProto, ProtoError, TransparentProto, TryIntoRust,
     };
@@ -523,19 +523,27 @@ pub mod rust {
 
         /// A nonce that is used to add entropy to the hash of this message and to prevent duplicate spending.
         pub nonce: [u8; 32],
+
+        /// The leader's public key.
+        pub leader_public_key: Option<PublicKey>,
     }
 
     impl ConvertProto for AddFundsPayload {
         type ProtoType = proto::balance::AddFundsPayload;
 
         fn into_proto(self) -> Self::ProtoType {
-            Self::ProtoType { recipient: Some(self.recipient.into_proto()), nonce: self.nonce.to_vec() }
+            Self::ProtoType {
+                recipient: Some(self.recipient.into_proto()),
+                nonce: self.nonce.to_vec(),
+                leader_public_key: self.leader_public_key.into_proto(),
+            }
         }
 
         fn try_from_proto(model: Self::ProtoType) -> Result<Self, ProtoError> {
             let recipient = model.recipient.ok_or(ProtoError("'recipient' not set"))?.try_into_rust()?;
             let nonce = model.nonce.try_into().map_err(|_| ProtoError("'nonce' must be 32 bytes long"))?;
-            Ok(Self { recipient, nonce })
+            let leader_public_key = model.leader_public_key.try_into_rust()?;
+            Ok(Self { recipient, nonce, leader_public_key })
         }
     }
 
