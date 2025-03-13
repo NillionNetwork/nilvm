@@ -14,4 +14,4 @@ log = ["env_logger"]
 tracing = [ "tracing-subscriber" ]
 
 [dev-dependencies]
-log = "0.4.22"
+log = "0.4.26"
