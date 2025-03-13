@@ -132,15 +132,17 @@ impl FromStr for ProofHash {
 pub struct Command(pub Vec<String>);
 
 impl Command {
-    pub fn starts_with<T>(&self, other: &[T]) -> bool
-    where
-        T: AsRef<str>,
-    {
-        if self.0.len() > other.len() {
+    /// Check if this command is an attenuation of another one.
+    pub fn is_attenuation_of(&self, other: &Command) -> bool {
+        if self.0.len() < other.0.len() {
+            // We can't be an attenuation if we're shorter.
             false
         } else {
-            let prefix = other.iter().map(AsRef::as_ref).take(self.0.len());
-            self.0.iter().eq(prefix)
+            // Take the first `other.len()` segments from ourselves.
+            let prefix = self.0.iter().take(other.0.len());
+
+            // Ensure the other one starts with those segments.
+            other.0.iter().eq(prefix)
         }
     }
 }
@@ -408,16 +410,16 @@ mod tests {
 
     #[rstest]
     #[case::empty_same(&[], &[], true)]
-    #[case::empty_different(&[], &["nil"], true)]
+    #[case::empty_different(&["nil"], &[], true)]
     #[case::same(&["nil"], &["nil"], true)]
-    #[case::prefix_match(&["nil"], &["nil", "bar"], true)]
-    #[case::longer(&["nil", "bar"], &["nil"], false)]
-    #[case::different_prefix(&["nil", "bar"], &["nil", "foo"], false)]
+    #[case::prefix_match(&["nil", "bar"], &["nil"], true)]
+    #[case::longer(&["nil"], &["nil", "bar"], false)]
+    #[case::different_prefix(&["nil", "foo"], &["nil", "bar"], false)]
     #[case::different_longer_prefix(&["nil", "bar", "a"], &["nil", "bar", "b"], false)]
     #[case::different(&["nil"], &["bar"], false)]
-    fn command_starts_with(#[case] left: &[&str], #[case] right: &[&str], #[case] expected: bool) {
+    fn command_is_attenuation(#[case] left: &[&str], #[case] right: &[&str], #[case] expected: bool) {
         let left = Command::from(left);
         let right = Command::from(right);
-        assert_eq!(left.starts_with(&right.0), expected);
+        assert_eq!(left.is_attenuation_of(&right), expected);
     }
 }

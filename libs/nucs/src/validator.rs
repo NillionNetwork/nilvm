@@ -1,5 +1,5 @@
 use crate::{
-    envelope::{DecodedNucToken, InvalidSignature, NucTokenEnvelope},
+    envelope::{DecodedNucToken, NucTokenEnvelope},
     policy::{ConnectorPolicy, Operator, OperatorPolicy, Policy},
     token::{Did, NucToken, ProofHash, TokenBody},
 };
@@ -100,7 +100,7 @@ impl NucValidator {
 
         // Signature validation is done at the end as it's arguably the most expensive part of the
         // validation process.
-        let envelope = envelope.validate_signatures()?;
+        let envelope = envelope.validate_signatures().map_err(|_| ValidationKind::InvalidSignatures)?;
         let (token, proofs) = envelope.into_parts();
         let validated_token =
             ValidatedNucToken { token: token.token, proofs: proofs.into_iter().map(|proof| proof.token).collect() };
@@ -205,7 +205,7 @@ impl NucValidator {
         Self::validate_condition(previous.audience == current.issuer, ValidationKind::IssuerAudienceMismatch)?;
         Self::validate_condition(previous.subject == current.subject, ValidationKind::DifferentSubjects)?;
         Self::validate_condition(
-            previous.command.starts_with(&current.command.0),
+            current.command.is_attenuation_of(&previous.command),
             ValidationKind::CommandNotAttenuated,
         )?;
         if let Some((previous_not_before, current_not_before)) = previous.not_before.zip(current.not_before) {
@@ -330,9 +330,6 @@ impl From<&ConnectorPolicy> for PolicyTreeProperties {
 /// An error during the validation of a token.
 #[derive(Debug, thiserror::Error)]
 pub enum ValidationError {
-    #[error(transparent)]
-    Signature(#[from] InvalidSignature),
-
     #[error("validation failed: {0}")]
     Validation(ValidationKind),
 
@@ -353,6 +350,7 @@ pub enum ValidationKind {
     CommandNotAttenuated,
     DifferentSubjects,
     InvalidAudience,
+    InvalidSignatures,
     IssuerAudienceMismatch,
     MissingProof,
     NeedDelegation,
@@ -378,6 +376,7 @@ impl fmt::Display for ValidationKind {
             CommandNotAttenuated => "command is not an attenuation",
             DifferentSubjects => "different subjects in chain",
             InvalidAudience => "invalid audience",
+            InvalidSignatures => "invalid signature",
             IssuerAudienceMismatch => "issuer/audience mismatch",
             MissingProof => "proof is missing",
             NeedDelegation => "token must be a delegation",
@@ -402,7 +401,8 @@ impl fmt::Display for ValidationKind {
 mod tests {
     use super::*;
     use crate::{
-        builder::NucTokenBuilder,
+        builder::{to_base64, NucTokenBuilder},
+        envelope::from_base64,
         policy::{self},
         token::Did,
     };
@@ -654,6 +654,23 @@ mod tests {
     }
 
     #[test]
+    fn invalid_signature() {
+        let key = secret_key();
+        let root = delegation(&key).command(["nil"]).issued_by_root();
+        let token = Chainer::default().chain([root]).encode();
+        let (base, signature) = token.rsplit_once(".").unwrap();
+
+        // Change every byte in the signature and make sure validation fails every time.
+        let signature = from_base64(signature).unwrap();
+        let mut signature = signature.clone();
+        signature[0] ^= 1;
+        let signature = to_base64(&signature);
+        let token = format!("{base}.{signature}");
+        let envelope = NucTokenEnvelope::decode(&token).expect("decode failed");
+        Asserter::default().assert_failure(envelope, ValidationKind::InvalidSignatures);
+    }
+
+    #[test]
     fn invalid_audience_delegation() {
         let key = secret_key();
         let expected_did = Did::new([0xaa; 33]);
@@ -708,7 +725,7 @@ mod tests {
 
     #[test]
     fn not_before_backwards() {
-        let now = DateTime::from_timestamp(10, 0).unwrap();
+        let now = DateTime::from_timestamp(0, 0).unwrap();
         let root_not_before = DateTime::from_timestamp(5, 0).unwrap();
         let last_not_before = DateTime::from_timestamp(3, 0).unwrap();
 
@@ -751,7 +768,7 @@ mod tests {
 
     #[test]
     fn root_policy_not_met() {
-        let key = SecretKey::random(&mut rand::thread_rng());
+        let key = secret_key();
         let subject = Did::from_secret_key(&key);
         let root = NucTokenBuilder::delegation([policy::op::eq(".foo", json!(42))])
             .subject(subject.clone())
@@ -769,7 +786,7 @@ mod tests {
 
     #[test]
     fn last_policy_not_met() {
-        let subject_key = SecretKey::random(&mut rand::thread_rng());
+        let subject_key = secret_key();
         let subject = Did::from_secret_key(&subject_key);
         let root = NucTokenBuilder::delegation([]).subject(subject.clone()).command(["nil"]).issued_by_root();
         let intermediate = NucTokenBuilder::delegation([policy::op::eq(".foo", json!(42))])
@@ -848,7 +865,7 @@ mod tests {
         let key = secret_key();
         let base = delegation(&key).command(["nil"]);
         let root = base.clone().issued_by(key.clone());
-        let last = base.audience(Did::new([0xaa; 33])).issued_by(key);
+        let last = base.issued_by(key);
 
         let envelope = Chainer::default().chain([root, last]);
         Asserter::default().assert_failure(envelope, ValidationKind::RootKeySignatureMissing);
@@ -860,7 +877,7 @@ mod tests {
         let key = secret_key();
         let base = delegation(&subject_key).command(["nil"]);
         let root = base.clone().issued_by_root();
-        let last = base.audience(Did::new([0xaa; 33])).issued_by(key);
+        let last = base.issued_by(key);
 
         let envelope = Chainer::default().chain([root, last]);
         Asserter::default().assert_failure(envelope, ValidationKind::SubjectNotInChain);
