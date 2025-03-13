@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 rstest = "0.21"
-tempfile = "3.10"
+tempfile = "3.18"
 tera = "1.20"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 xshell = "0.2"
