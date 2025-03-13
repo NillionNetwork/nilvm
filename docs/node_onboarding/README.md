@@ -115,6 +115,32 @@ docker run -e CONFIG_PATH=/etc/nillion/node.yaml public.ecr.aws/f8o3t8b6/vkv1h9v
 
 All nodes present in `cluster.members` must be available before network functions can be validated.
 
+## Monitor Your Node
+
+Set alerts on the following metrics and Prometheus expressions; it is recommended to use a `5m` duration for alerts.
+
+### Error Rate Metrics
+
+| Metric                            | Prometheus Expression                                                            | Description                             |
+| --------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------- |
+| High blob operation error rate    | `sum by (operation) (increase(blob_operation_errors_total[5m])) > 0`             | Blob operation error rate is above 0    |
+| High error rate                   | `sum(rate(grpc_request_duration_seconds_count{status_code="Internal"}[1m])) > 0` | gRPC error rate is above 0              |
+| High token price query error rate | `sum by (env) (increase(token_price_errors_total[5m])) > 0`                      | Token price query error rate is above 0 |
+
+### Latency Metrics
+
+| Metric                         | Prometheus Expression                                                                                    | Description                                           |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| High blob latency              | `histogram_quantile(0.99, sum(rate(blob_operation_duration_seconds_bucket[5m])) by (operation, le)) > 1` | 99th percentile blob operation latency is above 1s    |
+| High latency                   | `histogram_quantile(0.99, sum(rate(grpc_request_duration_seconds_bucket[1m])) by (le)) > 5`              | 99th percentile gRPC latency is above 5s              |
+| High token price query latency | `histogram_quantile(0.99, sum(rate(token_price_duration_seconds_bucket[5m])) by (le)) > 5`               | 99th percentile token price query latency is above 5s |
+
+### Other Metrics
+
+| Metric                     | Prometheus Expression                                                                                                   | Description                                   |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Low preprocessing elements | `max(preprocessing_offsets{offset="latest"} - on(element) preprocessing_offsets{offset="committed"}) by (element) < 32` | Amount of preprocessing elements is below 32  |
+
 [nillion-sdk]: https://docs.nillion.com/nillion-sdk-and-tools
 [node-yaml-mainnet-1]: ./networks/nilvm-mainnet-1.yaml
 [node-yaml-testnet-1]: ./networks/nilvm-testnet-1.yaml
