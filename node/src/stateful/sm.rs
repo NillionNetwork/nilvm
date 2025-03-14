@@ -264,7 +264,15 @@ where
     async fn run(self, init_receiver: Receiver<InitMessage<I>>, channels: Arc<dyn ClusterChannels>, io: I) {
         let started_at = Instant::now();
         let result = self.do_run(init_receiver, channels, &io).await;
-        info!("State machine execution took {:?}", started_at.elapsed());
+        let elapsed = started_at.elapsed();
+        match &result {
+            Ok(_) => {
+                info!("State machine finished successfully after {elapsed:?}");
+            }
+            Err(e) => {
+                error!("State machine execution failed after {elapsed:?}: {e:#}");
+            }
+        };
         io.handle_final_result(result).await;
     }
 
@@ -280,7 +288,8 @@ where
         for party in &parties {
             let party_id = &party.party_id;
             info!("Opening stream to {party_id}");
-            futs.push(io.open_party_stream(channels.deref(), &party.party_id));
+            let future = io.open_party_stream(channels.deref(), &party.party_id);
+            futs.push(PartyFuture { party: party_id.clone(), future });
         }
         // ensure opening the channel succeeded
         let streams = self.await_requests_with_timeout(futs).await.context("failed to establish channel to peer")?;
@@ -311,13 +320,25 @@ where
         }
     }
 
-    async fn await_requests_with_timeout<F, T, E>(&self, futs: Vec<F>) -> anyhow::Result<Vec<T>>
+    async fn await_requests_with_timeout<F, T, E>(&self, futs: Vec<PartyFuture<F>>) -> anyhow::Result<Vec<T>>
     where
         F: Future<Output = Result<T, E>>,
         E: std::error::Error + Send + Sync + 'static,
     {
+        let (parties, futs): (Vec<_>, Vec<_>) = futs.into_iter().map(|p| (p.party, p.future)).unzip();
         match timeout(self.timeout, join_all(futs)).await {
-            Ok(futs) => Ok(futs.into_iter().collect::<Result<_, _>>()?),
+            Ok(results) => {
+                let mut outputs = Vec::new();
+                for (party, result) in parties.into_iter().zip(results) {
+                    match result {
+                        Ok(value) => outputs.push(value),
+                        Err(e) => {
+                            bail!("failed to send request to {party}: {e}");
+                        }
+                    };
+                }
+                Ok(outputs)
+            }
             Err(_) => bail!("timed out waiting for request to be handled"),
         }
     }
@@ -383,7 +404,7 @@ where
         messages: Vec<RecipientMessage<PartyId, I::StateMachineMessage>>,
     ) -> anyhow::Result<(
         Vec<I::StateMachineMessage>,
-        Vec<impl Future<Output = Result<(), SendError<I::OutputMessage>>> + 'a>,
+        Vec<PartyFuture<impl Future<Output = Result<(), SendError<I::OutputMessage>>> + 'a>>,
     )> {
         // accumulate all of our own messages and the ones to be sent for later use.
         let mut self_messages = Vec::new();
@@ -412,7 +433,8 @@ where
                         }
                     };
                     let message = I::StateMachineMessage::encoded_bytes_as_output_message(encoded_message);
-                    futs.push(channel.send(message));
+                    let future = channel.send(message);
+                    futs.push(PartyFuture { party, future });
                 }
             }
         }
@@ -466,6 +488,11 @@ where
         let state = State { vm, input_stream, output_streams, metadata };
         Ok((state, vm_yield))
     }
+}
+
+struct PartyFuture<F> {
+    party: PartyId,
+    future: F,
 }
 
 enum HandleOutput<I>
