@@ -262,9 +262,19 @@ where
     }
 
     async fn run(self, init_receiver: Receiver<InitMessage<I>>, channels: Arc<dyn ClusterChannels>, io: I) {
+        let name = self.name;
         let started_at = Instant::now();
         let result = self.do_run(init_receiver, channels, &io).await;
-        info!("State machine execution took {:?}", started_at.elapsed());
+        let elapsed = started_at.elapsed();
+        match &result {
+            Ok(_) => {
+                info!("State machine finished successfully after {elapsed:?}");
+            }
+            Err(e) => {
+                METRICS.inc_failures(name);
+                error!("State machine execution failed after {elapsed:?}: {e:#}");
+            }
+        };
         io.handle_final_result(result).await;
     }
 
@@ -280,7 +290,8 @@ where
         for party in &parties {
             let party_id = &party.party_id;
             info!("Opening stream to {party_id}");
-            futs.push(io.open_party_stream(channels.deref(), &party.party_id));
+            let future = io.open_party_stream(channels.deref(), &party.party_id);
+            futs.push(PartyFuture { party: party_id.clone(), future });
         }
         // ensure opening the channel succeeded
         let streams = self.await_requests_with_timeout(futs).await.context("failed to establish channel to peer")?;
@@ -311,13 +322,25 @@ where
         }
     }
 
-    async fn await_requests_with_timeout<F, T, E>(&self, futs: Vec<F>) -> anyhow::Result<Vec<T>>
+    async fn await_requests_with_timeout<F, T, E>(&self, futs: Vec<PartyFuture<F>>) -> anyhow::Result<Vec<T>>
     where
         F: Future<Output = Result<T, E>>,
         E: std::error::Error + Send + Sync + 'static,
     {
+        let (parties, futs): (Vec<_>, Vec<_>) = futs.into_iter().map(|p| (p.party, p.future)).unzip();
         match timeout(self.timeout, join_all(futs)).await {
-            Ok(futs) => Ok(futs.into_iter().collect::<Result<_, _>>()?),
+            Ok(results) => {
+                let mut outputs = Vec::new();
+                for (party, result) in parties.into_iter().zip(results) {
+                    match result {
+                        Ok(value) => outputs.push(value),
+                        Err(e) => {
+                            bail!("failed to send request to {party}: {e}");
+                        }
+                    };
+                }
+                Ok(outputs)
+            }
             Err(_) => bail!("timed out waiting for request to be handled"),
         }
     }
@@ -383,7 +406,7 @@ where
         messages: Vec<RecipientMessage<PartyId, I::StateMachineMessage>>,
     ) -> anyhow::Result<(
         Vec<I::StateMachineMessage>,
-        Vec<impl Future<Output = Result<(), SendError<I::OutputMessage>>> + 'a>,
+        Vec<PartyFuture<impl Future<Output = Result<(), SendError<I::OutputMessage>>> + 'a>>,
     )> {
         // accumulate all of our own messages and the ones to be sent for later use.
         let mut self_messages = Vec::new();
@@ -412,7 +435,8 @@ where
                         }
                     };
                     let message = I::StateMachineMessage::encoded_bytes_as_output_message(encoded_message);
-                    futs.push(channel.send(message));
+                    let future = channel.send(message);
+                    futs.push(PartyFuture { party, future });
                 }
             }
         }
@@ -468,6 +492,11 @@ where
     }
 }
 
+struct PartyFuture<F> {
+    party: PartyId,
+    future: F,
+}
+
 enum HandleOutput<I>
 where
     I: StateMachineIo,
@@ -488,6 +517,7 @@ where
 
 struct Metrics {
     messages: MaybeMetric<Counter>,
+    failures: MaybeMetric<Counter>,
     active_state_machines: MaybeMetric<Gauge>,
     execution_duration: MaybeMetric<Histogram<Duration>>,
 }
@@ -500,6 +530,9 @@ impl Default for Metrics {
             &["state_machine", "direction"],
         )
         .into();
+        let failures =
+            Counter::new("state_machine_failures_total", "Number of state machines that failed", &["state_machine"])
+                .into();
         let active_state_machines =
             Gauge::new("active_state_machines_total", "Number of active state machines", &["state_machine"]).into();
         let execution_duration = Histogram::new(
@@ -509,13 +542,17 @@ impl Default for Metrics {
             TimingBuckets::sub_minute(),
         )
         .into();
-        Self { messages, active_state_machines, execution_duration }
+        Self { messages, active_state_machines, execution_duration, failures }
     }
 }
 
 impl Metrics {
     fn inc_messages(&self, state_machine: &str, direction: &str, count: u64) {
         self.messages.with_labels([("state_machine", state_machine), ("direction", direction)]).inc_by(count);
+    }
+
+    fn inc_failures(&self, state_machine: &str) {
+        self.failures.with_labels([("state_machine", state_machine)]).inc();
     }
 
     fn active_state_machines_guard(&self, state_machine: &str) -> ScopedGauge<impl SingleGaugeMetric> {
