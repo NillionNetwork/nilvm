@@ -262,6 +262,7 @@ where
     }
 
     async fn run(self, init_receiver: Receiver<InitMessage<I>>, channels: Arc<dyn ClusterChannels>, io: I) {
+        let name = self.name;
         let started_at = Instant::now();
         let result = self.do_run(init_receiver, channels, &io).await;
         let elapsed = started_at.elapsed();
@@ -270,6 +271,7 @@ where
                 info!("State machine finished successfully after {elapsed:?}");
             }
             Err(e) => {
+                METRICS.inc_failures(name);
                 error!("State machine execution failed after {elapsed:?}: {e:#}");
             }
         };
@@ -515,6 +517,7 @@ where
 
 struct Metrics {
     messages: MaybeMetric<Counter>,
+    failures: MaybeMetric<Counter>,
     active_state_machines: MaybeMetric<Gauge>,
     execution_duration: MaybeMetric<Histogram<Duration>>,
 }
@@ -527,6 +530,9 @@ impl Default for Metrics {
             &["state_machine", "direction"],
         )
         .into();
+        let failures =
+            Counter::new("state_machine_failures_total", "Number of state machines that failed", &["state_machine"])
+                .into();
         let active_state_machines =
             Gauge::new("active_state_machines_total", "Number of active state machines", &["state_machine"]).into();
         let execution_duration = Histogram::new(
@@ -536,13 +542,17 @@ impl Default for Metrics {
             TimingBuckets::sub_minute(),
         )
         .into();
-        Self { messages, active_state_machines, execution_duration }
+        Self { messages, active_state_machines, execution_duration, failures }
     }
 }
 
 impl Metrics {
     fn inc_messages(&self, state_machine: &str, direction: &str, count: u64) {
         self.messages.with_labels([("state_machine", state_machine), ("direction", direction)]).inc_by(count);
+    }
+
+    fn inc_failures(&self, state_machine: &str) {
+        self.failures.with_labels([("state_machine", state_machine)]).inc();
     }
 
     fn active_state_machines_guard(&self, state_machine: &str) -> ScopedGauge<impl SingleGaugeMetric> {
