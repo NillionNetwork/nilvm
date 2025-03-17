@@ -15,6 +15,7 @@ tempfile = "3.10.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 xshell = "0.2"
 serde_yaml = "0.9"
+serde_json = "1.0"
 tracing = "0.1"
 
 basic-types = { path = "../../../libs/basic-types" }

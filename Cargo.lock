@@ -3836,6 +3836,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde-files-utils",
+ "serde_json",
  "serde_yaml 0.9.34+deprecated",
  "tempfile",
  "tokio",
