@@ -35,5 +35,8 @@ pub(crate) async fn upload_programs(nodes: &Nodes) -> anyhow::Result<UploadedPro
     info!("Uploaded {} programs in {:?}", PROGRAMS.metadata.len(), elapsed);
 
     let namespace = UploadedPrograms(ids);
+
+    info!("Uploaded programs JSON:\n{}", serde_json::to_string(&namespace)?);
+
     Ok(namespace)
 }

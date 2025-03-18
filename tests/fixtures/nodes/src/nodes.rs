@@ -65,6 +65,7 @@ extern "C" fn cleanup_at_exit() {
 }
 
 /// The set of pre-uploaded test programs.
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UploadedPrograms(pub(crate) HashMap<String, String>);
 
 impl UploadedPrograms {
@@ -508,17 +509,25 @@ pub fn nodes(_tracing: &Tracing) -> Nodes {
     nodes.uploaded_programs = thread::scope(|s| {
         let namespace = s
             .spawn(|| {
-                PAYMENTS_RUNTIME
-                    .block_on(async {
-                        nodes.wait_network_ready().await.expect("network did not become ready in time");
-                        upload_programs(&nodes).await
-                    })
-                    .expect("uploading programs failed")
+                PAYMENTS_RUNTIME.block_on(async {
+                    // nodes fixture needs to wait for the network to be ready to discover the bootnode, regardless of the programs being uploaded
+                    nodes.wait_network_ready().await.expect("network did not become ready in time");
+
+                    if let Ok(file_path) = env::var("UPLOADED_PROGRAMS_ID_FILE") {
+                        let json_data = fs::read_to_string(&file_path)
+                            .unwrap_or_else(|_| panic!("failed to read uploaded programs file: {}", file_path));
+                        serde_json::from_str(&json_data)
+                            .unwrap_or_else(|_| panic!("failed to parse uploaded programs JSON in file: {}", file_path))
+                    } else {
+                        upload_programs(&nodes).await.expect("uploading programs failed")
+                    }
+                })
             })
             .join()
             .expect("program upload thread failed");
         namespace
     });
+
     nodes
 }
 
