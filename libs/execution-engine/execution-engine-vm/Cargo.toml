@@ -34,7 +34,7 @@ encoding = { path = "../../encoding" }
 threshold-keypair = { path = "../../threshold-keypair" }
 
 [dev-dependencies]
-rstest = "0.21"
+rstest = "0.25"
 
 test-programs = { path = "../../../nada-lang/test-programs" }
 

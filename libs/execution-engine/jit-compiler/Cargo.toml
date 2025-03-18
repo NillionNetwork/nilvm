@@ -20,7 +20,7 @@ nada-compiler-backend = { path = "../../../nada-lang/compiler-backend" }
 nada-type = { path = "../../../nada-lang/nada-type" }
 
 [dev-dependencies]
-rstest = "0.21.0"
+rstest = "0.25.0"
 test-programs = { path = "../../../nada-lang/test-programs" }
 
 [features]

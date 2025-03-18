@@ -13,7 +13,7 @@ nada-compiler-backend = { path = "../compiler-backend", default-features = false
 mpc-vm = { path = "../../libs/execution-engine/mpc-vm", default-features = false }
 
 [dev-dependencies]
-rstest = "0.21"
+rstest = "0.25"
 test-programs = { path = "../test-programs" }
 
 [features]

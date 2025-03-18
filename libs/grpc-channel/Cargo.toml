@@ -18,7 +18,7 @@ user-keypair = { path = "../user-keypair" }
 
 [dev-dependencies]
 criterion = "0.5"
-rstest = "0.21.0"
+rstest = "0.25.0"
 sha2 = "0.10"
 
 [[bench]]

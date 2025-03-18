@@ -21,4 +21,4 @@ rand = "0.8.5"
 nillion-chain-transactions = { path = "../transactions" }
 
 [dev-dependencies]
-rstest = "0.21.0"
+rstest = "0.25.0"
