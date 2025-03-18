@@ -1,7 +1,7 @@
 //! The threshold private key implementation.
 
 use crate::{publickey::ThresholdPublicKey, PRIVATE_KEY_LENGTH};
-use generic_ec::{errors::InvalidScalar, Curve, NonZero, SecretScalar};
+use generic_ec::{errors::InvalidScalar, Curve, NonZero, Scalar, SecretScalar};
 use key_share::{
     self,
     trusted_dealer::{self, TrustedDealerError},
@@ -161,7 +161,8 @@ impl<E: Curve> ThresholdPrivateKey<E> {
         }
 
         // Two possible errors here: one from the from_le_bytes and the other from being zero
-        let private_scalar = SecretScalar::<E>::from_be_bytes(bytes)?;
+        let mut scalar = Scalar::<E>::from_be_bytes_mod_order(bytes);
+        let private_scalar = SecretScalar::new(&mut scalar);
         Self::from_scalar(private_scalar).ok_or(ThresholdPrivateKeyError::ZeroScalarError)
     }
 
@@ -201,7 +202,8 @@ impl<E: Curve> ThresholdPrivateKey<E> {
         }
 
         // Two possible errors here: one from the from_le_bytes and the other from being zero
-        let private_scalar = SecretScalar::<E>::from_le_bytes(bytes)?;
+        let mut scalar = Scalar::<E>::from_le_bytes_mod_order(bytes);
+        let private_scalar = SecretScalar::new(&mut scalar);
         Self::from_scalar(private_scalar).ok_or(ThresholdPrivateKeyError::ZeroScalarError)
     }
 
