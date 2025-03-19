@@ -62,7 +62,7 @@ members = [
     "libs/nada-value",
     "libs/node-api",
     "libs/grpc-channel",
-    "libs/client-core",
+    "libs/client-core", "libs/nilauth",
 ]
 
 exclude = ["wasm-workspace"]
