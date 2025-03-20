@@ -110,7 +110,8 @@ impl NilauthClient for DefaultNilauthClient {
         let request =
             CreateNucRequest { public_key, signature: signature.to_bytes().into(), payload: payload.into_bytes() };
         let url = self.make_url("/api/v1/nucs/create");
-        let response: CreateNucResponse = self.client.post(url).json(&request).send().await?.json().await?;
+        let response: CreateNucResponse =
+            self.client.post(url).json(&request).send().await?.error_for_status()?.json().await?;
         Ok(response.token)
     }
 
@@ -131,7 +132,7 @@ impl NilauthClient for DefaultNilauthClient {
         let public_key = key.to_sec1_bytes().as_ref().try_into().map_err(|_| PaySubscriptionError::InvalidPublicKey)?;
         let url = self.make_url("/api/v1/payments/validate");
         let request = ValidatePaymentRequest { tx_hash: tx_hash.clone(), payload: payload.into_bytes(), public_key };
-        self.client.post(url).json(&request).send().await?;
+        self.client.post(url).json(&request).send().await?.error_for_status()?;
         Ok(TxHash(tx_hash))
     }
 }
