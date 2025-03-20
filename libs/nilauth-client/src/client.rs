@@ -25,7 +25,7 @@ pub trait NilauthClient {
         &self,
         payments_client: &mut NillionChainClient,
         key: &PublicKey,
-    ) -> Result<(), PaySubscriptionError>;
+    ) -> Result<TxHash, PaySubscriptionError>;
 }
 
 /// An error when requesting a token.
@@ -118,7 +118,7 @@ impl NilauthClient for DefaultNilauthClient {
         &self,
         payments_client: &mut NillionChainClient,
         key: &PublicKey,
-    ) -> Result<(), PaySubscriptionError> {
+    ) -> Result<TxHash, PaySubscriptionError> {
         let about = self.about().await?;
         let payload = ValidatePaymentRequestPayload { nonce: rand::random(), service_public_key: about.public_key };
         let payload = serde_json::to_string(&payload)?;
@@ -130,11 +130,15 @@ impl NilauthClient for DefaultNilauthClient {
 
         let public_key = key.to_sec1_bytes().as_ref().try_into().map_err(|_| PaySubscriptionError::InvalidPublicKey)?;
         let url = self.make_url("/api/v1/payments/validate");
-        let request = ValidatePaymentRequest { tx_hash, payload: payload.into_bytes(), public_key };
+        let request = ValidatePaymentRequest { tx_hash: tx_hash.clone(), payload: payload.into_bytes(), public_key };
         self.client.post(url).json(&request).send().await?;
-        Ok(())
+        Ok(TxHash(tx_hash))
     }
 }
+
+/// A transaction hash.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TxHash(pub String);
 
 /// Information about a nilauth server.
 #[derive(Clone, Deserialize)]
