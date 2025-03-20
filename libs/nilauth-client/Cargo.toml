@@ -1,0 +1,19 @@
+[package]
+name = "nilauth-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+hex = { version = "0.4", features = ["serde"] }
+nillion-chain-client = { path = "../nillion-chain/client" }
+nillion-nucs = { path = "../nucs" }
+rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+
+[dev-dependencies]
+tokio = { version = "1.44", features = ["rt-multi-thread", "macros"] }
