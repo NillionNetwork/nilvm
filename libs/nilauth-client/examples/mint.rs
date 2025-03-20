@@ -1,4 +1,4 @@
-use nilauth::client::{DefaultNilauthClient, NilauthClient};
+use nilauth_client::client::{DefaultNilauthClient, NilauthClient};
 use nillion_chain_client::{client::NillionChainClient, key::NillionChainPrivateKey};
 use nillion_nucs::k256::SecretKey;
 
