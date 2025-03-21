@@ -28,7 +28,7 @@ serde-files-utils = { path = "../../libs/serde-files-utils", default-features = 
 xshell = "0.2"
 num-bigint = "0.4.6"
 jit-compiler = { path = "../../libs/execution-engine/jit-compiler", features = ["serde", "text_repr"] }
-rstest = "0.21"
+rstest = "0.25"
 test-programs = { path = "../test-programs" }
 
 [features]
