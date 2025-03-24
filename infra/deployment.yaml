@@ -85,10 +85,6 @@ deployment:
           max_concurrent_actions: 1000
           grpc:
             bind_endpoint: 127.0.0.1:14311
-            tls:
-              ca_cert: tests/resources/tls/ca.pem
-              cert: tests/resources/tls/nillion.local.pem
-              key: tests/resources/tls/nillion.local.key
         
         metrics:
           listen_address: 127.0.0.1:34111
@@ -126,11 +122,11 @@ deployment:
 
   volumes:
     - name: node-config
-      host_path: /nillion/node
+      host_path: /mnt/files/nillion/node
 
   container:
     image: "592920173613.dkr.ecr.eu-west-1.amazonaws.com/nillion-node"
-    tag: "v0.9.0-rc.56-amd64"
+    tag: "v0.10.0-rc.45-amd64"
     port: 14311
 
     command: ["/node"]
@@ -155,8 +151,9 @@ deployment:
     desired_count: 1
 
   network:
+    protocol_version: "GRPC"
     health_check_path: /grpc.health.v1.Health/Check
-    health_check_success_code: "400"
+    health_check_success_code: "0"
     public_access: true
     allowed_cidrs: ["0.0.0.0/0"]
 
