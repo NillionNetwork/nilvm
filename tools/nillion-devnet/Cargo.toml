@@ -14,7 +14,7 @@ hyper-util = { version = "0.1", features = ["client-legacy"] }
 log = "0.4"
 rand = { version = "0.8", features = ["small_rng"] }
 fs2 = "0.4.3"
-tempfile = "3.10.1"
+tempfile = "3.19.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 uuid = { version = "1.10", features = ["v4"] }
 
