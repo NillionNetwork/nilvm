@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 const TOKEN_REQUEST_EXPIRATION: Duration = Duration::from_secs(60);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// An interface to interact with nilauth.
 #[async_trait]
@@ -26,6 +27,9 @@ pub trait NilauthClient {
         payments_client: &mut NillionChainClient,
         key: &PublicKey,
     ) -> Result<TxHash, PaySubscriptionError>;
+
+    /// Get the cost of a subscription.
+    async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError>;
 }
 
 /// An error when requesting a token.
@@ -50,6 +54,9 @@ pub enum PaySubscriptionError {
     #[error("fetching server's about: {0}")]
     About(#[from] AboutError),
 
+    #[error("fetching subscription cost: {0}")]
+    Cost(#[from] SubscriptionCostError),
+
     #[error("serde: {0}")]
     Serde(#[from] serde_json::Error),
 
@@ -61,6 +68,13 @@ pub enum PaySubscriptionError {
 
     #[error("making payment: {0}")]
     Payment(String),
+}
+
+/// An error when fetching the subscription cost.
+#[derive(Debug, thiserror::Error)]
+pub enum SubscriptionCostError {
+    #[error("request: {0}")]
+    Request(#[from] reqwest::Error),
 }
 
 /// An error when requesting the information about a nilauth instance.
@@ -77,8 +91,9 @@ pub struct DefaultNilauthClient {
 }
 
 impl DefaultNilauthClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self { client: reqwest::Client::new(), base_url: base_url.into() }
+    pub fn new(base_url: impl Into<String>) -> Result<Self, reqwest::Error> {
+        let client = reqwest::Client::builder().timeout(REQUEST_TIMEOUT).build()?;
+        Ok(Self { client, base_url: base_url.into() })
     }
 
     fn make_url(&self, path: &str) -> String {
@@ -121,11 +136,12 @@ impl NilauthClient for DefaultNilauthClient {
         key: &PublicKey,
     ) -> Result<TxHash, PaySubscriptionError> {
         let about = self.about().await?;
+        let cost = self.subscription_cost().await?;
         let payload = ValidatePaymentRequestPayload { nonce: rand::random(), service_public_key: about.public_key };
         let payload = serde_json::to_string(&payload)?;
         let hash = Sha256::digest(&payload);
         let tx_hash = payments_client
-            .pay_for_resource(TokenAmount::Unil(1), hash.to_vec())
+            .pay_for_resource(cost, hash.to_vec())
             .await
             .map_err(|e| PaySubscriptionError::Payment(e.to_string()))?;
 
@@ -134,6 +150,12 @@ impl NilauthClient for DefaultNilauthClient {
         let request = ValidatePaymentRequest { tx_hash: tx_hash.clone(), payload: payload.into_bytes(), public_key };
         self.client.post(url).json(&request).send().await?.error_for_status()?;
         Ok(TxHash(tx_hash))
+    }
+
+    async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError> {
+        let url = self.make_url("/api/v1/payments/cost");
+        let response: GetCostResponse = self.client.get(url).send().await?.json().await?;
+        Ok(TokenAmount::Unil(response.cost_unils))
     }
 }
 
@@ -201,4 +223,10 @@ struct ValidatePaymentRequestPayload {
 
     #[serde(serialize_with = "hex::serde::serialize")]
     service_public_key: [u8; 33],
+}
+
+#[derive(Debug, Deserialize)]
+struct GetCostResponse {
+    // The cost in unils.
+    cost_unils: u64,
 }
