@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 const TOKEN_REQUEST_EXPIRATION: Duration = Duration::from_secs(60);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// An interface to interact with nilauth.
 #[async_trait]
@@ -90,8 +91,9 @@ pub struct DefaultNilauthClient {
 }
 
 impl DefaultNilauthClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self { client: reqwest::Client::new(), base_url: base_url.into() }
+    pub fn new(base_url: impl Into<String>) -> Result<Self, reqwest::Error> {
+        let client = reqwest::Client::builder().timeout(REQUEST_TIMEOUT).build()?;
+        Ok(Self { client, base_url: base_url.into() })
     }
 
     fn make_url(&self, path: &str) -> String {
