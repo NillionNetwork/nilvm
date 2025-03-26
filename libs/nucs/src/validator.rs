@@ -21,6 +21,7 @@ const REVOCATION_COMMAND: &[&str] = &["nuc", "revoke"];
 pub type ValidationResult = Result<(), ValidationError>;
 
 /// Parameters to be used during validation.
+#[derive(Debug)]
 pub struct ValidationParameters {
     /// The timestamp to use for token temporal checks.
     pub current_time: DateTime<Utc>,
@@ -51,7 +52,7 @@ impl Default for ValidationParameters {
 }
 
 /// The requirements for the token being validated.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum TokenTypeRequirements {
     /// Require an invocation for the given DID.
     Invocation(Did),
@@ -79,7 +80,7 @@ impl NucValidator {
     pub fn validate(
         &self,
         envelope: NucTokenEnvelope,
-        parameters: &ValidationParameters,
+        parameters: ValidationParameters,
     ) -> Result<ValidatedNucToken, ValidationError> {
         // Perform this one check before validating signatures to avoid doing contly work
         if envelope.proofs().len().saturating_add(1) > parameters.max_chain_length {
@@ -96,7 +97,7 @@ impl NucValidator {
         // Create a sequence [root, ..., token]
         let token_chain = iter::once(token).chain(proofs.iter().copied()).rev();
         Self::validate_proofs(&proofs, &self.root_keys)?;
-        Self::validate_token_chain(token_chain, parameters)?;
+        Self::validate_token_chain(token_chain, &parameters)?;
         Self::validate_token(token, &proofs, &parameters.token_requirements)?;
 
         // Signature validation is done at the end as it's arguably the most expensive part of the
@@ -474,20 +475,20 @@ mod tests {
             );
         }
 
-        fn assert_failure<E: Into<ValidationError>>(&self, envelope: NucTokenEnvelope, expected_failure: E) {
+        fn assert_failure<E: Into<ValidationError>>(self, envelope: NucTokenEnvelope, expected_failure: E) {
             Self::log_tokens(&envelope);
 
             let expected_failure = expected_failure.into();
-            match NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, &self.parameters) {
+            match NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, self.parameters) {
                 Ok(_) => panic!("validation succeeded"),
                 Err(e) if e.to_string() == expected_failure.to_string() => (),
                 Err(e) => panic!("unexpected type of failure: {e}"),
             };
         }
 
-        fn assert_success(&self, envelope: NucTokenEnvelope) -> ValidatedNucToken {
+        fn assert_success(self, envelope: NucTokenEnvelope) -> ValidatedNucToken {
             Self::log_tokens(&envelope);
-            NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, &self.parameters).expect("validation failed")
+            NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, self.parameters).expect("validation failed")
         }
     }
 

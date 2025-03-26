@@ -666,7 +666,7 @@ impl Runner {
                 return Ok(Box::new(NucValidation { success: false, error: Some(format!("invalid envelope: {e}")) }));
             }
         };
-        let result = validator.validate(envelope, &Default::default());
+        let result = validator.validate(envelope, Default::default());
         let output = match result {
             Ok(_) => NucValidation { success: true, error: None },
             Err(e) => NucValidation { success: false, error: Some(e.to_string()) },
