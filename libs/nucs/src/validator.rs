@@ -15,6 +15,7 @@ use std::{
 const MAX_CHAIN_LENGTH: usize = 5;
 const MAX_POLICY_WIDTH: usize = 10;
 const MAX_POLICY_DEPTH: usize = 5;
+const REVOCATION_COMMAND: &[&str] = &["nuc", "revoke"];
 
 /// The result of validating a NUC token.
 pub type ValidationResult = Result<(), ValidationError>;
@@ -205,7 +206,7 @@ impl NucValidator {
         Self::validate_condition(previous.audience == current.issuer, ValidationKind::IssuerAudienceMismatch)?;
         Self::validate_condition(previous.subject == current.subject, ValidationKind::DifferentSubjects)?;
         Self::validate_condition(
-            current.command.is_attenuation_of(&previous.command),
+            current.command.is_attenuation_of(&previous.command) || current.command.0 == REVOCATION_COMMAND,
             ValidationKind::CommandNotAttenuated,
         )?;
         if let Some((previous_not_before, current_not_before)) = previous.not_before.zip(current.not_before) {
@@ -942,5 +943,28 @@ mod tests {
         // Ensure the order is right
         assert_eq!(proofs[0].issuer, subject);
         assert_eq!(proofs[1].issuer, Did::from_secret_key(&ROOT_SECRET_KEYS[0]));
+    }
+
+    #[test]
+    fn valid_revocation_token() {
+        let subject_key = SecretKey::random(&mut rand::thread_rng());
+        let subject = Did::from_secret_key(&subject_key);
+        let rpc_did = Did::new([0xaa; 33]);
+        let root = NucTokenBuilder::delegation([policy::op::eq(".args.foo", json!(42))])
+            .subject(subject.clone())
+            .command(["nil"])
+            .issued_by_root();
+        let invocation = NucTokenBuilder::invocation(json!({"foo": 42, "bar": 1337}).as_object().cloned().unwrap())
+            .subject(subject.clone())
+            .audience(rpc_did.clone())
+            .command(["nuc", "revoke"])
+            .issued_by(subject_key);
+
+        let envelope = Chainer::default().chain([root, invocation]);
+        let parameters = ValidationParameters {
+            token_requirements: TokenTypeRequirements::Invocation(rpc_did),
+            ..Default::default()
+        };
+        Asserter::new(parameters).assert_success(envelope);
     }
 }
