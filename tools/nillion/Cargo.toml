@@ -32,4 +32,4 @@ nada-values-args = { path = "../../libs/nada-values-args" }
 nada-value = { path = "../../libs/nada-value", features = ["secret-serde"] }
 
 [dev-dependencies]
-tempfile = "3.10.1"
+tempfile = "3.19.1"
