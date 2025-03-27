@@ -123,7 +123,9 @@ use tonic::{
     codegen::InterceptedService,
     transport::{Identity, ServerTlsConfig},
 };
+use tonic_health::{pb::FILE_DESCRIPTOR_SET as TONIC_HEALTH_DESCRIPTOR, server::health_reporter, ServingStatus};
 use tonic_middleware::MiddlewareLayer;
+use tonic_reflection::server::Builder as ReflectionBuilder;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::CorsLayer;
 use tracing::{error, info, warn};
@@ -441,6 +443,16 @@ impl NodeBuilder {
             .max_encoding_message_size(max_payload_size);
         let preprocessing_service = InterceptedService::new(preprocessing_server, internal_interceptor);
 
+        let (mut health_reporter, health_service) = health_reporter();
+        tokio::spawn(async move {
+            health_reporter.set_service_status("", ServingStatus::Serving).await;
+        });
+
+        let reflection_service = ReflectionBuilder::configure()
+            .register_encoded_file_descriptor_set(TONIC_HEALTH_DESCRIPTOR)
+            .build_v1()
+            .context("building reflection service")?;
+
         let mut server = server_builder
             .accept_http1(true)
             .layer(CorsLayer::permissive())
@@ -499,7 +511,9 @@ impl NodeBuilder {
                 .max_decoding_message_size(max_payload_size)
                 .max_encoding_message_size(max_payload_size),
             )
-            .add_service(preprocessing_service);
+            .add_service(preprocessing_service)
+            .add_service(health_service)
+            .add_service(reflection_service);
         if let Some(leader_dependencies) = dependencies.leader {
             let offsets_service = leader_dependencies.offsets.clone();
             tokio::spawn(async move {
