@@ -1,13 +1,19 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use nillion_chain_client::{client::NillionChainClient, transactions::TokenAmount};
-use nillion_nucs::k256::{
-    ecdsa::{signature::Signer, Signature, SigningKey},
-    sha2::{Digest, Sha256},
-    PublicKey, SecretKey,
+use nillion_nucs::{
+    builder::{ExtendTokenError, NucTokenBuildError, NucTokenBuilder},
+    envelope::{InvalidSignature, NucEnvelopeParseError, NucTokenEnvelope},
+    k256::{
+        ecdsa::{signature::Signer, Signature, SigningKey},
+        sha2::{Digest, Sha256},
+        PublicKey, SecretKey,
+    },
+    token::{Did, ProofHash, TokenBody},
 };
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use serde_json::json;
+use std::{iter, time::Duration};
 
 const TOKEN_REQUEST_EXPIRATION: Duration = Duration::from_secs(60);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -30,6 +36,15 @@ pub trait NilauthClient {
 
     /// Get the cost of a subscription.
     async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError>;
+
+    /// Revoke a token.
+    async fn revoke_token(&self, token: &NucTokenEnvelope, key: &SecretKey) -> Result<(), RevokeTokenError>;
+
+    /// Lookup whether a token is revoked.
+    async fn lookup_revoked_tokens(
+        &self,
+        envelope: &NucTokenEnvelope,
+    ) -> Result<Vec<RevokedToken>, LookupRevokedTokensError>;
 }
 
 /// An error when requesting a token.
@@ -77,9 +92,41 @@ pub enum SubscriptionCostError {
     Request(#[from] reqwest::Error),
 }
 
+/// An error when revoking a token.
+#[derive(Debug, thiserror::Error)]
+pub enum RevokeTokenError {
+    #[error("fetching server's about: {0}")]
+    About(#[from] AboutError),
+
+    #[error("requesting token: {0}")]
+    RequestToken(#[from] RequestTokenError),
+
+    #[error("malformed token returned from nilauth: {0}")]
+    MalformedAuthToken(#[from] NucEnvelopeParseError),
+
+    #[error("invalid signatures in token returned from nilauth: {0}")]
+    InvalidAuthTokenSignatures(#[from] InvalidSignature),
+
+    #[error("cannot extend token returned from nilauth: {0}")]
+    AuthTokenNotDelegation(#[from] ExtendTokenError),
+
+    #[error("building invocation: {0}")]
+    BuildInvocation(#[from] NucTokenBuildError),
+
+    #[error("request: {0}")]
+    Request(#[from] reqwest::Error),
+}
+
 /// An error when requesting the information about a nilauth instance.
 #[derive(Debug, thiserror::Error)]
 pub enum AboutError {
+    #[error("request: {0}")]
+    Request(#[from] reqwest::Error),
+}
+
+/// An error when looking up revoked tokens.
+#[derive(Debug, thiserror::Error)]
+pub enum LookupRevokedTokensError {
     #[error("request: {0}")]
     Request(#[from] reqwest::Error),
 }
@@ -154,8 +201,38 @@ impl NilauthClient for DefaultNilauthClient {
 
     async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError> {
         let url = self.make_url("/api/v1/payments/cost");
-        let response: GetCostResponse = self.client.get(url).send().await?.json().await?;
+        let response: GetCostResponse = self.client.get(url).send().await?.error_for_status()?.json().await?;
         Ok(TokenAmount::Unil(response.cost_unils))
+    }
+
+    async fn revoke_token(&self, token: &NucTokenEnvelope, key: &SecretKey) -> Result<(), RevokeTokenError> {
+        let about = self.about().await?;
+        let token = token.encode();
+        let auth_token = self.request_token(key).await?;
+        let auth_token = NucTokenEnvelope::decode(&auth_token)?.validate_signatures()?;
+        // SAFETY: this can't not be an object
+        let args = json!({"token": token}).as_object().cloned().expect("not an object");
+        let invocation = NucTokenBuilder::extending(auth_token)?
+            .audience(Did::new(about.public_key))
+            .body(TokenBody::Invocation(args))
+            .command(["nuc", "revoke"])
+            .build(&key.into())?;
+        let header_value = format!("Bearer {invocation}");
+        let url = self.make_url("/api/v1/revocations/revoke");
+        self.client.post(url).header("Authorization", header_value).send().await?.error_for_status()?;
+        Ok(())
+    }
+
+    async fn lookup_revoked_tokens(
+        &self,
+        envelope: &NucTokenEnvelope,
+    ) -> Result<Vec<RevokedToken>, LookupRevokedTokensError> {
+        let hashes = iter::once(envelope.token()).chain(envelope.proofs()).map(|t| t.compute_hash()).collect();
+        let request = LookupRevokedTokensRequest { hashes };
+        let url = self.make_url("/api/v1/revocations/lookup");
+        let response: LookupRevokedTokensResponse =
+            self.client.post(url).json(&request).send().await?.error_for_status()?.json().await?;
+        Ok(response.revoked)
     }
 }
 
@@ -229,4 +306,24 @@ struct ValidatePaymentRequestPayload {
 struct GetCostResponse {
     // The cost in unils.
     cost_unils: u64,
+}
+
+#[derive(Serialize)]
+struct LookupRevokedTokensRequest {
+    hashes: Vec<ProofHash>,
+}
+
+#[derive(Deserialize)]
+struct LookupRevokedTokensResponse {
+    revoked: Vec<RevokedToken>,
+}
+
+/// A revoked token.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct RevokedToken {
+    /// The token hash.
+    pub token_hash: ProofHash,
+
+    /// The timestamp at which the token was revoked.
+    pub revoked_at: DateTime<Utc>,
 }
