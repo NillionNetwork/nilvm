@@ -3519,12 +3519,14 @@ dependencies = [
  "hex",
  "nillion-chain-client",
  "nillion-nucs",
+ "once_cell",
  "rand",
  "reqwest 0.12.12",
  "serde",
  "serde_json",
  "thiserror 1.0.65",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -11,12 +11,27 @@ use nillion_nucs::{
     },
     token::{Did, ProofHash, TokenBody},
 };
+use once_cell::sync::Lazy;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{iter, time::Duration};
+use std::{fmt::Display, iter, time::Duration};
+use tokio::time::sleep;
+use tracing::warn;
 
 const TOKEN_REQUEST_EXPIRATION: Duration = Duration::from_secs(60);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+static PAYMENT_RETRY_STATUS_CODE: Lazy<StatusCode> =
+    Lazy::new(|| StatusCode::from_u16(425).expect("invalid status code"));
+static PAYMENT_TX_RETRIES: &[Duration] = &[
+    Duration::from_secs(1),
+    Duration::from_secs(2),
+    Duration::from_secs(3),
+    Duration::from_secs(5),
+    Duration::from_secs(10),
+    Duration::from_secs(10),
+    Duration::from_secs(10),
+];
 
 /// An interface to interact with nilauth.
 #[async_trait]
@@ -83,6 +98,9 @@ pub enum PaySubscriptionError {
 
     #[error("making payment: {0}")]
     Payment(String),
+
+    #[error("server could not validate payment: {0}")]
+    PaymentValidation(TxHash),
 }
 
 /// An error when fetching the subscription cost.
@@ -195,8 +213,17 @@ impl NilauthClient for DefaultNilauthClient {
         let public_key = key.to_sec1_bytes().as_ref().try_into().map_err(|_| PaySubscriptionError::InvalidPublicKey)?;
         let url = self.make_url("/api/v1/payments/validate");
         let request = ValidatePaymentRequest { tx_hash: tx_hash.clone(), payload: payload.into_bytes(), public_key };
-        self.client.post(url).json(&request).send().await?.error_for_status()?;
-        Ok(TxHash(tx_hash))
+        let tx_hash = TxHash(tx_hash);
+        for delay in PAYMENT_TX_RETRIES {
+            let response = self.client.post(&url).json(&request).send().await?;
+            if response.status() != *PAYMENT_RETRY_STATUS_CODE {
+                response.error_for_status()?;
+                return Ok(tx_hash);
+            }
+            warn!("Server could not validate payment, retyring in {delay:?}");
+            sleep(*delay).await;
+        }
+        Err(PaySubscriptionError::PaymentValidation(tx_hash))
     }
 
     async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError> {
@@ -239,6 +266,12 @@ impl NilauthClient for DefaultNilauthClient {
 /// A transaction hash.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TxHash(pub String);
+
+impl Display for TxHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// Information about a nilauth server.
 #[derive(Clone, Deserialize)]
