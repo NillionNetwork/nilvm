@@ -11,9 +11,8 @@ use nillion_nucs::{
     },
     token::{Did, ProofHash, TokenBody},
 };
-use once_cell::sync::Lazy;
-use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
+use reqwest::Response;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::json;
 use std::{fmt::Display, iter, time::Duration};
 use tokio::time::sleep;
@@ -21,8 +20,7 @@ use tracing::warn;
 
 const TOKEN_REQUEST_EXPIRATION: Duration = Duration::from_secs(60);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
-static PAYMENT_RETRY_STATUS_CODE: Lazy<StatusCode> =
-    Lazy::new(|| StatusCode::from_u16(425).expect("invalid status code"));
+const TX_RETRY_ERROR_CODE: &str = "TRANSACTION_NOT_COMMITTED";
 static PAYMENT_TX_RETRIES: &[Duration] = &[
     Duration::from_secs(1),
     Duration::from_secs(2),
@@ -74,8 +72,11 @@ pub enum RequestTokenError {
     #[error("invalid public key")]
     InvalidPublicKey,
 
-    #[error("request: {0}")]
-    Request(#[from] reqwest::Error),
+    #[error("http: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("request: {0:?}")]
+    Request(RequestError),
 }
 
 /// An error when paying a subscription.
@@ -93,21 +94,27 @@ pub enum PaySubscriptionError {
     #[error("invalid public key")]
     InvalidPublicKey,
 
-    #[error("request: {0}")]
-    Request(#[from] reqwest::Error),
+    #[error("http: {0}")]
+    Http(#[from] reqwest::Error),
 
     #[error("making payment: {0}")]
     Payment(String),
 
-    #[error("server could not validate payment: {0}")]
-    PaymentValidation(TxHash),
+    #[error("server could not validate payment: {tx_hash}")]
+    PaymentValidation { tx_hash: TxHash, payload: String },
+
+    #[error("request: {0:?}")]
+    Request(RequestError),
 }
 
 /// An error when fetching the subscription cost.
 #[derive(Debug, thiserror::Error)]
 pub enum SubscriptionCostError {
-    #[error("request: {0}")]
-    Request(#[from] reqwest::Error),
+    #[error("http: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("request: {0:?}")]
+    Request(RequestError),
 }
 
 /// An error when revoking a token.
@@ -131,23 +138,56 @@ pub enum RevokeTokenError {
     #[error("building invocation: {0}")]
     BuildInvocation(#[from] NucTokenBuildError),
 
-    #[error("request: {0}")]
-    Request(#[from] reqwest::Error),
+    #[error("http: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("request: {0:?}")]
+    Request(RequestError),
 }
 
 /// An error when requesting the information about a nilauth instance.
 #[derive(Debug, thiserror::Error)]
 pub enum AboutError {
-    #[error("request: {0}")]
-    Request(#[from] reqwest::Error),
+    #[error("http: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("request: {0:?}")]
+    Request(RequestError),
 }
 
 /// An error when looking up revoked tokens.
 #[derive(Debug, thiserror::Error)]
 pub enum LookupRevokedTokensError {
-    #[error("request: {0}")]
-    Request(#[from] reqwest::Error),
+    #[error("http: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("request: {0:?}")]
+    Request(RequestError),
 }
+
+// implement `From<RequestError>` for a list of types.
+macro_rules! impl_from_request_error {
+    ($t:ty) => {
+        impl From<RequestError> for $t {
+            fn from(e: RequestError) -> Self {
+                Self::Request(e)
+            }
+        }
+    };
+    ($t:ty, $($rest:ty),+) => {
+        impl_from_request_error!($t);
+        impl_from_request_error!($($rest),+);
+    };
+}
+
+impl_from_request_error!(
+    RequestTokenError,
+    PaySubscriptionError,
+    SubscriptionCostError,
+    RevokeTokenError,
+    AboutError,
+    LookupRevokedTokensError
+);
 
 /// The default nilauth client that hits the actual service.
 pub struct DefaultNilauthClient {
@@ -165,14 +205,45 @@ impl DefaultNilauthClient {
         let base_url = &self.base_url;
         format!("{base_url}{path}")
     }
+
+    async fn parse_reponse<T, E>(response: Response) -> Result<T, E>
+    where
+        T: DeserializeOwned,
+        E: From<reqwest::Error> + From<RequestError>,
+    {
+        if response.status().is_success() {
+            Ok(response.json().await?)
+        } else {
+            let error: RequestError = response.json().await?;
+            Err(error.into())
+        }
+    }
+
+    async fn post<R, O, E>(&self, url: &str, request: &R) -> Result<O, E>
+    where
+        R: Serialize,
+        O: DeserializeOwned,
+        E: From<reqwest::Error> + From<RequestError>,
+    {
+        let response = self.client.post(url).json(&request).send().await?;
+        Self::parse_reponse(response).await
+    }
+
+    async fn get<O, E>(&self, url: &str) -> Result<O, E>
+    where
+        O: DeserializeOwned,
+        E: From<reqwest::Error> + From<RequestError>,
+    {
+        let response = self.client.get(url).send().await?;
+        Self::parse_reponse(response).await
+    }
 }
 
 #[async_trait]
 impl NilauthClient for DefaultNilauthClient {
     async fn about(&self) -> Result<About, AboutError> {
         let url = self.make_url("/about");
-        let about = self.client.get(url).send().await?.json().await?;
-        Ok(about)
+        self.get(&url).await
     }
 
     async fn request_token(&self, key: &SecretKey) -> Result<String, RequestTokenError> {
@@ -190,9 +261,8 @@ impl NilauthClient for DefaultNilauthClient {
         let request =
             CreateNucRequest { public_key, signature: signature.to_bytes().into(), payload: payload.into_bytes() };
         let url = self.make_url("/api/v1/nucs/create");
-        let response: CreateNucResponse =
-            self.client.post(url).json(&request).send().await?.error_for_status()?.json().await?;
-        Ok(response.token)
+        let response: Result<CreateNucResponse, RequestTokenError> = self.post(&url, &request).await;
+        Ok(response?.token)
     }
 
     async fn pay_subscription(
@@ -212,24 +282,27 @@ impl NilauthClient for DefaultNilauthClient {
 
         let public_key = key.to_sec1_bytes().as_ref().try_into().map_err(|_| PaySubscriptionError::InvalidPublicKey)?;
         let url = self.make_url("/api/v1/payments/validate");
-        let request = ValidatePaymentRequest { tx_hash: tx_hash.clone(), payload: payload.into_bytes(), public_key };
+        let request =
+            ValidatePaymentRequest { tx_hash: tx_hash.clone(), payload: payload.as_bytes().to_vec(), public_key };
         let tx_hash = TxHash(tx_hash);
         for delay in PAYMENT_TX_RETRIES {
-            let response = self.client.post(&url).json(&request).send().await?;
-            if response.status() != *PAYMENT_RETRY_STATUS_CODE {
-                response.error_for_status()?;
-                return Ok(tx_hash);
-            }
-            warn!("Server could not validate payment, retyring in {delay:?}");
-            sleep(*delay).await;
+            let response: Result<(), PaySubscriptionError> = self.post(&url, &request).await;
+            match response {
+                Ok(_) => return Ok(tx_hash),
+                Err(PaySubscriptionError::Request(e)) if e.error_code == TX_RETRY_ERROR_CODE => {
+                    warn!("Server could not validate payment, retyring in {delay:?}");
+                    sleep(*delay).await;
+                }
+                Err(e) => return Err(e),
+            };
         }
-        Err(PaySubscriptionError::PaymentValidation(tx_hash))
+        Err(PaySubscriptionError::PaymentValidation { tx_hash, payload })
     }
 
     async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError> {
         let url = self.make_url("/api/v1/payments/cost");
-        let response: GetCostResponse = self.client.get(url).send().await?.error_for_status()?.json().await?;
-        Ok(TokenAmount::Unil(response.cost_unils))
+        let response: Result<GetCostResponse, SubscriptionCostError> = self.get(&url).await;
+        Ok(TokenAmount::Unil(response?.cost_unils))
     }
 
     async fn revoke_token(&self, token: &NucTokenEnvelope, key: &SecretKey) -> Result<(), RevokeTokenError> {
@@ -246,8 +319,8 @@ impl NilauthClient for DefaultNilauthClient {
             .build(&key.into())?;
         let header_value = format!("Bearer {invocation}");
         let url = self.make_url("/api/v1/revocations/revoke");
-        self.client.post(url).header("Authorization", header_value).send().await?.error_for_status()?;
-        Ok(())
+        let response = self.client.post(url).header("Authorization", header_value).send().await?;
+        Self::parse_reponse(response).await
     }
 
     async fn lookup_revoked_tokens(
@@ -257,9 +330,8 @@ impl NilauthClient for DefaultNilauthClient {
         let hashes = iter::once(envelope.token()).chain(envelope.proofs()).map(|t| t.compute_hash()).collect();
         let request = LookupRevokedTokensRequest { hashes };
         let url = self.make_url("/api/v1/revocations/lookup");
-        let response: LookupRevokedTokensResponse =
-            self.client.post(url).json(&request).send().await?.error_for_status()?.json().await?;
-        Ok(response.revoked)
+        let response: Result<LookupRevokedTokensResponse, LookupRevokedTokensError> = self.post(&url, &request).await;
+        Ok(response?.revoked)
     }
 }
 
@@ -359,4 +431,14 @@ pub struct RevokedToken {
 
     /// The timestamp at which the token was revoked.
     pub revoked_at: DateTime<Utc>,
+}
+
+/// An error when performing a request.
+#[derive(Clone, Debug, Deserialize)]
+pub struct RequestError {
+    /// The error message.
+    pub message: String,
+
+    /// The error code.
+    pub error_code: String,
 }
