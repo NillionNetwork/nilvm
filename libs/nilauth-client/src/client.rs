@@ -47,6 +47,9 @@ pub trait NilauthClient {
         key: &PublicKey,
     ) -> Result<TxHash, PaySubscriptionError>;
 
+    /// Get our subscription status.
+    async fn subscription_status(&self, key: &SecretKey) -> Result<Subscription, SubscriptionStatusError>;
+
     /// Get the cost of a subscription.
     async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError>;
 
@@ -66,11 +69,8 @@ pub enum RequestTokenError {
     #[error("fetching server's about: {0}")]
     About(#[from] AboutError),
 
-    #[error("serde: {0}")]
-    Serde(#[from] serde_json::Error),
-
-    #[error("invalid public key")]
-    InvalidPublicKey,
+    #[error("signing request: {0}")]
+    Signing(#[from] SigningError),
 
     #[error("http: {0}")]
     Http(#[from] reqwest::Error),
@@ -102,6 +102,22 @@ pub enum PaySubscriptionError {
 
     #[error("server could not validate payment: {tx_hash}")]
     PaymentValidation { tx_hash: TxHash, payload: String },
+
+    #[error("request: {0:?}")]
+    Request(RequestError),
+}
+
+/// An error when fetching the subscription status.
+#[derive(Debug, thiserror::Error)]
+pub enum SubscriptionStatusError {
+    #[error("fetching server's about: {0}")]
+    About(#[from] AboutError),
+
+    #[error("http: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("signing request: {0}")]
+    Signing(#[from] SigningError),
 
     #[error("request: {0:?}")]
     Request(RequestError),
@@ -183,6 +199,7 @@ macro_rules! impl_from_request_error {
 impl_from_request_error!(
     RequestTokenError,
     PaySubscriptionError,
+    SubscriptionStatusError,
     SubscriptionCostError,
     RevokeTokenError,
     AboutError,
@@ -253,13 +270,7 @@ impl NilauthClient for DefaultNilauthClient {
             expires_at: Utc::now() + TOKEN_REQUEST_EXPIRATION,
             target_public_key: about.public_key,
         };
-        let payload = serde_json::to_string(&payload)?;
-        let signature: Signature = SigningKey::from(key).sign(payload.as_bytes());
-
-        let public_key =
-            key.public_key().to_sec1_bytes().as_ref().try_into().map_err(|_| RequestTokenError::InvalidPublicKey)?;
-        let request =
-            CreateNucRequest { public_key, signature: signature.to_bytes().into(), payload: payload.into_bytes() };
+        let request = SignedRequest::new(key, &payload)?;
         let url = self.make_url("/api/v1/nucs/create");
         let response: Result<CreateNucResponse, RequestTokenError> = self.post(&url, &request).await;
         Ok(response?.token)
@@ -297,6 +308,14 @@ impl NilauthClient for DefaultNilauthClient {
             };
         }
         Err(PaySubscriptionError::PaymentValidation { tx_hash, payload })
+    }
+
+    async fn subscription_status(&self, key: &SecretKey) -> Result<Subscription, SubscriptionStatusError> {
+        let payload =
+            SubscriptionStatusRequest { nonce: rand::random(), expires_at: Utc::now() + TOKEN_REQUEST_EXPIRATION };
+        let request = SignedRequest::new(key, &payload)?;
+        let url = self.make_url("/api/v1/subscriptions/status");
+        self.post(&url, &request).await
     }
 
     async fn subscription_cost(&self) -> Result<TokenAmount, SubscriptionCostError> {
@@ -349,35 +368,60 @@ impl Display for TxHash {
 #[derive(Clone, Deserialize)]
 pub struct About {
     /// The server's public key.
-    #[serde(deserialize_with = "hex::serde::deserialize")]
+    #[serde(with = "hex::serde")]
     pub public_key: [u8; 33],
 }
 
 #[derive(Serialize)]
-struct CreateNucRequest {
-    #[serde(serialize_with = "hex::serde::serialize")]
+struct SignedRequest {
+    #[serde(with = "hex::serde")]
     public_key: [u8; 33],
 
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     signature: [u8; 64],
 
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     payload: Vec<u8>,
+}
+
+impl SignedRequest {
+    fn new<T>(key: &SecretKey, payload: &T) -> Result<Self, SigningError>
+    where
+        T: Serialize,
+    {
+        let payload = serde_json::to_string(&payload)?;
+        let signature: Signature = SigningKey::from(key).sign(payload.as_bytes());
+
+        let public_key =
+            key.public_key().to_sec1_bytes().as_ref().try_into().map_err(|_| SigningError::InvalidPublicKey)?;
+        let request = Self { public_key, signature: signature.to_bytes().into(), payload: payload.into_bytes() };
+        Ok(request)
+    }
+}
+
+/// An error when signing a request.
+#[derive(Debug, thiserror::Error)]
+pub enum SigningError {
+    #[error("payload serialization: {0}")]
+    PayloadSerde(#[from] serde_json::Error),
+
+    #[error("invalid public key")]
+    InvalidPublicKey,
 }
 
 #[derive(Serialize)]
 struct CreateNucRequestPayload {
     // A nonce, to add entropy.
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     nonce: [u8; 16],
 
     // When this payload is no longer considered valid, to prevent reusing this forever if it
     // leaks.
-    #[serde(serialize_with = "chrono::serde::ts_seconds::serialize")]
+    #[serde(with = "chrono::serde::ts_seconds")]
     expires_at: DateTime<Utc>,
 
     // Our public key, to ensure this request can't be redirected to another authority service.
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     target_public_key: [u8; 33],
 }
 
@@ -390,20 +434,20 @@ struct CreateNucResponse {
 struct ValidatePaymentRequest {
     tx_hash: String,
 
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     payload: Vec<u8>,
 
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     public_key: [u8; 33],
 }
 
 #[derive(Serialize)]
 struct ValidatePaymentRequestPayload {
     #[allow(dead_code)]
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     nonce: [u8; 16],
 
-    #[serde(serialize_with = "hex::serde::serialize")]
+    #[serde(with = "hex::serde")]
     service_public_key: [u8; 33],
 }
 
@@ -441,4 +485,30 @@ pub struct RequestError {
 
     /// The error code.
     pub error_code: String,
+}
+
+#[derive(Serialize)]
+struct SubscriptionStatusRequest {
+    #[serde(with = "hex::serde")]
+    nonce: [u8; 16],
+
+    #[serde(with = "chrono::serde::ts_seconds")]
+    expires_at: DateTime<Utc>,
+}
+
+#[derive(Deserialize)]
+pub struct Subscription {
+    /// Whether the user is actively subscribed.
+    pub subscribed: bool,
+
+    /// The details about the subscription.
+    pub details: Option<SubscriptionDetails>,
+}
+
+/// The subscription information.
+#[derive(Deserialize)]
+pub struct SubscriptionDetails {
+    /// The timestamp at which the subscription expires.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub expires_at: DateTime<Utc>,
 }
