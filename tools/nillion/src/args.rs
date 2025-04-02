@@ -100,6 +100,10 @@ pub enum Command {
     /// Mint or inspect a NUC.
     #[clap(subcommand)]
     Nuc(NucCommand),
+
+    /// Interact with nilauth.
+    #[clap(subcommand)]
+    Nilauth(NilauthCommand),
 }
 
 /// The output format for the command. Default is YAML.
@@ -227,6 +231,10 @@ pub struct AddNetworkArgs {
     /// The gas price to use in nilchain transactions.
     #[arg(long, requires = "nilchain_rpc_endpoint")]
     pub nilchain_gas_price: Option<f64>,
+
+    /// The nilauth endpoint.
+    #[arg(long)]
+    pub nilauth_endpoint: Option<String>,
 }
 
 /// The arguments for the network edit command.
@@ -572,6 +580,47 @@ pub struct ValidateNucArgs {
     /// The root public keys to use.
     #[clap(short, long = "root-public-key")]
     pub root_public_keys: Vec<HexBytes>,
+}
+
+/// A nilauth command.
+#[derive(Subcommand)]
+pub enum NilauthCommand {
+    /// Manage nilauth subscription.
+    #[clap(subcommand)]
+    Subscription(NilauthSubscriptionCommand),
+
+    /// Request a token.
+    Token,
+
+    /// Revoke a token.
+    Revoke(RevokeTokenArgs),
+
+    /// Check whether a token is revoked.
+    CheckRevoked(CheckRevokedArgs),
+}
+
+/// A nilauth subscription command.
+#[derive(Subcommand)]
+pub enum NilauthSubscriptionCommand {
+    /// Pay for a subscription.
+    Pay,
+
+    /// Get the subscription status.
+    Status,
+}
+
+/// The arguments to a revoke token command.
+#[derive(Args)]
+pub struct RevokeTokenArgs {
+    /// The token to revoke.
+    pub token: String,
+}
+
+/// The arguments to a check revoked command.
+#[derive(Args)]
+pub struct CheckRevokedArgs {
+    /// The token to check for.
+    pub token: String,
 }
 
 /// A vec that can be parsed from hex.

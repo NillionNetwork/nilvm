@@ -1,10 +1,11 @@
 use crate::{
     args::{
-        AddFundsArgs, AddIdentityArgs, AddNetworkArgs, BalanceCommand, Cli, ClusterConfigArgs, Command, ComputeArgs,
-        ConfigCommand, DeleteValuesArgs, EditIdentityArgs, EditNetworkArgs, IdentityGenArgs, InspectNucArgs,
-        OverwritePermissionsArgs, PreprocessingPoolStatusArgs, RemoveIdentityArgs, RemoveNetworkArgs,
-        RetrievePermissionsArgs, RetrieveValuesArgs, ShowIdentityArgs, ShowNetworkArgs, StoreProgramArgs,
-        StoreValuesArgs, UpdatePermissionsArgs, UseContextArgs, ValidateNucArgs,
+        AddFundsArgs, AddIdentityArgs, AddNetworkArgs, BalanceCommand, CheckRevokedArgs, Cli, ClusterConfigArgs,
+        Command, ComputeArgs, ConfigCommand, DeleteValuesArgs, EditIdentityArgs, EditNetworkArgs, IdentityGenArgs,
+        InspectNucArgs, NilauthCommand, NilauthSubscriptionCommand, OverwritePermissionsArgs,
+        PreprocessingPoolStatusArgs, RemoveIdentityArgs, RemoveNetworkArgs, RetrievePermissionsArgs,
+        RetrieveValuesArgs, RevokeTokenArgs, ShowIdentityArgs, ShowNetworkArgs, StoreProgramArgs, StoreValuesArgs,
+        UpdatePermissionsArgs, UseContextArgs, ValidateNucArgs,
     },
     context::ContextConfig,
     parse_input_file,
@@ -16,16 +17,17 @@ use chrono::{DateTime, Utc};
 use clap::{error::ErrorKind, CommandFactory};
 use clap_utils::shell_completions::{handle_shell_completions, ShellCompletionsArgs};
 use log::{debug, info};
+use nilauth_client::client::{DefaultNilauthClient, NilauthClient};
 use nillion_client::{
     grpc::payments::AccountBalanceResponse,
     operation::{InitialState, PaidOperation, PaidVmOperation},
-    payments::TxHash,
+    payments::{NillionChainClient, NillionChainPrivateKey, TxHash},
     vm::VmClient,
     Ed25519SigningKey, Secp256k1SigningKey, TokenAmount, UserId,
 };
 use nillion_nucs::{
     envelope::{DecodedNucToken, NucTokenEnvelope},
-    k256,
+    k256::{self, SecretKey},
     token::{NucToken, ProofHash},
     validator::NucValidator,
 };
@@ -39,8 +41,9 @@ use std::{
     path::Path,
 };
 use tools_config::{
+    client::ClientParameters,
     identities::{Identity, Kind},
-    networks::{NetworkConfig, PaymentsConfig},
+    networks::{NetworkConfig, NilauthConfig, PaymentsConfig},
     NamedConfig, ToolConfig,
 };
 use user_keypair::SigningKey;
@@ -48,11 +51,12 @@ use uuid::Uuid;
 
 pub struct Runner {
     client: VmClient,
+    parameters: ClientParameters,
 }
 
 impl Runner {
-    pub fn new(client: VmClient) -> Self {
-        Self { client }
+    pub fn new(client: VmClient, parameters: ClientParameters) -> Self {
+        Self { client, parameters }
     }
 
     /// run a command
@@ -74,6 +78,7 @@ impl Runner {
             Command::Balance(BalanceCommand::AddFunds(args)) => self.add_funds(args).await,
             Command::Config(ConfigCommand::Payments) => self.payments_config().await,
             Command::Config(ConfigCommand::Cluster(args)) => self.cluster_config(args).await,
+            Command::Nilauth(cmd) => self.handle_nilauth(cmd).await,
             Command::IdentityGen(_)
             | Command::Identities(_)
             | Command::Networks(_)
@@ -450,6 +455,7 @@ impl Runner {
             nilchain_private_key,
             nilchain_chain_id,
             nilchain_gas_price,
+            nilauth_endpoint,
         } = args;
         let payments = nilchain_rpc_endpoint.map(|nilchain_rpc_endpoint| PaymentsConfig {
             nilchain_chain_id,
@@ -459,7 +465,8 @@ impl Runner {
             nilchain_private_key: nilchain_private_key.expect("private key not set"),
             gas_price: nilchain_gas_price,
         });
-        NetworkConfig { bootnode, payments }.write_to_file(&name)?;
+        let nilauth = nilauth_endpoint.map(|endpoint| NilauthConfig { endpoint });
+        NetworkConfig { bootnode, payments, nilauth }.write_to_file(&name)?;
         Ok(Box::new(format!("Network {} added", name)))
     }
 
@@ -487,7 +494,7 @@ impl Runner {
 
     pub fn show_network(args: ShowNetworkArgs) -> Result<Box<dyn SerializeAsAny>> {
         let config = NetworkConfig::read_from_config(&args.name)?;
-        let NetworkConfig { bootnode, payments } = config;
+        let NetworkConfig { bootnode, payments, nilauth } = config;
         let mut output = BTreeMap::from([("bootnode", bootnode)]);
 
         if let Some(payments) = payments {
@@ -516,6 +523,10 @@ impl Runner {
             if let Some(gas_price) = gas_price {
                 output.insert("nilchain_gas_price", gas_price.to_string());
             }
+        }
+        if let Some(nilauth) = nilauth {
+            let NilauthConfig { endpoint } = nilauth;
+            output.insert("nilauth_endpoint", endpoint);
         }
         Ok(Box::new(output))
     }
@@ -699,6 +710,119 @@ impl Runner {
         };
         let info = ClusterInfo::from(&cluster);
         Ok(Box::new(info))
+    }
+
+    async fn handle_nilauth(&self, cmd: NilauthCommand) -> Result<Box<dyn SerializeAsAny>> {
+        let identity = Identity::read_from_config(&self.parameters.identity)?;
+        let key = match identity.kind {
+            Kind::Secp256k1 => SecretKey::from_slice(&identity.private_key)?,
+            Kind::Ed25519 => bail!("ed25519 not supported"),
+        };
+        let config = NetworkConfig::read_from_config(&self.parameters.network)?;
+        let nilauth = config.nilauth.ok_or_else(|| anyhow!("no nilauth config"))?;
+        let client = DefaultNilauthClient::new(nilauth.endpoint)?;
+        match cmd {
+            NilauthCommand::Subscription(NilauthSubscriptionCommand::Pay) => {
+                self.pay_nilauth_subscription(&client, config.payments, key).await
+            }
+            NilauthCommand::Subscription(NilauthSubscriptionCommand::Status) => {
+                self.nilauth_subscription_status(&client, key).await
+            }
+            NilauthCommand::Token => self.nilauth_request_token(&client, key).await,
+            NilauthCommand::Revoke(args) => self.nilauth_revoke_token(&client, key, args).await,
+            NilauthCommand::CheckRevoked(args) => self.nilauth_check_revoked(&client, args).await,
+        }
+    }
+
+    async fn pay_nilauth_subscription(
+        &self,
+        nilauth_client: &dyn NilauthClient,
+        nilchain_config: Option<PaymentsConfig>,
+        key: SecretKey,
+    ) -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct Output {
+            tx_hash: String,
+        }
+
+        let payments = nilchain_config.ok_or_else(|| anyhow!("no payments config"))?;
+        let nilchain_key =
+            NillionChainPrivateKey::from_hex(&payments.nilchain_private_key).context("invalid payments private key")?;
+        let mut nilchain_client = NillionChainClient::new(payments.nilchain_rpc_endpoint, nilchain_key)
+            .await
+            .context("creating nilchain client")?;
+        if let Some(gas_price) = payments.gas_price {
+            nilchain_client.set_gas_price(gas_price);
+        }
+
+        let tx_hash = nilauth_client.pay_subscription(&mut nilchain_client, &key.public_key()).await?;
+        Ok(Box::new(Output { tx_hash: tx_hash.to_string() }))
+    }
+
+    async fn nilauth_subscription_status(
+        &self,
+        nilauth_client: &dyn NilauthClient,
+        key: SecretKey,
+    ) -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct Output {
+            subscribed: bool,
+
+            #[serde(skip_serializing_if = "Option::is_none")]
+            expires_at: Option<DateTime<Utc>>,
+        }
+
+        let subscription = nilauth_client.subscription_status(&key).await?;
+        let output =
+            Output { subscribed: subscription.subscribed, expires_at: subscription.details.map(|s| s.expires_at) };
+        Ok(Box::new(output))
+    }
+
+    async fn nilauth_request_token(
+        &self,
+        nilauth_client: &dyn NilauthClient,
+        key: SecretKey,
+    ) -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct Output {
+            token: String,
+        }
+
+        let token = nilauth_client.request_token(&key).await?;
+        Ok(Box::new(Output { token }))
+    }
+
+    async fn nilauth_revoke_token(
+        &self,
+        nilauth_client: &dyn NilauthClient,
+        key: SecretKey,
+        args: RevokeTokenArgs,
+    ) -> Result<Box<dyn SerializeAsAny>> {
+        let token = NucTokenEnvelope::decode(&args.token)?;
+        nilauth_client.revoke_token(&token, &key).await?;
+        Ok(Box::new("Token revoked".to_string()))
+    }
+
+    async fn nilauth_check_revoked(
+        &self,
+        nilauth_client: &dyn NilauthClient,
+        args: CheckRevokedArgs,
+    ) -> Result<Box<dyn SerializeAsAny>> {
+        #[derive(Serialize)]
+        struct Token {
+            hash: ProofHash,
+            revoked_at: DateTime<Utc>,
+        }
+
+        #[derive(Serialize)]
+        struct Output {
+            tokens: Vec<Token>,
+        }
+
+        let token = NucTokenEnvelope::decode(&args.token)?;
+        let tokens = nilauth_client.lookup_revoked_tokens(&token).await?;
+        let tokens = tokens.into_iter().map(|t| Token { hash: t.token_hash, revoked_at: t.revoked_at }).collect();
+        Ok(Box::new(Output { tokens }))
     }
 
     async fn serialize_quote<'a, O: PaidVmOperation>(

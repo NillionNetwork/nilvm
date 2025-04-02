@@ -63,8 +63,8 @@ async fn run(cli: Cli) -> Result<Box<dyn SerializeAsAny>> {
             ClientParameters { identity, network }
         }
     };
-    let client = parameters.try_build().await.context("failed to create client")?;
-    let cli_runner = Runner::new(client);
+    let client = parameters.clone().try_build().await.context("failed to create client")?;
+    let cli_runner = Runner::new(client, parameters);
     cli_runner.run(command).await
 }
 

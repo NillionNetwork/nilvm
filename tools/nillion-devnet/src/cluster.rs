@@ -217,7 +217,7 @@ impl ClusterOrchestrator {
         private_keys: &[String],
     ) -> Result<()> {
         let private_key = private_keys.first().ok_or_else(|| anyhow!("no private keys")).cloned()?;
-        let network_config = tools_config::networks::NetworkConfig {
+        let mut network_config = tools_config::networks::NetworkConfig {
             bootnode: bootnode_address,
             payments: Some(PaymentsConfig {
                 nilchain_chain_id: Some(NILCHAIN_CHAIN_ID.to_string()),
@@ -226,7 +226,12 @@ impl ClusterOrchestrator {
                 nilchain_private_key: private_key,
                 gas_price: None,
             }),
+            nilauth: None,
         };
+        // Move over any existing nilauth config, if any, so we don't lose it across re-runs
+        if let Ok(config) = tools_config::networks::NetworkConfig::read_from_config("devnet") {
+            network_config.nilauth = config.nilauth;
+        }
         network_config.write_to_file("devnet")?;
 
         println!(

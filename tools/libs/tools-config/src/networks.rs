@@ -12,6 +12,9 @@ pub struct NetworkConfig {
 
     /// Payments configuration
     pub payments: Option<PaymentsConfig>,
+
+    /// The nilauth configuration.
+    pub nilauth: Option<NilauthConfig>,
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, PartialEq)]
@@ -38,4 +41,10 @@ impl ToolConfig for NetworkConfig {
     fn root_config_path() -> PathBuf {
         config_directory().map(|dir| dir.join("networks")).unwrap_or_else(|| PathBuf::from("./"))
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct NilauthConfig {
+    /// The nilauth endpoint to use.
+    pub endpoint: String,
 }

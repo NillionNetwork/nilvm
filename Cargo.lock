@@ -3544,6 +3544,7 @@ dependencies = [
  "log",
  "nada-value",
  "nada-values-args",
+ "nilauth-client",
  "nillion-client",
  "nillion-nucs",
  "serde",
