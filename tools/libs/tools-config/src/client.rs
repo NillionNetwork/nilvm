@@ -26,7 +26,7 @@ pub struct ClientParameters {
 impl ClientParameters {
     pub async fn try_build(self) -> anyhow::Result<VmClient> {
         let ClientParameters { identity, network } = self;
-        let NetworkConfig { bootnode, payments } = NetworkConfig::read_from_config(&network)?;
+        let NetworkConfig { bootnode, payments, .. } = NetworkConfig::read_from_config(&network)?;
         let Identity { private_key: user_key, kind: curve } = Identity::read_from_config(&identity)?;
         let user_key = user_key.try_into().map_err(|_| anyhow!("invalid user key length"))?;
         let user_key = match curve {
