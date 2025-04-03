@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut payer = NillionChainClient::new("http://localhost:26648".to_string(), payment_key).await?;
     let client = DefaultNilauthClient::new("http://127.0.0.1:30921")?;
     let key = SecretKey::random(&mut rand::thread_rng());
-    client.pay_subscription(&mut payer, &key.public_key()).await?;
+    client.pay_subscription(&mut payer, &key).await?;
     let token = client.request_token(&key).await?;
     println!("{token}");
     Ok(())

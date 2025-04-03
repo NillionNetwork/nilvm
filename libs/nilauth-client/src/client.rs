@@ -7,7 +7,7 @@ use nillion_nucs::{
     k256::{
         ecdsa::{signature::Signer, Signature, SigningKey},
         sha2::{Digest, Sha256},
-        PublicKey, SecretKey,
+        SecretKey,
     },
     token::{Did, ProofHash, TokenBody},
 };
@@ -44,7 +44,7 @@ pub trait NilauthClient {
     async fn pay_subscription(
         &self,
         payments_client: &mut NillionChainClient,
-        key: &PublicKey,
+        key: &SecretKey,
     ) -> Result<TxHash, PaySubscriptionError>;
 
     /// Get our subscription status.
@@ -88,6 +88,9 @@ pub enum PaySubscriptionError {
     #[error("fetching subscription cost: {0}")]
     Cost(#[from] SubscriptionCostError),
 
+    #[error("fetching subscription status: {0}")]
+    Status(#[from] SubscriptionStatusError),
+
     #[error("serde: {0}")]
     Serde(#[from] serde_json::Error),
 
@@ -102,6 +105,9 @@ pub enum PaySubscriptionError {
 
     #[error("server could not validate payment: {tx_hash}")]
     PaymentValidation { tx_hash: TxHash, payload: String },
+
+    #[error("cannot renew subscription before {0}")]
+    CannotRenewYet(DateTime<Utc>),
 
     #[error("request: {0:?}")]
     Request(RequestError),
@@ -279,8 +285,15 @@ impl NilauthClient for DefaultNilauthClient {
     async fn pay_subscription(
         &self,
         payments_client: &mut NillionChainClient,
-        key: &PublicKey,
+        key: &SecretKey,
     ) -> Result<TxHash, PaySubscriptionError> {
+        let subscription = self.subscription_status(key).await?;
+        match subscription.details {
+            Some(details) if details.renewable_at > Utc::now() => {
+                return Err(PaySubscriptionError::CannotRenewYet(details.renewable_at));
+            }
+            _ => (),
+        };
         let about = self.about().await?;
         let cost = self.subscription_cost().await?;
         let payload = ValidatePaymentRequestPayload { nonce: rand::random(), service_public_key: about.public_key };
@@ -291,7 +304,8 @@ impl NilauthClient for DefaultNilauthClient {
             .await
             .map_err(|e| PaySubscriptionError::Payment(e.to_string()))?;
 
-        let public_key = key.to_sec1_bytes().as_ref().try_into().map_err(|_| PaySubscriptionError::InvalidPublicKey)?;
+        let public_key =
+            key.public_key().to_sec1_bytes().as_ref().try_into().map_err(|_| PaySubscriptionError::InvalidPublicKey)?;
         let url = self.make_url("/api/v1/payments/validate");
         let request =
             ValidatePaymentRequest { tx_hash: tx_hash.clone(), payload: payload.as_bytes().to_vec(), public_key };
@@ -511,4 +525,8 @@ pub struct SubscriptionDetails {
     /// The timestamp at which the subscription expires.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub expires_at: DateTime<Utc>,
+
+    /// The timestamp at which the subscription can be renewed.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub renewable_at: DateTime<Utc>,
 }
