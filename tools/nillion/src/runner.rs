@@ -755,7 +755,7 @@ impl Runner {
             nilchain_client.set_gas_price(gas_price);
         }
 
-        let tx_hash = nilauth_client.pay_subscription(&mut nilchain_client, &key.public_key()).await?;
+        let tx_hash = nilauth_client.pay_subscription(&mut nilchain_client, &key).await?;
         Ok(Box::new(Output { tx_hash: tx_hash.to_string() }))
     }
 

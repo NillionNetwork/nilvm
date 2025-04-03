@@ -15,8 +15,8 @@ pub struct NoOutput;
 #[derive(Serialize)]
 pub struct ErrorOutput {
     error: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    cause: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    causes: Vec<String>,
 }
 
 pub fn serialize_output(format: &CommandOutputFormat, data: &dyn SerializeAsAny) -> Result<String> {
@@ -37,22 +37,8 @@ pub fn serialize_output(format: &CommandOutputFormat, data: &dyn SerializeAsAny)
 }
 
 pub fn serialize_error(format: &CommandOutputFormat, e: &anyhow::Error) -> String {
-    let main_error = e.to_string();
-    let mut causes: Vec<String> = e.chain().skip(1).map(|cause| cause.to_string()).collect();
-
-    let error = if causes.is_empty() {
-        if let Some((first_part, second_part)) = main_error.split_once(':') {
-            causes.push(second_part.trim().to_string());
-            first_part.trim().to_string()
-        } else {
-            main_error
-        }
-    } else {
-        main_error
-    };
-
-    let cause = (!causes.is_empty()).then_some(causes);
-
-    let error_response = ErrorOutput { error, cause };
+    let error = e.to_string();
+    let causes: Vec<String> = e.chain().skip(1).map(|cause| cause.to_string()).collect();
+    let error_response = ErrorOutput { error, causes };
     serialize_output(format, &error_response).unwrap_or_else(|_| format!("{e:#}"))
 }
