@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{error::ErrorKind, CommandFactory};
 use clap_utils::ParserExt;
 use nillion::{
-    args::{BalanceCommand, Cli, Command, ConfigCommand},
+    args::{Cli, Command},
     config::Config,
     context::ContextConfig,
     handlers::{
@@ -64,25 +64,7 @@ async fn run(cli: Cli) -> Result<Box<dyn SerializeAsAny>> {
         | Command::Config(_) => {
             let client = build_parameters(identity, network).try_build().await.context("failed to create client")?;
             let handler = NilvmHandler::new(client);
-            match command {
-                Command::ClusterInformation => handler.cluster_information().await,
-                Command::Compute(args) => handler.compute(args).await,
-                Command::DeleteValues(args) => handler.delete_values(args).await,
-                Command::InspectIds => handler.inspect_ids(),
-                Command::PreprocessingPoolStatus(args) => handler.preprocessing_pool_status(args).await,
-                Command::RetrievePermissions(args) => handler.retrieve_permissions(args).await,
-                Command::RetrieveValues(args) => handler.retrieve_value(args).await,
-                Command::OverwritePermissions(args) => handler.overwrite_permissions(args).await,
-                Command::UpdatePermissions(args) => handler.update_permissions(args).await,
-                Command::ShellCompletions(args) => handler.handle_shell_completions(args),
-                Command::StoreProgram(args) => handler.store_program(args).await,
-                Command::StoreValues(args) => handler.store_values(args).await,
-                Command::Balance(BalanceCommand::Show) => handler.show_balance().await,
-                Command::Balance(BalanceCommand::AddFunds(args)) => handler.add_funds(args).await,
-                Command::Config(ConfigCommand::Payments) => handler.payments_config().await,
-                Command::Config(ConfigCommand::Cluster(args)) => handler.cluster_config(args).await,
-                _ => unreachable!("these commands are handled above"),
-            }
+            handler.handle(command).await
         }
     }
 }

@@ -39,8 +39,7 @@ impl NilvmHandler {
         Self { client }
     }
 
-    /// run a command
-    pub async fn run(&self, command: Command) -> HandlerResult {
+    pub async fn handle(&self, command: Command) -> HandlerResult {
         match command {
             Command::ClusterInformation => self.cluster_information().await,
             Command::Compute(args) => self.compute(args).await,
@@ -69,12 +68,12 @@ impl NilvmHandler {
         }
     }
 
-    pub fn handle_shell_completions(&self, args: ShellCompletionsArgs) -> HandlerResult {
+    fn handle_shell_completions(&self, args: ShellCompletionsArgs) -> HandlerResult {
         handle_shell_completions(args, &mut Cli::command());
         Ok(Box::new(NoOutput))
     }
 
-    pub async fn store_values(&self, args: StoreValuesArgs) -> HandlerResult {
+    async fn store_values(&self, args: StoreValuesArgs) -> HandlerResult {
         #[derive(Serialize)]
         struct Output {
             values_id: Uuid,
@@ -114,7 +113,7 @@ impl NilvmHandler {
         Ok(Box::new(Output { values_id }))
     }
 
-    pub async fn retrieve_value(&self, args: RetrieveValuesArgs) -> HandlerResult {
+    async fn retrieve_value(&self, args: RetrieveValuesArgs) -> HandlerResult {
         let operation = self.client.retrieve_values().values_id(args.values_id).build()?;
         if args.quote {
             return self.serialize_quote(operation).await;
@@ -124,7 +123,7 @@ impl NilvmHandler {
         Ok(Box::new(values))
     }
 
-    pub async fn retrieve_permissions(&self, args: RetrievePermissionsArgs) -> HandlerResult {
+    async fn retrieve_permissions(&self, args: RetrievePermissionsArgs) -> HandlerResult {
         let operation = self.client.retrieve_permissions().values_id(args.values_id).build()?;
         if args.quote {
             return self.serialize_quote(operation).await;
@@ -133,7 +132,7 @@ impl NilvmHandler {
         Ok(Box::new(permissions))
     }
 
-    pub async fn overwrite_permissions(&self, args: OverwritePermissionsArgs) -> HandlerResult {
+    async fn overwrite_permissions(&self, args: OverwritePermissionsArgs) -> HandlerResult {
         let path = Path::new(&args.permissions_path);
         if !path.exists() {
             return Err(anyhow!(format!("cannot load file: {:?}", path)));
@@ -165,7 +164,7 @@ impl NilvmHandler {
         Ok(Box::new(format!("Permissions for values {} have been overwritten", args.values_id)))
     }
 
-    pub async fn update_permissions(&self, args: UpdatePermissionsArgs) -> HandlerResult {
+    async fn update_permissions(&self, args: UpdatePermissionsArgs) -> HandlerResult {
         let mut permissions_delta = PermissionsDelta::default();
 
         // get permissions from file
@@ -229,7 +228,7 @@ impl NilvmHandler {
         Ok(Box::new(format!("Permissions for values {} have been updated", args.values_id)))
     }
 
-    pub async fn store_program(&self, args: StoreProgramArgs) -> HandlerResult {
+    async fn store_program(&self, args: StoreProgramArgs) -> HandlerResult {
         #[derive(Serialize)]
         struct Output {
             program_id: String,
@@ -247,7 +246,7 @@ impl NilvmHandler {
         Ok(Box::new(Output { program_id }))
     }
 
-    pub async fn compute(&self, args: ComputeArgs) -> HandlerResult {
+    async fn compute(&self, args: ComputeArgs) -> HandlerResult {
         let values = args.values()?;
         let mut builder =
             self.client.invoke_compute().program_id(args.program_id).add_value_ids(args.value_ids).add_values(values);
@@ -293,7 +292,7 @@ impl NilvmHandler {
         Ok(Box::new(compute_result))
     }
 
-    pub async fn delete_values(&self, args: DeleteValuesArgs) -> HandlerResult {
+    async fn delete_values(&self, args: DeleteValuesArgs) -> HandlerResult {
         self.client
             .delete_values()
             .values_id(args.values_id)
@@ -305,12 +304,12 @@ impl NilvmHandler {
         Ok(Box::new(format!("Values {} have been deleted", args.values_id)))
     }
 
-    pub async fn cluster_information(&self) -> HandlerResult {
+    async fn cluster_information(&self) -> HandlerResult {
         let info: ClusterInfo = self.client.cluster().into();
         Ok(Box::new(info))
     }
 
-    pub async fn preprocessing_pool_status(&self, args: PreprocessingPoolStatusArgs) -> HandlerResult {
+    async fn preprocessing_pool_status(&self, args: PreprocessingPoolStatusArgs) -> HandlerResult {
         let operation = self.client.pool_status();
         if args.quote {
             return self.serialize_quote(operation).await;
@@ -324,7 +323,7 @@ impl NilvmHandler {
         Ok(Box::new(status))
     }
 
-    pub fn inspect_ids(&self) -> HandlerResult {
+    fn inspect_ids(&self) -> HandlerResult {
         #[serde_as]
         #[derive(Serialize)]
         struct Output {
@@ -335,7 +334,7 @@ impl NilvmHandler {
         Ok(Box::new(Output { user_id }))
     }
 
-    pub async fn show_balance(&self) -> HandlerResult {
+    async fn show_balance(&self) -> HandlerResult {
         #[derive(Serialize)]
         struct Output {
             balance: u64,
@@ -348,7 +347,7 @@ impl NilvmHandler {
         Ok(Box::new(output))
     }
 
-    pub async fn add_funds(&self, args: AddFundsArgs) -> HandlerResult {
+    async fn add_funds(&self, args: AddFundsArgs) -> HandlerResult {
         #[serde_as]
         #[derive(Serialize)]
         struct Output {
@@ -365,7 +364,7 @@ impl NilvmHandler {
         Ok(Box::new(Output { tx_hash }))
     }
 
-    pub async fn payments_config(&self) -> HandlerResult {
+    async fn payments_config(&self) -> HandlerResult {
         #[derive(Serialize)]
         struct Output {
             minimum_add_funds_payment_unil: u64,
@@ -379,7 +378,7 @@ impl NilvmHandler {
         }))
     }
 
-    pub async fn cluster_config(&self, args: ClusterConfigArgs) -> HandlerResult {
+    async fn cluster_config(&self, args: ClusterConfigArgs) -> HandlerResult {
         let cluster = match args.node_id {
             Some(node_id) => {
                 let clients =
