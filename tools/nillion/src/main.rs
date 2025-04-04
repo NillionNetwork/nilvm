@@ -2,53 +2,20 @@ use anyhow::{Context, Result};
 use clap::{error::ErrorKind, CommandFactory};
 use clap_utils::ParserExt;
 use nillion::{
-    args::{Cli, Command, ContextCommand, IdentitiesCommand, NetworksCommand, NucCommand, ShowContextArgs},
+    args::{Cli, Command},
     config::Config,
     context::ContextConfig,
-    runner::Runner,
+    handlers::{
+        context::ContextHandler, identities::IdentitiesHandler, networks::NetworksHandler, nilauth::NilauthHandler,
+        nilvm::NilvmHandler, nuc::NucHandler,
+    },
     serialize::{serialize_error, serialize_output, NoOutput, SerializeAsAny},
 };
 use std::{any::TypeId, fs, ops::Deref, path::PathBuf, process::exit};
 use tools_config::client::ClientParameters;
 
-async fn run(cli: Cli) -> Result<Box<dyn SerializeAsAny>> {
-    match cli.command {
-        Command::IdentityGen(args) => return Runner::identities_gen(args),
-        Command::Identities(command) => {
-            return match command {
-                IdentitiesCommand::Add(args) => Runner::add_identity(args),
-                IdentitiesCommand::Edit(args) => Runner::edit_identity(args),
-                IdentitiesCommand::List => Runner::list_identities(),
-                IdentitiesCommand::Show(args) => Runner::show_identity(args),
-                IdentitiesCommand::Remove(args) => Runner::remove_identity(args),
-            };
-        }
-        Command::Networks(command) => {
-            return match command {
-                NetworksCommand::Add(args) => Runner::add_network(args),
-                NetworksCommand::Edit(args) => Runner::edit_network(args),
-                NetworksCommand::List => Runner::list_networks(),
-                NetworksCommand::Show(args) => Runner::show_network(args),
-                NetworksCommand::Remove(args) => Runner::remove_network(args),
-            };
-        }
-        Command::Context(command) => {
-            return match command {
-                ContextCommand::Use(args) => Runner::use_context(args),
-                ContextCommand::Show(ShowContextArgs { verbose: true }) => Runner::show_detailed_context(),
-                ContextCommand::Show(ShowContextArgs { verbose: false }) => Runner::show_context(),
-            };
-        }
-        Command::Nuc(command) => {
-            return match command {
-                NucCommand::Inspect(args) => Runner::inspect_nuc(args),
-                NucCommand::Validate(args) => Runner::validate_nuc(args),
-            };
-        }
-        _ => (),
-    }
-    let Cli { identity, network, command, .. } = cli;
-    let parameters = match ContextConfig::load() {
+fn build_parameters(identity: Option<String>, network: Option<String>) -> ClientParameters {
+    match ContextConfig::load() {
         Some(config) => ClientParameters {
             identity: identity.unwrap_or(config.identity),
             network: network.unwrap_or(config.network),
@@ -62,10 +29,44 @@ async fn run(cli: Cli) -> Result<Box<dyn SerializeAsAny>> {
             };
             ClientParameters { identity, network }
         }
-    };
-    let client = parameters.clone().try_build().await.context("failed to create client")?;
-    let cli_runner = Runner::new(client, parameters);
-    cli_runner.run(command).await
+    }
+}
+
+async fn run(cli: Cli) -> Result<Box<dyn SerializeAsAny>> {
+    let Cli { identity, network, command, .. } = cli;
+    match command {
+        Command::IdentityGen(args) => IdentitiesHandler::identities_gen(args),
+        Command::Identities(command) => IdentitiesHandler::handle(command),
+        Command::Networks(command) => NetworksHandler::handle(command),
+        Command::Context(command) => ContextHandler::handle(command),
+        Command::Nuc(command) => {
+            let parameters = build_parameters(identity, network);
+            NucHandler::new(parameters).handle(command)
+        }
+        Command::Nilauth(command) => {
+            let parameters = build_parameters(identity, network);
+            let handler = NilauthHandler::new(parameters)?;
+            handler.handle(command).await
+        }
+        Command::StoreValues(_)
+        | Command::RetrieveValues(_)
+        | Command::StoreProgram(_)
+        | Command::Compute(_)
+        | Command::ClusterInformation
+        | Command::DeleteValues(_)
+        | Command::PreprocessingPoolStatus(_)
+        | Command::InspectIds
+        | Command::ShellCompletions(_)
+        | Command::RetrievePermissions(_)
+        | Command::OverwritePermissions(_)
+        | Command::UpdatePermissions(_)
+        | Command::Balance(_)
+        | Command::Config(_) => {
+            let client = build_parameters(identity, network).try_build().await.context("failed to create client")?;
+            let handler = NilvmHandler::new(client);
+            handler.handle(command).await
+        }
+    }
 }
 
 fn load_config(config_path: PathBuf) -> Result<Config> {

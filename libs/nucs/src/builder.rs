@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 use serde::Serialize;
 use signature::Signer;
-use std::ops::Deref;
+use std::{ops::Deref, time::Duration};
 
 // Helper to simplify unwrapping options in the builder
 macro_rules! try_get {
@@ -94,6 +94,12 @@ impl NucTokenBuilder {
     /// Set the expiration time for this token.
     pub fn expires_at(mut self, timestamp: DateTime<Utc>) -> Self {
         self.expires_at = Some(timestamp);
+        self
+    }
+
+    /// Set the expiration time for this token based on an offset from the current time.
+    pub fn expires_in(mut self, offset: Duration) -> Self {
+        self.expires_at = Some(Utc::now() + offset);
         self
     }
 

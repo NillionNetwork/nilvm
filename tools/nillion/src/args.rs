@@ -4,6 +4,7 @@ use clap_utils::shell_completions::ShellCompletionsArgs;
 use hex::FromHexError;
 use nada_values_args::NadaValueArgs;
 use nillion_client::{grpc::membership::NodeId, Clear, NadaValue, UserId, Uuid};
+use nillion_nucs::token::Did;
 use serde::Deserialize;
 use serde_with::{serde_as, DisplayFromStr};
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
@@ -97,7 +98,7 @@ pub enum Command {
     #[clap(subcommand)]
     Config(ConfigCommand),
 
-    /// Mint or inspect a NUC.
+    /// NUC token utilities.
     #[clap(subcommand)]
     Nuc(NucCommand),
 
@@ -555,6 +556,7 @@ pub struct ClusterConfigArgs {
 }
 
 /// The NUC command.
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand)]
 pub enum NucCommand {
     /// Inspect a NUC.
@@ -562,6 +564,9 @@ pub enum NucCommand {
 
     /// Validate a NUC.
     Validate(ValidateNucArgs),
+
+    /// Mint a NUC.
+    Mint(MintNucArgs),
 }
 
 /// Inspect a NUC.
@@ -582,6 +587,58 @@ pub struct ValidateNucArgs {
     pub root_public_keys: Vec<HexBytes>,
 }
 
+/// Mint a NUC.
+#[derive(Args)]
+pub struct MintNucArgs {
+    /// The token to extend as a base for the newly minted token.
+    #[clap(long)]
+    pub extending: Option<String>,
+
+    /// The audience of the token.
+    #[clap(long)]
+    pub audience: Did,
+
+    /// The subject of the token.
+    #[clap(long)]
+    pub subject: Option<Did>,
+
+    /// The UNIX epoch timestamp to set as an expiration time for the token.
+    #[clap(long, group = "expires")]
+    pub expires_at: Option<i64>,
+
+    /// The amount of time in which the token will expire.
+    #[clap(long, group = "expires")]
+    pub expires_in: Option<humantime::Duration>,
+
+    /// The UNIT epoch timestamp at which this token can start being used.
+    #[clap(long)]
+    pub not_before: Option<i64>,
+
+    /// The command to be used in the token.
+    #[clap(long)]
+    pub command: Option<nillion_nucs::token::Command>,
+
+    /// A JSON map that contains metadata about the generated token.
+    #[clap(long)]
+    pub metadata: Option<String>,
+
+    /// The nonce to be used. Defaults to a random 16 byte sequence.
+    #[clap(long)]
+    pub nonce: Option<HexBytes>,
+
+    /// A token to be used as proof. Not needed when using `extending`.
+    #[clap(long)]
+    pub proof: Option<String>,
+
+    /// Make this an invocation token with the given policy.
+    #[clap(long, group = "body")]
+    pub invocation: Option<String>,
+
+    /// Make this a delegation token with the given arguments.
+    #[clap(long, group = "body")]
+    pub delegation: Option<String>,
+}
+
 /// A nilauth command.
 #[derive(Subcommand)]
 pub enum NilauthCommand {
@@ -597,6 +654,9 @@ pub enum NilauthCommand {
 
     /// Check whether a token is revoked.
     CheckRevoked(CheckRevokedArgs),
+
+    /// Get information about the server.
+    About,
 }
 
 /// A nilauth subscription command.
