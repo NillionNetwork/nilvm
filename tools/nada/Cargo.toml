@@ -25,7 +25,7 @@ tabled = { version = "0.16", features = ["ansi"] }
 tokio = "1"
 toml = "0.8.14"
 toml_edit = "0.22"
-uuid = "1.10"
+uuid = "1.16"
 
 tools-config = { path = "../libs/tools-config", features = ["client"] }
 serde-files-utils = { path = "../../libs/serde-files-utils", default-features = false, features = [
