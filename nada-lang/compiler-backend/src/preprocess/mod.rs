@@ -17,7 +17,7 @@ type FunctionMap = HashMap<OperationId, NadaFunction>;
 type InputRefMap = HashMap<String, OperationId>;
 type LiteralRefMap = HashMap<String, OperationId>;
 
-/// Generate a funcion map where the keys are the function ids.
+/// Generate a function map where the keys are the function ids.
 fn function_index_map(functions: Vec<NadaFunction>) -> FunctionMap {
     let mut function_index = HashMap::new();
     for function in functions {
