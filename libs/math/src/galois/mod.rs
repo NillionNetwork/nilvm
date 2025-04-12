@@ -1,4 +1,4 @@
-//! Binary Extenstion Fields and Operations
+//! Binary Extension Fields and Operations
 
 pub mod galois;
 pub mod ops;
