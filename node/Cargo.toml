@@ -80,6 +80,9 @@ grpc-channel = { path = "../libs/grpc-channel" }
 program-builder = { path = "../nada-lang/program-builder", default-features = false }
 log = "0.4.22"
 
+[patch.crates-io]
+object_store = { git = "https://github.com/andreasbros/arrow-rs-object-store.git", branch = "feat/eks-pod-identity", package = "object_store" }
+
 [dev-dependencies]
 mockall = "0.13"
 rstest = "0.21"
