@@ -148,10 +148,13 @@ impl NucValidator {
 
     // Validations applied to proofs
     fn validate_proofs(proofs: &[&NucToken], root_keys: &HashSet<Box<[u8]>>) -> ValidationResult {
-        if let Some(proof) = proofs.last() {
-            if !root_keys.contains(proof.issuer.public_key.as_slice()) {
-                return Err(ValidationError::Validation(ValidationKind::RootKeySignatureMissing));
-            }
+        let contains_root_signature = match proofs.last() {
+            Some(proof) => root_keys.contains(proof.issuer.public_key.as_slice()),
+            // if there's no proof but also no root keys we don't need one.
+            None => root_keys.is_empty(),
+        };
+        if !contains_root_signature {
+            return Err(ValidationError::Validation(ValidationKind::RootKeySignatureMissing));
         }
 
         for proof in proofs {
@@ -459,11 +462,12 @@ mod tests {
 
     struct Asserter {
         parameters: ValidationParameters,
+        root_keys: Vec<PublicKey>,
     }
 
     impl Asserter {
         fn new(parameters: ValidationParameters) -> Self {
-            Self { parameters }
+            Self { parameters, root_keys: ROOT_PUBLIC_KEYS.clone() }
         }
 
         fn log_tokens(envelope: &NucTokenEnvelope) {
@@ -479,7 +483,7 @@ mod tests {
             Self::log_tokens(&envelope);
 
             let expected_failure = expected_failure.into();
-            match NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, self.parameters) {
+            match NucValidator::new(&self.root_keys).validate(envelope, self.parameters) {
                 Ok(_) => panic!("validation succeeded"),
                 Err(e) if e.to_string() == expected_failure.to_string() => (),
                 Err(e) => panic!("unexpected type of failure: {e}"),
@@ -488,14 +492,14 @@ mod tests {
 
         fn assert_success(self, envelope: NucTokenEnvelope) -> ValidatedNucToken {
             Self::log_tokens(&envelope);
-            NucValidator::new(&ROOT_PUBLIC_KEYS).validate(envelope, self.parameters).expect("validation failed")
+            NucValidator::new(&self.root_keys).validate(envelope, self.parameters).expect("validation failed")
         }
     }
 
     impl Default for Asserter {
         fn default() -> Self {
             let parameters = ValidationParameters::default();
-            Self { parameters }
+            Self::new(parameters)
         }
     }
 
@@ -662,14 +666,17 @@ mod tests {
         let token = Chainer::default().chain([root]).encode();
         let (base, signature) = token.rsplit_once(".").unwrap();
 
-        // Change every byte in the signature and make sure validation fails every time.
+        // Change a byte in the signature
         let signature = from_base64(signature).unwrap();
         let mut signature = signature.clone();
         signature[0] ^= 1;
         let signature = to_base64(&signature);
         let token = format!("{base}.{signature}");
         let envelope = NucTokenEnvelope::decode(&token).expect("decode failed");
-        Asserter::default().assert_failure(envelope, ValidationKind::InvalidSignatures);
+        let mut asserter = Asserter::default();
+        // Don't require a root key signature
+        asserter.root_keys = Vec::new();
+        asserter.assert_failure(envelope, ValidationKind::InvalidSignatures);
     }
 
     #[test]
@@ -967,5 +974,21 @@ mod tests {
             ..Default::default()
         };
         Asserter::new(parameters).assert_success(envelope);
+    }
+
+    #[test]
+    fn valid_no_root_keys_needed() {
+        let subject_key = SecretKey::random(&mut rand::thread_rng());
+        let subject = Did::from_secret_key(&subject_key);
+        let token = NucTokenBuilder::delegation([])
+            .subject(subject.clone())
+            .audience(subject)
+            .command(["nil"])
+            .issued_by(subject_key);
+
+        let envelope = Chainer::default().chain([token]);
+        let mut asserter = Asserter::default();
+        asserter.root_keys = Vec::new();
+        asserter.assert_success(envelope);
     }
 }
