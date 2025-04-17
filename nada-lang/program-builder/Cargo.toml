@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 rayon = { version = "1", optional = true }
-tempfile = { version = "3.10", optional = true }
+tempfile = { version = "3.19", optional = true }
 fslock = { version = "0.2.1", optional = true }
 
 nada-compiler-backend = { path = "../compiler-backend" }
