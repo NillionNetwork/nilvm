@@ -96,7 +96,7 @@ impl NucValidator {
 
         // Create a sequence [root, ..., token]
         let token_chain = iter::once(token).chain(proofs.iter().copied()).rev();
-        Self::validate_proofs(&proofs, &self.root_keys)?;
+        Self::validate_proofs(token, &proofs, &self.root_keys)?;
         Self::validate_token_chain(token_chain, &parameters)?;
         Self::validate_token(token, &proofs, &parameters.token_requirements)?;
 
@@ -147,14 +147,14 @@ impl NucValidator {
     }
 
     // Validations applied to proofs
-    fn validate_proofs(proofs: &[&NucToken], root_keys: &HashSet<Box<[u8]>>) -> ValidationResult {
-        let contains_root_signature = match proofs.last() {
-            Some(proof) => root_keys.contains(proof.issuer.public_key.as_slice()),
-            // if there's no proof but also no root keys we don't need one.
-            None => root_keys.is_empty(),
-        };
-        if !contains_root_signature {
-            return Err(ValidationError::Validation(ValidationKind::RootKeySignatureMissing));
+    fn validate_proofs(token: &NucToken, proofs: &[&NucToken], root_keys: &HashSet<Box<[u8]>>) -> ValidationResult {
+        if !root_keys.is_empty() {
+            // The root issuer of this token is either the last proof issuer or the issuer of the
+            // token itself.
+            let root_issuer = &proofs.last().unwrap_or(&token).issuer;
+            if !root_keys.contains(root_issuer.public_key.as_slice()) {
+                return Err(ValidationError::Validation(ValidationKind::RootKeySignatureMissing));
+            }
         }
 
         for proof in proofs {
@@ -990,5 +990,14 @@ mod tests {
         let mut asserter = Asserter::default();
         asserter.root_keys = Vec::new();
         asserter.assert_success(envelope);
+    }
+
+    #[test]
+    fn root_token_validation() {
+        let key = secret_key();
+        let root = delegation(&key).command(["nil"]).issued_by_root();
+
+        let envelope = Chainer::default().chain([root]);
+        Asserter::default().assert_success(envelope);
     }
 }
