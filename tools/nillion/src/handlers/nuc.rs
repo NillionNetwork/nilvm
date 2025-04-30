@@ -12,7 +12,10 @@ use nillion_nucs::{
     validator::NucValidator,
 };
 use serde::Serialize;
-use std::io::{stdin, Read};
+use std::{
+    collections::HashMap,
+    io::{stdin, Read},
+};
 use tools_config::{
     client::ClientParameters,
     identities::{Identity, Kind},
@@ -85,7 +88,11 @@ impl NucHandler {
             error: Option<String>,
         }
 
-        let ValidateNucArgs { nuc, root_public_keys } = args;
+        let ValidateNucArgs { nuc, root_public_keys, context } = args;
+        let context: HashMap<&str, serde_json::Value> = match &context {
+            Some(context) => serde_json::from_str(context).context("parsing context JSON")?,
+            None => Default::default(),
+        };
         let nuc = Self::read_nuc(nuc).context("reading NUC from stdint")?;
         let root_public_keys: Vec<_> = root_public_keys
             .into_iter()
@@ -99,7 +106,7 @@ impl NucHandler {
                 return Ok(Box::new(Output { success: false, error: Some(format!("invalid envelope: {e}")) }));
             }
         };
-        let result = validator.validate(envelope, Default::default());
+        let result = validator.validate(envelope, Default::default(), &context);
         let output = match result {
             Ok(_) => Output { success: true, error: None },
             Err(e) => Output { success: false, error: Some(e.to_string()) },

@@ -585,6 +585,10 @@ pub struct ValidateNucArgs {
     /// The root public keys to use.
     #[clap(short, long = "root-public-key")]
     pub root_public_keys: Vec<HexBytes>,
+
+    /// The context to be used, as a JSON object.
+    #[clap(short, long)]
+    pub context: Option<String>,
 }
 
 /// Mint a NUC.
