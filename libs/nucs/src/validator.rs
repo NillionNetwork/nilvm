@@ -23,9 +23,6 @@ pub type ValidationResult = Result<(), ValidationError>;
 /// Parameters to be used during validation.
 #[derive(Debug)]
 pub struct ValidationParameters {
-    /// The timestamp to use for token temporal checks.
-    pub current_time: DateTime<Utc>,
-
     /// The maximum allowed chain length.
     pub max_chain_length: usize,
 
@@ -42,7 +39,6 @@ pub struct ValidationParameters {
 impl Default for ValidationParameters {
     fn default() -> Self {
         Self {
-            current_time: Utc::now(),
             max_chain_length: MAX_CHAIN_LENGTH,
             max_policy_width: MAX_POLICY_WIDTH,
             max_policy_depth: MAX_POLICY_DEPTH,
@@ -65,15 +61,17 @@ pub enum TokenTypeRequirements {
     None,
 }
 
+/// A NUC validator.
 pub struct NucValidator {
     root_keys: HashSet<Box<[u8]>>,
+    time_provider: Box<dyn TimeProvider>,
 }
 
 impl NucValidator {
     /// Construct a new NUC validator.
     pub fn new(root_keys: &[PublicKey]) -> Self {
         let root_keys = root_keys.iter().map(|pk| pk.to_sec1_bytes()).collect();
-        Self { root_keys }
+        Self { root_keys, time_provider: Box::new(SystemClockTimeProvider) }
     }
 
     /// Validate a NUC.
@@ -97,8 +95,9 @@ impl NucValidator {
 
         // Create a sequence [root, ..., token]
         let token_chain = iter::once(token).chain(proofs.iter().copied()).rev();
+        let now = self.time_provider.current_time();
         Self::validate_proofs(token, &proofs, &self.root_keys)?;
-        Self::validate_token_chain(token_chain, &parameters)?;
+        Self::validate_token_chain(token_chain, &parameters, now)?;
         Self::validate_token(token, &proofs, &parameters.token_requirements, context)?;
 
         // Signature validation is done at the end as it's arguably the most expensive part of the
@@ -171,7 +170,11 @@ impl NucValidator {
     }
 
     // Validations applied to the entire chain (proofs + token).
-    fn validate_token_chain<'a, I>(mut tokens: I, parameters: &ValidationParameters) -> Result<(), ValidationError>
+    fn validate_token_chain<'a, I>(
+        mut tokens: I,
+        parameters: &ValidationParameters,
+        current_time: DateTime<Utc>,
+    ) -> Result<(), ValidationError>
     where
         I: Iterator<Item = &'a NucToken> + Clone,
     {
@@ -179,7 +182,7 @@ impl NucValidator {
             Self::validate_relationship_properties(previous, current)?;
         }
         for token in tokens.clone() {
-            Self::validate_temporal_properties(token, &parameters.current_time)?;
+            Self::validate_temporal_properties(token, &current_time)?;
         }
         for token in tokens.clone() {
             if let TokenBody::Delegation(policies) = &token.body {
@@ -408,6 +411,18 @@ impl fmt::Display for ValidationKind {
     }
 }
 
+trait TimeProvider: Send + Sync + 'static {
+    fn current_time(&self) -> DateTime<Utc>;
+}
+
+struct SystemClockTimeProvider;
+
+impl TimeProvider for SystemClockTimeProvider {
+    fn current_time(&self) -> DateTime<Utc> {
+        Utc::now()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -466,19 +481,43 @@ mod tests {
         }
     }
 
+    enum TimeConfig {
+        System,
+        Mock(DateTime<Utc>),
+    }
+
+    struct MockTimeProvider(DateTime<Utc>);
+
+    impl TimeProvider for MockTimeProvider {
+        fn current_time(&self) -> DateTime<Utc> {
+            self.0
+        }
+    }
+
     struct Asserter {
         parameters: ValidationParameters,
         root_keys: Vec<PublicKey>,
         context: HashMap<&'static str, serde_json::Value>,
+        time_config: TimeConfig,
     }
 
     impl Asserter {
         fn new(parameters: ValidationParameters) -> Self {
-            Self { parameters, root_keys: ROOT_PUBLIC_KEYS.clone(), context: Default::default() }
+            Self {
+                parameters,
+                root_keys: ROOT_PUBLIC_KEYS.clone(),
+                context: Default::default(),
+                time_config: TimeConfig::System,
+            }
         }
 
         fn with_context(mut self, context: HashMap<&'static str, serde_json::Value>) -> Self {
             self.context = context;
+            self
+        }
+
+        fn with_current_time(mut self, time: DateTime<Utc>) -> Self {
+            self.time_config = TimeConfig::Mock(time);
             self
         }
 
@@ -491,11 +530,20 @@ mod tests {
             );
         }
 
-        fn assert_failure<E: Into<ValidationError>>(self, envelope: NucTokenEnvelope, expected_failure: E) {
+        fn validate(self, envelope: NucTokenEnvelope) -> Result<ValidatedNucToken, ValidationError> {
             Self::log_tokens(&envelope);
 
+            let mut validator = NucValidator::new(&self.root_keys);
+            validator.time_provider = match self.time_config {
+                TimeConfig::System => Box::new(SystemClockTimeProvider),
+                TimeConfig::Mock(time) => Box::new(MockTimeProvider(time)),
+            };
+            validator.validate(envelope, self.parameters, &self.context)
+        }
+
+        fn assert_failure<E: Into<ValidationError>>(self, envelope: NucTokenEnvelope, expected_failure: E) {
             let expected_failure = expected_failure.into();
-            match NucValidator::new(&self.root_keys).validate(envelope, self.parameters, &self.context) {
+            match self.validate(envelope) {
                 Ok(_) => panic!("validation succeeded"),
                 Err(e) if e.to_string() == expected_failure.to_string() => (),
                 Err(e) => panic!("unexpected type of failure: {e}"),
@@ -503,10 +551,7 @@ mod tests {
         }
 
         fn assert_success(self, envelope: NucTokenEnvelope) -> ValidatedNucToken {
-            Self::log_tokens(&envelope);
-            NucValidator::new(&self.root_keys)
-                .validate(envelope, self.parameters, &self.context)
-                .expect("validation failed")
+            self.validate(envelope).expect("validation failed")
         }
     }
 
@@ -757,8 +802,7 @@ mod tests {
         let root = base.clone().not_before(root_not_before).issued_by_root();
         let last = base.not_before(last_not_before).issued_by(key);
         let envelope = Chainer::default().chain([root, last]);
-        let parameters = ValidationParameters { current_time: now, ..Default::default() };
-        Asserter::new(parameters).assert_failure(envelope, ValidationKind::NotBeforeBackwards);
+        Asserter::default().with_current_time(now).assert_failure(envelope, ValidationKind::NotBeforeBackwards);
     }
 
     #[test]
@@ -771,8 +815,7 @@ mod tests {
         let root = base.clone().not_before(not_before).issued_by_root();
         let last = base.issued_by(key);
         let envelope = Chainer::default().chain([root, last]);
-        let parameters = ValidationParameters { current_time: now, ..Default::default() };
-        Asserter::new(parameters).assert_failure(envelope, ValidationKind::NotBeforeNotMet);
+        Asserter::default().with_current_time(now).assert_failure(envelope, ValidationKind::NotBeforeNotMet);
     }
 
     #[test]
@@ -785,8 +828,7 @@ mod tests {
         let root = base.clone().issued_by_root();
         let last = base.not_before(not_before).issued_by(key);
         let envelope = Chainer::default().chain([root, last]);
-        let parameters = ValidationParameters { current_time: now, ..Default::default() };
-        Asserter::new(parameters).assert_failure(envelope, ValidationKind::NotBeforeNotMet);
+        Asserter::default().with_current_time(now).assert_failure(envelope, ValidationKind::NotBeforeNotMet);
     }
 
     #[test]
@@ -916,8 +958,7 @@ mod tests {
         let root = base.clone().expires_at(expires_at).issued_by_root();
         let last = base.issued_by(key);
         let envelope = Chainer::default().chain([root, last]);
-        let parameters = ValidationParameters { current_time: now, ..Default::default() };
-        Asserter::new(parameters).assert_failure(envelope, ValidationKind::TokenExpired);
+        Asserter::default().with_current_time(now).assert_failure(envelope, ValidationKind::TokenExpired);
     }
 
     #[test]
@@ -930,8 +971,7 @@ mod tests {
         let root = base.clone().issued_by_root();
         let last = base.expires_at(expires_at).issued_by(key);
         let envelope = Chainer::default().chain([root, last]);
-        let parameters = ValidationParameters { current_time: now, ..Default::default() };
-        Asserter::new(parameters).assert_failure(envelope, ValidationKind::TokenExpired);
+        Asserter::default().with_current_time(now).assert_failure(envelope, ValidationKind::TokenExpired);
     }
 
     #[test]
