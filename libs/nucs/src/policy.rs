@@ -3,7 +3,7 @@ use serde::{
     de::{Error, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize,
 };
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 /// A NUC policy.
 #[derive(Clone, Debug, PartialEq)]
@@ -15,10 +15,10 @@ pub enum Policy {
 impl Policy {
     /// Evaluate a policy on a JSON value.
     #[must_use]
-    pub fn evaluate(&self, nuc_root: &serde_json::Value) -> bool {
+    pub fn evaluate(&self, nuc_root: &serde_json::Value, context: &HashMap<&str, serde_json::Value>) -> bool {
         match self {
-            Self::Operator(policy) => policy.evaluate(nuc_root),
-            Self::Connector(policy) => policy.evaluate(nuc_root),
+            Self::Operator(policy) => policy.evaluate(nuc_root, context),
+            Self::Connector(policy) => policy.evaluate(nuc_root, context),
         }
     }
 
@@ -74,8 +74,8 @@ pub struct OperatorPolicy {
 }
 
 impl OperatorPolicy {
-    fn evaluate(&self, value: &serde_json::Value) -> bool {
-        let value = self.selector.apply(value);
+    fn evaluate(&self, value: &serde_json::Value, context: &HashMap<&str, serde_json::Value>) -> bool {
+        let value = self.selector.apply(value, context);
         match &self.operator {
             Operator::Equals(expected) => value == expected,
             Operator::NotEquals(expected) => value != expected,
@@ -107,13 +107,13 @@ pub enum ConnectorPolicy {
 }
 
 impl ConnectorPolicy {
-    fn evaluate(&self, value: &serde_json::Value) -> bool {
+    fn evaluate(&self, value: &serde_json::Value, context: &HashMap<&str, serde_json::Value>) -> bool {
         match self {
             ConnectorPolicy::And(conditions) => {
-                !conditions.is_empty() && conditions.iter().all(|condition| condition.evaluate(value))
+                !conditions.is_empty() && conditions.iter().all(|condition| condition.evaluate(value, context))
             }
-            ConnectorPolicy::Or(conditions) => conditions.iter().any(|condition| condition.evaluate(value)),
-            ConnectorPolicy::Not(policy) => !policy.evaluate(value),
+            ConnectorPolicy::Or(conditions) => conditions.iter().any(|condition| condition.evaluate(value, context)),
+            ConnectorPolicy::Not(policy) => !policy.evaluate(value, context),
         }
     }
 }
@@ -384,10 +384,12 @@ mod tests {
 
     // A set of conditions that evaluate to true for the JSON in this test.
     #[rstest]
-    #[case::eq(op::eq(".name.first", json!("bob")))]
+    #[case::eq1(op::eq(".name.first", json!("bob")))]
+    #[case::eq2(op::eq(".name", json!({"first": "bob", "last": "smith"})))]
+    #[case::eq3(op::eq(".", json!({"name": {"first": "bob", "last": "smith"}, "age": 42})))]
+    #[case::eq4(op::eq("$.req.foo", json!(42)))]
+    #[case::eq5(op::eq("$.req.bar", json!("zar")))]
     #[case::ne(op::ne(".name.first", json!("john")))]
-    #[case::eq(op::eq(".name", json!({"first": "bob", "last": "smith"})))]
-    #[case::eq(op::eq(".", json!({"name": {"first": "bob", "last": "smith"}, "age": 42})))]
     #[case::not_eq(op::not(op::eq(".age", json!(150))))]
     #[case::any_of(op::any_of(".name.first", &[json!("john"), json!("bob")]))]
     #[case::and(op::and(&[op::eq(".age", json!(42)), op::eq(".name.first", json!("bob"))]))]
@@ -401,15 +403,18 @@ mod tests {
             },
             "age": 42,
         });
-        assert!(policy.evaluate(&value));
+        let context = HashMap::from([("req", json!({"foo": 42, "bar": "zar"})), ("other", json!(1337))]);
+        assert!(policy.evaluate(&value, &context));
     }
 
     // A set of conditions that evaluate to false for the JSON in this test.
     #[rstest]
-    #[case::eq(op::eq(".name.first", json!("john")))]
+    #[case::eq1(op::eq(".name.first", json!("john")))]
+    #[case::eq2(op::eq(".name", json!({"first": "john", "last": "smith"})))]
+    #[case::eq3(op::eq(".", json!({"name": {"first": "bob", "last": "smith"}, "age": 100})))]
+    #[case::eq4(op::eq("$.req.foo", json!("hello")))]
+    #[case::eq5(op::eq("$.req.choo", json!(42)))]
     #[case::ne(op::ne(".name.first", json!("bob")))]
-    #[case::eq(op::eq(".name", json!({"first": "john", "last": "smith"})))]
-    #[case::eq(op::eq(".", json!({"name": {"first": "bob", "last": "smith"}, "age": 100})))]
     #[case::not_eq(op::not(op::eq(".age", json!(42))))]
     #[case::any_of(op::any_of(".name.first", &[json!("john"), json!("jack")]))]
     #[case::and1(op::and(&[op::eq(".age", json!(150)), op::eq(".name.first", json!("bob"))]))]
@@ -426,6 +431,7 @@ mod tests {
             },
             "age": 42,
         });
-        assert!(!policy.evaluate(&value));
+        let context = HashMap::from([("req", json!({"foo": 42, "bar": "zar"})), ("other", json!(1337))]);
+        assert!(!policy.evaluate(&value, &context));
     }
 }

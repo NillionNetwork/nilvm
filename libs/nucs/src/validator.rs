@@ -81,6 +81,7 @@ impl NucValidator {
         &self,
         envelope: NucTokenEnvelope,
         parameters: ValidationParameters,
+        context: &HashMap<&str, serde_json::Value>,
     ) -> Result<ValidatedNucToken, ValidationError> {
         // Perform this one check before validating signatures to avoid doing contly work
         if envelope.proofs().len().saturating_add(1) > parameters.max_chain_length {
@@ -98,7 +99,7 @@ impl NucValidator {
         let token_chain = iter::once(token).chain(proofs.iter().copied()).rev();
         Self::validate_proofs(token, &proofs, &self.root_keys)?;
         Self::validate_token_chain(token_chain, &parameters)?;
-        Self::validate_token(token, &proofs, &parameters.token_requirements)?;
+        Self::validate_token(token, &proofs, &parameters.token_requirements, context)?;
 
         // Signature validation is done at the end as it's arguably the most expensive part of the
         // validation process.
@@ -114,6 +115,7 @@ impl NucValidator {
         token: &NucToken,
         proofs: &[&NucToken],
         requirements: &TokenTypeRequirements,
+        context: &HashMap<&str, serde_json::Value>,
     ) -> ValidationResult {
         match &token.body {
             TokenBody::Delegation(_) => {
@@ -139,7 +141,7 @@ impl NucValidator {
                 }
                 let token_json = serde_json::to_value(token).map_err(ValidationError::Serde)?;
                 for proof in proofs {
-                    Self::validate_policy_matches(proof, &token_json)?;
+                    Self::validate_policy_matches(proof, &token_json, context)?;
                 }
             }
         };
@@ -225,11 +227,15 @@ impl NucValidator {
         Ok(())
     }
 
-    fn validate_policy_matches(token: &NucToken, invocation: &serde_json::Value) -> ValidationResult {
+    fn validate_policy_matches(
+        token: &NucToken,
+        invocation: &serde_json::Value,
+        context: &HashMap<&str, serde_json::Value>,
+    ) -> ValidationResult {
         match &token.body {
             TokenBody::Delegation(policies) => {
                 for policy in policies {
-                    if !policy.evaluate(invocation) {
+                    if !policy.evaluate(invocation, context) {
                         return Err(ValidationError::Validation(ValidationKind::PolicyNotMet));
                     }
                 }
@@ -463,11 +469,17 @@ mod tests {
     struct Asserter {
         parameters: ValidationParameters,
         root_keys: Vec<PublicKey>,
+        context: HashMap<&'static str, serde_json::Value>,
     }
 
     impl Asserter {
         fn new(parameters: ValidationParameters) -> Self {
-            Self { parameters, root_keys: ROOT_PUBLIC_KEYS.clone() }
+            Self { parameters, root_keys: ROOT_PUBLIC_KEYS.clone(), context: Default::default() }
+        }
+
+        fn with_context(mut self, context: HashMap<&'static str, serde_json::Value>) -> Self {
+            self.context = context;
+            self
         }
 
         fn log_tokens(envelope: &NucTokenEnvelope) {
@@ -483,7 +495,7 @@ mod tests {
             Self::log_tokens(&envelope);
 
             let expected_failure = expected_failure.into();
-            match NucValidator::new(&self.root_keys).validate(envelope, self.parameters) {
+            match NucValidator::new(&self.root_keys).validate(envelope, self.parameters, &self.context) {
                 Ok(_) => panic!("validation succeeded"),
                 Err(e) if e.to_string() == expected_failure.to_string() => (),
                 Err(e) => panic!("unexpected type of failure: {e}"),
@@ -492,7 +504,9 @@ mod tests {
 
         fn assert_success(self, envelope: NucTokenEnvelope) -> ValidatedNucToken {
             Self::log_tokens(&envelope);
-            NucValidator::new(&self.root_keys).validate(envelope, self.parameters).expect("validation failed")
+            NucValidator::new(&self.root_keys)
+                .validate(envelope, self.parameters, &self.context)
+                .expect("validation failed")
         }
     }
 
@@ -958,10 +972,13 @@ mod tests {
         let subject_key = SecretKey::random(&mut rand::thread_rng());
         let subject = Did::from_secret_key(&subject_key);
         let rpc_did = Did::new([0xaa; 33]);
-        let root = NucTokenBuilder::delegation([policy::op::eq(".args.foo", json!(42))])
-            .subject(subject.clone())
-            .command(["nil"])
-            .issued_by_root();
+        let root = NucTokenBuilder::delegation([
+            policy::op::eq(".args.foo", json!(42)),
+            policy::op::eq("$.req.bar", json!(1337)),
+        ])
+        .subject(subject.clone())
+        .command(["nil"])
+        .issued_by_root();
         let invocation = NucTokenBuilder::invocation(json!({"foo": 42, "bar": 1337}).as_object().cloned().unwrap())
             .subject(subject.clone())
             .audience(rpc_did.clone())
@@ -973,7 +990,8 @@ mod tests {
             token_requirements: TokenTypeRequirements::Invocation(rpc_did),
             ..Default::default()
         };
-        Asserter::new(parameters).assert_success(envelope);
+        let context = HashMap::from([("req", json!({"bar": 1337}))]);
+        Asserter::new(parameters).with_context(context).assert_success(envelope);
     }
 
     #[test]
@@ -993,7 +1011,7 @@ mod tests {
     }
 
     #[test]
-    fn root_token_validation() {
+    fn valid_root_token() {
         let key = secret_key();
         let root = delegation(&key).command(["nil"]).issued_by_root();
 
