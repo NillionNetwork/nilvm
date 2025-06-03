@@ -13,8 +13,8 @@ hex = { version = "0.4", features = ["serde"] }
 humantime = "2.2"
 futures = "0.3.30"
 log = "0.4"
-nillion-nucs = { path = "../../libs/nucs" }
-nilauth-client = { path = "../../libs/nilauth-client" }
+nilauth-client = { git = "https://github.com/NillionNetwork/nilauth-client-rs", rev = "7c5105d250e46d87dd4e3cdbdd0519a949f5186c" }
+nillion-nucs = { git = "https://github.com/NillionNetwork/nuc-rs", rev = "687657acd08f2543e5c0d75e910eb9f1b1152d00" }
 serde = "1.0.214"
 serde_yaml = "0.9"
 serde_json = "1.0.132"

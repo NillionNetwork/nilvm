@@ -28,5 +28,5 @@ node-config = { path = "../../libs/node-config" }
 program-auditor = { path = "../../nada-lang/program-auditor" }
 tools-config = { path = "../libs/tools-config" }
 nillion-chain-node = { path = "../../libs/nillion-chain/node" }
-nillion-chain-client = { path = "../../libs/nillion-chain/client" }
+nilchain-client = { workspace = true }
 user-keypair = { path = "../../libs/user-keypair" }

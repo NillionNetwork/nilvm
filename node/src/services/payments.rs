@@ -5,6 +5,7 @@ use super::{
     time::TimeService,
 };
 use crate::{
+    PreprocessingConfigExt,
     services::token_dollar_conversion::{TokenDollarConversionError, TokenDollarConversionService},
     storage::{
         models::program::{ParseProgramIdError, ProgramId},
@@ -15,17 +16,17 @@ use crate::{
         },
         sqlite::{DatabaseError, TransactionContext},
     },
-    PreprocessingConfigExt,
 };
 use anyhow::anyhow;
 use axum::async_trait;
 use metrics::prelude::*;
 use mpc_vm::requirements::{MPCProgramRequirements, RuntimeRequirementType};
-use nillion_chain_client::{
+use nilchain_client::{
     transactions::TokenAmount,
     tx::{PaymentTransactionRetriever, RetrieveError},
 };
 use node_api::{
+    ConvertProto, Message,
     auth::rust::{PublicKey, UserId},
     compute::{TECDSA_DKG_PROGRAM_ID, TEDDSA_DKG_PROGRAM_ID},
     payments::rust::{
@@ -34,13 +35,12 @@ use node_api::{
         SelectedAuxiliaryMaterial, SelectedPreprocessingOffsets, SignedQuote, SignedReceipt,
     },
     preprocessing::rust::{AuxiliaryMaterial, PreprocessingElement},
-    ConvertProto, Message,
 };
 use node_config::{PreprocessingConfig, PricingConfig};
 use once_cell::sync::Lazy;
 use program_auditor::ProgramAuditorRequest;
 use rand::random;
-use rust_decimal::{prelude::ToPrimitive, Decimal};
+use rust_decimal::{Decimal, prelude::ToPrimitive};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, fmt, ops::Add, sync::Arc, time::Duration};
 use tracing::{error, info, warn};
@@ -840,7 +840,7 @@ mod test {
     };
     use chrono::Utc;
     use mockall::predicate::{always, eq};
-    use nillion_chain_client::{
+    use nilchain_client::{
         transactions::TokenAmount,
         tx::{PaymentTransaction, RetrieveError},
     };

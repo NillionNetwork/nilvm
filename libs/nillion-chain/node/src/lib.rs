@@ -1,3 +1,3 @@
 pub mod node;
 
-pub use nillion_chain_client::transactions;
+pub use nilchain_client::transactions;

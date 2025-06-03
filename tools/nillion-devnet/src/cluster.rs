@@ -6,12 +6,12 @@ use crate::{
     identity::{NodeIdentities, NodeIdentity},
     proxy::NilchainProxy,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use basic_types::party::PartyId;
-use clap::{error::ErrorKind, CommandFactory};
+use clap::{CommandFactory, error::ErrorKind};
 use futures::future::join_all;
 use math_lib::modular::EncodedModulo;
-use nillion_chain_client::{client::NillionChainClient, key::NillionChainPrivateKey};
+use nilchain_client::{client::NillionChainClient, key::NillionChainPrivateKey};
 use nillion_chain_node::{
     node::{GenesisAccount, NillionChainInitMode, NillionChainNode, NillionChainNodeBuilder},
     transactions::TokenAmount,
@@ -20,7 +20,7 @@ use node::{
     builder::{NodeBuilder, NodeHandle},
     config::{Cluster, ClusterMember, KeyKind, MetricsConfig, Prime, PublicKeys},
 };
-use rand::{rngs::SmallRng, seq::SliceRandom, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::SmallRng, seq::SliceRandom};
 use std::{
     collections::HashMap,
     fs::{self, create_dir_all},
@@ -28,12 +28,12 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
-use tempfile::{tempdir, TempDir};
+use tempfile::{TempDir, tempdir};
 use tokio::{
     select,
-    signal::unix::{signal, SignalKind},
+    signal::unix::{SignalKind, signal},
 };
-use tools_config::{networks::PaymentsConfig, path::config_directory, ToolConfig};
+use tools_config::{ToolConfig, networks::PaymentsConfig, path::config_directory};
 use uuid::Uuid;
 
 const MIN_LISTEN_PORT: u16 = 30000;

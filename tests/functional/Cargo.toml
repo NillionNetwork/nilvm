@@ -12,7 +12,7 @@ uuid = "1.10"
 rand = "0.8"
 
 client-fixture = { path = "../fixtures/client" }
-nillion-chain-client = { path = "../../libs/nillion-chain/client" }
+nilchain-client = { workspace = true }
 nillion-client = { path = "../../client" }
 node-api = { path = "../../libs/node-api", features = ["rust-types"] }
 threshold-keypair = { path = "../../libs/threshold-keypair" }

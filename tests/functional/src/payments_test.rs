@@ -1,12 +1,12 @@
-use nillion_chain_client::{
+use nilchain_client::{
     client::NillionChainClient,
     key::NillionChainPrivateKey,
     transactions::TokenAmount,
     tx::{DefaultPaymentTransactionRetriever, PaymentTransactionRetriever},
 };
-use nodes_fixtures::nodes::{nodes, Nodes};
+use nodes_fixtures::nodes::{Nodes, nodes};
 use rstest::rstest;
-use tracing_fixture::{tracing, Tracing};
+use tracing_fixture::{Tracing, tracing};
 
 #[rstest]
 #[tokio::test]

@@ -7,16 +7,16 @@ use crate::{
     vm::{PaymentMode, VmClient},
 };
 use nada_value::protobuf::nada_values_to_protobuf;
-use nillion_chain_client::transactions::TokenAmount;
+use nilchain_client::transactions::TokenAmount;
 use nillion_client_core::values::{EncryptedValues, PartyId, PartyShares};
 use node_api::{
+    ConvertProto, Message,
     errors::StatusExt,
     payments::rust::{PaymentReceiptRequest, PriceQuote, PriceQuoteRequest, QuoteFees, SignedQuote, SignedReceipt},
     values::rust::NamedValue,
-    ConvertProto, Message,
 };
 use std::{any::type_name, fmt, time::Instant};
-use tonic::{async_trait, Status};
+use tonic::{Status, async_trait};
 use tracing::{info, instrument, warn};
 
 pub mod add_funds;

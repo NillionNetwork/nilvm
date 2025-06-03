@@ -1,11 +1,11 @@
 use crate::{cleanup, programs::upload_programs};
 use ::tracing::{info, warn};
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{Context, Error, anyhow, bail};
 use basic_types::PartyId;
 use ctor::ctor;
 use futures::future;
-use grpc_channel::{token::TokenAuthenticator, AuthenticatedGrpcChannel, GrpcChannelConfig};
-use nillion_chain_client::{
+use grpc_channel::{AuthenticatedGrpcChannel, GrpcChannelConfig, token::TokenAuthenticator};
+use nilchain_client::{
     client::NillionChainClient,
     key::{NillionChainAddress, NillionChainPrivateKey},
 };
@@ -14,8 +14,8 @@ use nillion_chain_node::{
     transactions::TokenAmount,
 };
 use nillion_client::{
-    builder::VmClientBuilder, grpc::MembershipClient, payments::NillionChainClientPayer, vm::VmClient,
-    Ed25519SigningKey, Secp256k1SigningKey, SigningKey, UserId,
+    Ed25519SigningKey, Secp256k1SigningKey, SigningKey, UserId, builder::VmClientBuilder, grpc::MembershipClient,
+    payments::NillionChainClientPayer, vm::VmClient,
 };
 use node_config::{Config, KeyKind, PrefundedAccount, PrivateKeyConfig};
 use once_cell::sync::Lazy;
@@ -36,8 +36,8 @@ use std::{
 };
 use tempfile::TempDir;
 use tokio::runtime::Runtime;
-use tracing_fixture::{tracing, Tracing};
-use xshell::{cmd, Shell};
+use tracing_fixture::{Tracing, tracing};
+use xshell::{Shell, cmd};
 
 // These can be overwritten by environment variables
 const MAX_PAYERS_NUM: usize = 20;

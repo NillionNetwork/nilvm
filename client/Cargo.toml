@@ -20,4 +20,4 @@ nada-value = { path = "../libs/nada-value", default-features = false, features =
 math_lib = { path = "../libs/math" }
 node-api = { path = "../libs/node-api", features = ["rust-types"] }
 user-keypair = { path = "../libs/user-keypair" }
-nillion-chain-client = { path = "../libs/nillion-chain/client" }
+nilchain-client = { workspace = true }

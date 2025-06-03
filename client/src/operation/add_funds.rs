@@ -2,11 +2,11 @@
 
 use super::{BuildError, InitialState, InitialStateInvokeError, InvokeError, PaymentError};
 use crate::{payments::TxHash, vm::VmClient};
-use nillion_chain_client::transactions::TokenAmount;
+use nilchain_client::transactions::TokenAmount;
 use node_api::{
+    ConvertProto, Message,
     auth::rust::UserId,
     payments::rust::{AddFundsPayload, AddFundsRequest},
-    ConvertProto, Message,
 };
 use rand::random;
 use sha2::{Digest, Sha256};

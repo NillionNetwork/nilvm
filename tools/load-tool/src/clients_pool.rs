@@ -1,18 +1,17 @@
 //! Cyclic pool of clients.
 
-use anyhow::{anyhow, Context, Error};
+use anyhow::{Context, Error, anyhow};
 use log::info;
-use nillion_chain_client::{
+use nilchain_client::{
     client::NillionChainClient,
     key::{NillionChainAddress, NillionChainPrivateKey},
     transactions::TokenAmount,
 };
 use nillion_client::{
-    async_trait,
+    SigningKey, async_trait,
     builder::VmClientBuilder,
     payments::{NilChainPayer, TxHash},
     vm::VmClient,
-    SigningKey,
 };
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;

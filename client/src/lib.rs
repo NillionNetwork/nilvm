@@ -22,9 +22,9 @@ pub mod payments;
 pub(crate) mod retry;
 pub mod vm;
 
-pub use nillion_chain_client::transactions::TokenAmount;
+pub use nilchain_client::transactions::TokenAmount;
 pub use nillion_client_core::values::{Clear, NadaType, NadaValue};
 pub use node_api::auth::rust::UserId;
 pub use tonic::async_trait;
-pub use user_keypair::{ed25519::*, secp256k1::*, SigningKey};
+pub use user_keypair::{SigningKey, ed25519::*, secp256k1::*};
 pub use uuid::Uuid;
