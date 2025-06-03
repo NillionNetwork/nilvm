@@ -25,7 +25,7 @@ members = [
     "libs/threshold-keypair",
     "libs/nada-values-args",
     "libs/client-metrics",
-    "libs/nillion-chain/node",
+    "libs/nilchain-node",
     "nada-lang/compiler-backend",
     "nada-lang/compiler-backend-tests",
     "nada-lang/pynadac",

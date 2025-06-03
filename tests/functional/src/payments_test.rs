@@ -4,9 +4,9 @@ use nilchain_client::{
     transactions::TokenAmount,
     tx::{DefaultPaymentTransactionRetriever, PaymentTransactionRetriever},
 };
-use nodes_fixtures::nodes::{Nodes, nodes};
+use nodes_fixtures::nodes::{nodes, Nodes};
 use rstest::rstest;
-use tracing_fixture::{Tracing, tracing};
+use tracing_fixture::{tracing, Tracing};
 
 #[rstest]
 #[tokio::test]

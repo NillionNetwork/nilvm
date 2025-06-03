@@ -1,4 +1,4 @@
-use anyhow::{Context, Error, bail};
+use anyhow::{bail, Context, Error};
 use chrono::{SecondsFormat, Utc};
 use clap::Parser;
 use load_tool::{

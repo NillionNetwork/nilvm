@@ -24,9 +24,9 @@ use node_config::Config;
 use std::path::PathBuf;
 use tokio::{
     select,
-    signal::unix::{SignalKind, signal},
+    signal::unix::{signal, SignalKind},
 };
-use tracing::{Instrument, error, info, info_span};
+use tracing::{error, info, info_span, Instrument};
 
 /// The Nillion node.
 #[derive(Parser)]

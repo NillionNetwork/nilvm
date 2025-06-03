@@ -1,5 +1,5 @@
 use clap::Parser;
-use nillion_chain_node::{
+use nilchain_node::{
     node::{GenesisAccount, NillionChainNodeBuilder},
     transactions::TokenAmount,
 };

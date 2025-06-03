@@ -5,7 +5,6 @@ use super::{
     time::TimeService,
 };
 use crate::{
-    PreprocessingConfigExt,
     services::token_dollar_conversion::{TokenDollarConversionError, TokenDollarConversionService},
     storage::{
         models::program::{ParseProgramIdError, ProgramId},
@@ -16,6 +15,7 @@ use crate::{
         },
         sqlite::{DatabaseError, TransactionContext},
     },
+    PreprocessingConfigExt,
 };
 use anyhow::anyhow;
 use axum::async_trait;
@@ -26,7 +26,6 @@ use nilchain_client::{
     tx::{PaymentTransactionRetriever, RetrieveError},
 };
 use node_api::{
-    ConvertProto, Message,
     auth::rust::{PublicKey, UserId},
     compute::{TECDSA_DKG_PROGRAM_ID, TEDDSA_DKG_PROGRAM_ID},
     payments::rust::{
@@ -35,12 +34,13 @@ use node_api::{
         SelectedAuxiliaryMaterial, SelectedPreprocessingOffsets, SignedQuote, SignedReceipt,
     },
     preprocessing::rust::{AuxiliaryMaterial, PreprocessingElement},
+    ConvertProto, Message,
 };
 use node_config::{PreprocessingConfig, PricingConfig};
 use once_cell::sync::Lazy;
 use program_auditor::ProgramAuditorRequest;
 use rand::random;
-use rust_decimal::{Decimal, prelude::ToPrimitive};
+use rust_decimal::{prelude::ToPrimitive, Decimal};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, fmt, ops::Add, sync::Arc, time::Duration};
 use tracing::{error, info, warn};

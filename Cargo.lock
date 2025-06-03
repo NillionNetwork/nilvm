@@ -3550,6 +3550,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "nilchain-node"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "nilchain-client",
+ "object_store",
+ "tempfile",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-test",
+]
+
+[[package]]
 name = "nillion"
 version = "0.1.0"
 dependencies = [
@@ -3579,21 +3594,6 @@ dependencies = [
  "tracing",
  "user-keypair",
  "uuid",
-]
-
-[[package]]
-name = "nillion-chain-node"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "nilchain-client",
- "object_store",
- "tempfile",
- "tokio",
- "toml",
- "tracing",
- "tracing-test",
 ]
 
 [[package]]
@@ -3653,7 +3653,7 @@ dependencies = [
  "math_lib",
  "mpc-vm",
  "nilchain-client",
- "nillion-chain-node",
+ "nilchain-node",
  "node",
  "node-config",
  "program-auditor",
@@ -3843,7 +3843,7 @@ dependencies = [
  "hex",
  "libc",
  "nilchain-client",
- "nillion-chain-node",
+ "nilchain-node",
  "nillion-client",
  "node-config",
  "once_cell",

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use nilchain_client::{key::NillionChainPrivateKey, transactions::TokenAmount};
 use std::{
     env,

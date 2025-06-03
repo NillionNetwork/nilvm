@@ -1,5 +1,5 @@
 [package]
-name = "nillion-chain-node"
+name = "nilchain-node"
 version = "0.1.0"
 edition = "2021"
 
