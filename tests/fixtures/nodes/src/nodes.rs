@@ -5,11 +5,11 @@ use basic_types::PartyId;
 use ctor::ctor;
 use futures::future;
 use grpc_channel::{token::TokenAuthenticator, AuthenticatedGrpcChannel, GrpcChannelConfig};
-use nillion_chain_client::{
+use nilchain_client::{
     client::NillionChainClient,
     key::{NillionChainAddress, NillionChainPrivateKey},
 };
-use nillion_chain_node::{
+use nilchain_node::{
     node::{GenesisAccount, NillionChainNode, NillionChainNodeBuilder},
     transactions::TokenAmount,
 };

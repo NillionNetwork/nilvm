@@ -11,8 +11,8 @@ use basic_types::party::PartyId;
 use clap::{error::ErrorKind, CommandFactory};
 use futures::future::join_all;
 use math_lib::modular::EncodedModulo;
-use nillion_chain_client::{client::NillionChainClient, key::NillionChainPrivateKey};
-use nillion_chain_node::{
+use nilchain_client::{client::NillionChainClient, key::NillionChainPrivateKey};
+use nilchain_node::{
     node::{GenesisAccount, NillionChainInitMode, NillionChainNode, NillionChainNodeBuilder},
     transactions::TokenAmount,
 };

@@ -25,8 +25,8 @@ serde-files-utils = { path = "../../../libs/serde-files-utils", default-features
     "yaml",
 ] }
 tracing-fixture = { path = "../tracing" }
-nillion-chain-node = { path = "../../../libs/nillion-chain/node" }
-nillion-chain-client = { path = "../../../libs/nillion-chain/client" }
+nilchain-node = { path = "../../../libs/nilchain-node" }
+nilchain-client = { workspace = true }
 grpc-channel = { path = "../../../libs/grpc-channel" }
 nillion-client = { path = "../../../client" }
 hex = "0.4.3"

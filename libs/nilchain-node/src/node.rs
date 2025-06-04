@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use nillion_chain_client::{key::NillionChainPrivateKey, transactions::TokenAmount};
+use nilchain_client::{key::NillionChainPrivateKey, transactions::TokenAmount};
 use std::{
     env,
     fs::{self, File, OpenOptions},
@@ -490,7 +490,7 @@ impl NillionChainNodeBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nillion_chain_client::{
+    use nilchain_client::{
         client::NillionChainClient,
         tx::{DefaultPaymentTransactionRetriever, PaymentTransactionRetriever},
     };

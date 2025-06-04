@@ -30,7 +30,7 @@ serde-files-utils = { path = "../../libs/serde-files-utils", default-features = 
 ] }
 nada-compiler-backend = { path = "../../nada-lang/compiler-backend" }
 mpc-vm = { path = "../../libs/execution-engine/mpc-vm" }
-nillion-chain-client = { path = "../../libs/nillion-chain/client" }
+nilchain-client = { workspace = true }
 math_lib = { path = "../../libs/math" }
 nada-values-args = { path = "../../libs/nada-values-args" }
 

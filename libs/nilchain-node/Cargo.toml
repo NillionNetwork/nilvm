@@ -1,5 +1,5 @@
 [package]
-name = "nillion-chain-node"
+name = "nilchain-node"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,7 +8,7 @@ tracing = "0.1.40"
 anyhow = "1"
 toml = "0.8.14"
 
-nillion-chain-client = { path = "../client" }
+nilchain-client = { workspace = true }
 
 [dev-dependencies]
 clap = { version = "4.5", features = ["derive"] }

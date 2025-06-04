@@ -73,7 +73,7 @@ use governor::Quota;
 use grpc_channel::auth::ServerAuthInterceptor;
 use math_lib::modular::{EncodedModularNumber, U128SafePrime, U256SafePrime, U64SafePrime};
 use mpc_vm::vm::ExecutionVmConfig;
-use nillion_chain_client::tx::{DefaultPaymentTransactionRetriever, PaymentTransactionRetriever};
+use nilchain_client::tx::{DefaultPaymentTransactionRetriever, PaymentTransactionRetriever};
 use node_api::{
     auth::rust::{PublicKey, UserId},
     compute::proto::compute_server::ComputeServer,

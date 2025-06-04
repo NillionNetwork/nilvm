@@ -2,7 +2,7 @@
 
 use super::{BuildError, InitialState, InitialStateInvokeError, InvokeError, PaymentError};
 use crate::{payments::TxHash, vm::VmClient};
-use nillion_chain_client::transactions::TokenAmount;
+use nilchain_client::transactions::TokenAmount;
 use node_api::{
     auth::rust::UserId,
     payments::rust::{AddFundsPayload, AddFundsRequest},

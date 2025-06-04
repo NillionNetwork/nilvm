@@ -25,10 +25,7 @@ members = [
     "libs/threshold-keypair",
     "libs/nada-values-args",
     "libs/client-metrics",
-    "libs/nillion-chain/client",
-    "libs/nillion-chain/node",
-    "libs/nillion-chain/transactions",
-    "libs/nucs",
+    "libs/nilchain-node",
     "nada-lang/compiler-backend",
     "nada-lang/compiler-backend-tests",
     "nada-lang/pynadac",
@@ -63,10 +60,12 @@ members = [
     "libs/node-api",
     "libs/grpc-channel",
     "libs/client-core", 
-    "libs/nilauth-client",
 ]
 
 exclude = ["wasm-workspace"]
+
+[workspace.dependencies]
+nilchain-client = { git = "https://github.com/NillionNetwork/nilchain-client-rs.git", rev = "958674cd4d667632c469e2d210fb3b6e1867ab7c" } 
 
 [profile.release]
 lto = true

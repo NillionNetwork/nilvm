@@ -2,7 +2,7 @@
 
 use anyhow::{anyhow, Context, Error};
 use log::info;
-use nillion_chain_client::{
+use nilchain_client::{
     client::NillionChainClient,
     key::{NillionChainAddress, NillionChainPrivateKey},
     transactions::TokenAmount,

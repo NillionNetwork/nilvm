@@ -7,7 +7,7 @@ use crate::{
     vm::{PaymentMode, VmClient},
 };
 use nada_value::protobuf::nada_values_to_protobuf;
-use nillion_chain_client::transactions::TokenAmount;
+use nilchain_client::transactions::TokenAmount;
 use nillion_client_core::values::{EncryptedValues, PartyId, PartyShares};
 use node_api::{
     errors::StatusExt,

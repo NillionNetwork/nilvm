@@ -1,4 +1,4 @@
-use nillion_chain_client::{
+use nilchain_client::{
     client::NillionChainClient,
     key::NillionChainPrivateKey,
     transactions::TokenAmount,

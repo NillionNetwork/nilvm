@@ -1,11 +1,11 @@
 //! Payments related types.
 
-use nillion_chain_client::transactions::TokenAmount;
+use nilchain_client::transactions::TokenAmount;
 use std::{fmt, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::async_trait;
 
-pub use nillion_chain_client::{client::NillionChainClient, key::NillionChainPrivateKey};
+pub use nilchain_client::{client::NillionChainClient, key::NillionChainPrivateKey};
 
 /// A payer that uses the nilchain to submit payments.
 #[async_trait]

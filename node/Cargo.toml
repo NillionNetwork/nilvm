@@ -67,7 +67,7 @@ mpc-vm = { path = "../libs/execution-engine/mpc-vm", features = ["vm", "serde"] 
 math_lib = { path = "../libs/math" }
 metrics = { path = "../libs/metrics", features = ["prometheus-backend"] }
 nada-compiler-backend = { path = "../nada-lang/compiler-backend" }
-nillion-chain-client = { path = "../libs/nillion-chain/client" }
+nilchain-client = { workspace = true }
 node-api = { path = "../libs/node-api", features = ["rust-types"] }
 node-config = { path = "../libs/node-config" }
 program-auditor = { path = "../nada-lang/program-auditor" }

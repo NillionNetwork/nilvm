@@ -3,7 +3,7 @@
 use crate::{flow::ErrorPolicy, runner::StartPolicy};
 use human_size::HumanSize;
 use nada_values_args::file::Inputs;
-use nillion_chain_client::transactions::TokenAmount;
+use nilchain_client::transactions::TokenAmount;
 use serde::Deserialize;
 use std::{path::PathBuf, time::Duration};
 

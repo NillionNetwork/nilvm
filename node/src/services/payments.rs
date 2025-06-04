@@ -21,7 +21,7 @@ use anyhow::anyhow;
 use axum::async_trait;
 use metrics::prelude::*;
 use mpc_vm::requirements::{MPCProgramRequirements, RuntimeRequirementType};
-use nillion_chain_client::{
+use nilchain_client::{
     transactions::TokenAmount,
     tx::{PaymentTransactionRetriever, RetrieveError},
 };
@@ -840,7 +840,7 @@ mod test {
     };
     use chrono::Utc;
     use mockall::predicate::{always, eq};
-    use nillion_chain_client::{
+    use nilchain_client::{
         transactions::TokenAmount,
         tx::{PaymentTransaction, RetrieveError},
     };

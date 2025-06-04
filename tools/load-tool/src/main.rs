@@ -9,7 +9,7 @@ use load_tool::{
     spec::{Operation, Seeds, SigningKeyMode, TestSpec, WorkerIncrementMode},
 };
 use log::info;
-use nillion_chain_client::{client::NillionChainClient, key::NillionChainPrivateKey, transactions::TokenAmount};
+use nilchain_client::{client::NillionChainClient, key::NillionChainPrivateKey, transactions::TokenAmount};
 use nillion_client::{Secp256k1SigningKey, SigningKey};
 use serde_files_utils::yaml::read_yaml;
 use std::{
