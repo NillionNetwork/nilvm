@@ -2,7 +2,7 @@ use super::HandlerResult;
 use crate::args::{CheckRevokedArgs, NilauthCommand, NilauthSubscriptionCommand, RevokeTokenArgs};
 use anyhow::{anyhow, bail, Context, Result};
 use chrono::{DateTime, Utc};
-use nilauth_client::client::{About, DefaultNilauthClient, NilauthClient};
+use nilauth_client::client::{About, BlindModule, DefaultNilauthClient, NilauthClient};
 use nillion_client::payments::{NillionChainClient, NillionChainPrivateKey};
 use nillion_nucs::{
     envelope::NucTokenEnvelope,
@@ -40,16 +40,19 @@ impl NilauthHandler {
     pub async fn handle(self, command: NilauthCommand) -> HandlerResult {
         use NilauthCommand::*;
         match command {
-            Subscription(NilauthSubscriptionCommand::Pay) => self.pay_subscription().await,
-            Subscription(NilauthSubscriptionCommand::Status) => self.subscription_status().await,
-            Token => self.request_token().await,
+            Subscription(NilauthSubscriptionCommand::Pay { module }) => self.pay_subscription(module.into()).await,
+            Subscription(NilauthSubscriptionCommand::Status { module }) => {
+                self.subscription_status(module.into()).await
+            }
+            Subscription(NilauthSubscriptionCommand::Cost { module }) => self.subscription_cost(module.into()).await,
+            Token { module } => self.request_token(module.into()).await,
             Revoke(args) => self.revoke_token(args).await,
             CheckRevoked(args) => self.check_revoked(args).await,
             About => self.about().await,
         }
     }
 
-    async fn pay_subscription(self) -> HandlerResult {
+    async fn pay_subscription(self, module: BlindModule) -> HandlerResult {
         #[derive(Serialize)]
         struct Output {
             tx_hash: String,
@@ -65,11 +68,11 @@ impl NilauthHandler {
             nilchain_client.set_gas_price(gas_price);
         }
 
-        let tx_hash = self.client.pay_subscription(&mut nilchain_client, &self.key).await?;
+        let tx_hash = self.client.pay_subscription(&mut nilchain_client, &self.key, module).await?;
         Ok(Box::new(Output { tx_hash: tx_hash.to_string() }))
     }
 
-    async fn subscription_status(self) -> HandlerResult {
+    async fn subscription_status(self, module: BlindModule) -> HandlerResult {
         #[derive(Serialize)]
         struct Output {
             subscribed: bool,
@@ -78,25 +81,37 @@ impl NilauthHandler {
             expires_at: Option<DateTime<Utc>>,
         }
 
-        let subscription = self.client.subscription_status(&self.key).await?;
+        let subscription = self.client.subscription_status(&self.key.public_key(), module).await?;
         let output =
             Output { subscribed: subscription.subscribed, expires_at: subscription.details.map(|s| s.expires_at) };
         Ok(Box::new(output))
     }
 
-    async fn request_token(self) -> HandlerResult {
+    async fn subscription_cost(self, module: BlindModule) -> HandlerResult {
+        #[derive(Serialize)]
+        struct Output {
+            cost_unils: u64,
+        }
+
+        let cost = self.client.subscription_cost(module).await?;
+        let output = Output { cost_unils: cost.to_unil() };
+        Ok(Box::new(output))
+    }
+
+    async fn request_token(self, module: BlindModule) -> HandlerResult {
         #[derive(Serialize)]
         struct Output {
             token: String,
         }
 
-        let token = self.client.request_token(&self.key).await?;
+        let token = self.client.request_token(&self.key, module).await?;
         Ok(Box::new(Output { token }))
     }
 
     async fn revoke_token(self, args: RevokeTokenArgs) -> HandlerResult {
         let token = NucTokenEnvelope::decode(&args.token)?;
-        self.client.revoke_token(&token, &self.key).await?;
+        let args = nilauth_client::client::RevokeTokenArgs { auth_token: token.clone(), revocable_token: token };
+        self.client.revoke_token(args, &self.key).await?;
         Ok(Box::new("Token revoked".to_string()))
     }
 

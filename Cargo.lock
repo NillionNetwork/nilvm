@@ -3513,7 +3513,7 @@ dependencies = [
 [[package]]
 name = "nilauth-client"
 version = "0.1.0"
-source = "git+https://github.com/NillionNetwork/nilauth-client-rs?rev=7c5105d250e46d87dd4e3cdbdd0519a949f5186c#7c5105d250e46d87dd4e3cdbdd0519a949f5186c"
+source = "git+https://github.com/NillionNetwork/nilauth-client-rs?rev=03e2b38609f6c48332fbfc38960ce57d27121f44#03e2b38609f6c48332fbfc38960ce57d27121f44"
 dependencies = [
  "async-trait",
  "chrono",

@@ -45,7 +45,7 @@ impl NetworksHandler {
         });
         let nilauth = nilauth_endpoint.map(|endpoint| NilauthConfig { endpoint });
         NetworkConfig { bootnode, payments, nilauth }.write_to_file(&name)?;
-        Ok(Box::new(format!("Network {} added", name)))
+        Ok(Box::new(format!("Network {name} added")))
     }
 
     fn edit(args: EditNetworkArgs) -> HandlerResult {
