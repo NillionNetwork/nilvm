@@ -75,7 +75,7 @@ infrastructure to collect, store and secure them? Are they shipped to and stored
 
 #### Asset Management
 
-_A Nillion node must be operated within a confidental and tamper-proof environment. Do you run nodes
+_A Nillion node must be operated within a confidential and tamper-proof environment. Do you run nodes
 on shared infrastructure? At which levels -- e.g. container, VM, network -- do you have the ability
 to isolate workloads?_
 
