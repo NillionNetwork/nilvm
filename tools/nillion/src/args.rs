@@ -3,6 +3,7 @@ use clap::{error::ErrorKind, Args, CommandFactory, Parser, Subcommand, ValueEnum
 use clap_utils::shell_completions::ShellCompletionsArgs;
 use hex::FromHexError;
 use nada_values_args::NadaValueArgs;
+use nilauth_client::client::BlindModule;
 use nillion_client::{grpc::membership::NodeId, Clear, NadaValue, UserId, Uuid};
 use nillion_nucs::token::Did;
 use serde::Deserialize;
@@ -651,7 +652,7 @@ pub enum NilauthCommand {
     Subscription(NilauthSubscriptionCommand),
 
     /// Request a token.
-    Token,
+    Token { module: BlindModuleArg },
 
     /// Revoke a token.
     Revoke(RevokeTokenArgs),
@@ -667,10 +668,32 @@ pub enum NilauthCommand {
 #[derive(Subcommand)]
 pub enum NilauthSubscriptionCommand {
     /// Pay for a subscription.
-    Pay,
+    Pay { module: BlindModuleArg },
 
     /// Get the subscription status.
-    Status,
+    Status { module: BlindModuleArg },
+
+    /// Get the cost of a subscription.
+    Cost { module: BlindModuleArg },
+}
+
+/// A nilauth blind module.
+#[derive(Clone, ValueEnum)]
+pub enum BlindModuleArg {
+    /// nildb
+    Nildb,
+
+    /// nilai
+    Nilai,
+}
+
+impl From<BlindModuleArg> for BlindModule {
+    fn from(arg: BlindModuleArg) -> Self {
+        match arg {
+            BlindModuleArg::Nildb => BlindModule::NilDb,
+            BlindModuleArg::Nilai => BlindModule::NilAi,
+        }
+    }
 }
 
 /// The arguments to a revoke token command.

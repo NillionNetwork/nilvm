@@ -98,7 +98,7 @@ async fn main() {
     };
 
     match serialized_result {
-        Ok(Some(serialized)) => println!("{}", serialized),
+        Ok(Some(serialized)) => println!("{serialized}"),
         Ok(None) => {}
         Err(e) => {
             println!("{}", serialize_error(&output_format, &e));
