@@ -46,7 +46,7 @@ The load tool can be used to test the network with a number of concurrent users.
 **Manual:**
 In this node number of clients is equal to a initial_workers parameter of the spec file.
 Bear in mind that the number of clients is fixed and will not change during the test. Meaning clients will be re-used
-accross workers.
+across workers.
 
 **Automatic mode:**
 In this mode only one client is used, so it will be re-used across workers.
