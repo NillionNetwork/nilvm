@@ -68,7 +68,7 @@ impl NilauthHandler {
             nilchain_client.set_gas_price(gas_price);
         }
 
-        let tx_hash = self.client.pay_subscription(&mut nilchain_client, &self.key, module).await?;
+        let tx_hash = self.client.pay_subscription(&mut nilchain_client, &self.key.public_key(), module).await?;
         Ok(Box::new(Output { tx_hash: tx_hash.to_string() }))
     }
 
