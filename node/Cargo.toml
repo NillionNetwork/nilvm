@@ -50,7 +50,7 @@ tonic-health = "0.12.3"
 tonic-reflection = "0.12.3"
 tonic-web = "0.12.3"
 tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.6.2", features = ["cors"] }
+tower-http = { version = "0.6.6", features = ["cors"] }
 
 # Tracing
 tracing = "0.1"
