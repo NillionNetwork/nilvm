@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-config = { version = "^0.14", default-features = false, features = ["yaml"] }
+config = { version = "^0.15", default-features = false, features = ["yaml"] }
 num-bigint = "0.4.6"
 serde = { version = "^1.0", features = ["derive"] }
 clap = "4.5"
