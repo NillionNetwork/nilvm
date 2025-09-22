@@ -2272,7 +2272,7 @@ dependencies = [
  "rstest",
  "sha2 0.10.8",
  "thiserror 1.0.65",
- "tonic",
+ "tonic 0.12.3",
  "tower 0.5.2",
  "user-keypair",
 ]
@@ -3612,7 +3612,7 @@ dependencies = [
  "sha2 0.10.8",
  "thiserror 1.0.65",
  "tokio",
- "tonic",
+ "tonic 0.12.3",
  "tracing",
  "user-keypair",
  "uuid",
@@ -3783,7 +3783,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
- "tonic",
+ "tonic 0.12.3",
  "tonic-build",
  "tonic-health",
  "tonic-middleware",
@@ -3811,7 +3811,7 @@ dependencies = [
  "sha2 0.10.8",
  "strum",
  "thiserror 1.0.65",
- "tonic",
+ "tonic 0.12.3",
  "tonic-build",
  "tonic-types",
  "uuid",
@@ -6842,6 +6842,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "tonic"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e581ba15a835f4d9ea06c55ab1bd4dce26fc53752c69a04aac00703bfb49ba9"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "bytes",
+ "http 1.1.0",
+ "http-body 1.0.1",
+ "http-body-util",
+ "percent-encoding",
+ "pin-project",
+ "prost",
+ "tokio-stream",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
 name = "tonic-build"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6865,7 +6886,7 @@ dependencies = [
  "prost",
  "tokio",
  "tokio-stream",
- "tonic",
+ "tonic 0.12.3",
 ]
 
 [[package]]
@@ -6876,21 +6897,21 @@ checksum = "dd11ca7918ee9f94e217285ace20caf6187476f399244ba8438cdc92ce665236"
 dependencies = [
  "async-trait",
  "futures-util",
- "tonic",
+ "tonic 0.12.3",
  "tower 0.4.13",
 ]
 
 [[package]]
 name = "tonic-reflection"
-version = "0.12.3"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "878d81f52e7fcfd80026b7fdb6a9b578b3c3653ba987f87f0dce4b64043cba27"
+checksum = "f9687bd5bfeafebdded2356950f278bba8226f0b32109537c4253406e09aafe1"
 dependencies = [
  "prost",
  "prost-types",
  "tokio",
  "tokio-stream",
- "tonic",
+ "tonic 0.13.1",
 ]
 
 [[package]]
@@ -6901,7 +6922,7 @@ checksum = "0081d8ee0847d01271392a5aebe960a4600f5d4da6c67648a6382a0940f8b367"
 dependencies = [
  "prost",
  "prost-types",
- "tonic",
+ "tonic 0.12.3",
 ]
 
 [[package]]
@@ -6917,7 +6938,7 @@ dependencies = [
  "http-body-util",
  "pin-project",
  "tokio-stream",
- "tonic",
+ "tonic 0.12.3",
  "tower-http 0.5.2",
  "tower-layer",
  "tower-service",
