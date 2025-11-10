@@ -29,7 +29,7 @@ prost-types = "0.13"
 rand = "0.8"
 reqwest = { version = "0.12.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1.0.135"
+serde_json = "1.0.145"
 sqlx = { version = "0.8.2", features = [
     "sqlite",
     "runtime-tokio",
@@ -91,7 +91,7 @@ protocols = { path = "../libs/protocols" }
 rand_chacha = "0.3.1"
 test-programs = { path = "../nada-lang/test-programs" }
 test-with = { version = "0.14", default-features = false }
-serde_json = "1.0.133"
+serde_json = "1.0.145"
 
 [build-dependencies]
 tonic-build = "0.12"
