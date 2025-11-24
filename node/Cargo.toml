@@ -90,7 +90,7 @@ testcontainers = { version = "0.23" }
 protocols = { path = "../libs/protocols" }
 rand_chacha = "0.3.1"
 test-programs = { path = "../nada-lang/test-programs" }
-test-with = { version = "0.14", default-features = false }
+test-with = { version = "0.15", default-features = false }
 serde_json = "1.0.133"
 
 [build-dependencies]
