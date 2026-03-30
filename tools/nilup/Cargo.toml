@@ -21,7 +21,7 @@ tar = "0.4.43"
 file-find = { path = "../../libs/file-find" }
 client-metrics = { path = "../../libs/client-metrics" }
 clap-utils = { path = "../../libs/clap-utils", features = ["shell-completions"] }
-regex = "1.11.1"
+regex = "1.12.3"
 reqwest = { version = "0.12", default-features = false, features = [
     "rustls-tls",
 ] }
