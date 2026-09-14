@@ -20,7 +20,7 @@ bench = []
 testing = []
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 iai = "0.1"
 rstest = "0.21"
 

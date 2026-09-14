@@ -17,7 +17,7 @@ node-api = { path = "../node-api", features = ["rust-types"] }
 user-keypair = { path = "../user-keypair" }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 rstest = "0.21.0"
 sha2 = "0.10"
 
