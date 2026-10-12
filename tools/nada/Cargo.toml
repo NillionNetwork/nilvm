@@ -24,7 +24,7 @@ serde_repr = "0.1"
 tabled = { version = "0.16", features = ["ansi"] }
 tokio = "1"
 toml = "0.8.14"
-toml_edit = "0.22"
+toml_edit = "0.23"
 uuid = "1.10"
 
 tools-config = { path = "../libs/tools-config", features = ["client"] }
