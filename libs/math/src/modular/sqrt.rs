@@ -52,6 +52,11 @@ impl<T: Prime> Sqrt for ModularNumber<T> {
     type Output = Result<Self, SqrtError>;
 
     fn sqrt(self) -> Self::Output {
+        // Zero is always a quadratic residue whose root is zero. The Tonelli-Shanks branch below
+        // (reached when p % 4 == 1) treats `t == 0` as a non-residue, so handle it explicitly here.
+        if self.is_zero() {
+            return Ok(Self::ZERO);
+        }
         let one = T::Normal::ONE;
         let zero = T::Normal::ZERO;
         let four = NonZero::new(T::Normal::from(4)).unwrap();
@@ -188,5 +193,15 @@ mod test {
         let number = ModularNumber::<T>::from_u64(4);
         let root = number.sqrt().unwrap();
         assert_eq!(root, ModularNumber::two());
+    }
+
+    #[rstest]
+    #[case(P11)] // 11 % 4 == 3, uses the fast branch
+    #[case(P13)] // 13 % 4 == 1, uses the Tonelli-Shanks branch
+    #[case(P65537)] // 65537 % 4 == 1, uses the Tonelli-Shanks branch
+    fn sqrt_of_zero_is_zero<T: Prime>(#[case] _prime: T) {
+        let zero = ModularNumber::<T>::ZERO;
+        let root = zero.sqrt().expect("0 is a quadratic residue (sqrt(0) == 0)");
+        assert_eq!(root, ModularNumber::ZERO);
     }
 }
