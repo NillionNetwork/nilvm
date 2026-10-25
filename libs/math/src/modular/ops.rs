@@ -73,6 +73,9 @@ impl<T: Prime> Div for &ModularNumber<T> {
 
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, other: &ModularNumber<T>) -> Result<ModularNumber<T>, DivByZero> {
+        if other.is_zero() {
+            return Err(DivByZero);
+        }
         Ok(self * &other.inverse())
     }
 }
@@ -328,5 +331,12 @@ mod test {
         let right = ModularNumber::<P11>::from_u32(right);
         let expected = ModularNumber::<P11>::from_u32(expected);
         assert_eq!((left >> right).unwrap(), expected);
+    }
+
+    #[test]
+    fn div_by_zero_returns_error() {
+        let five = ModularNumber::<P11>::from_u32(5);
+        let zero = ModularNumber::<P11>::ZERO;
+        assert!((five / &zero).is_err(), "division by zero must return DivByZero");
     }
 }
